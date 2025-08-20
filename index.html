@@ -19,40 +19,36 @@
     .price { font-size:1.1rem; font-weight:600;}
     .positive { color:#1FA857; font-weight:600;}
     .negative { color:#D64541; font-weight:600;}
-    .sparkline { width:100px; height:40px;}
+    .sparkline { width:150px; height:50px;}
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem;}
     .card { border:1px solid #eee; border-radius:12px; padding:1rem; background:#fafafa;}
     .card strong { display:block; font-size:0.85rem; color:#666;}
     .card .value { font-size:1.2rem; font-weight:600; margin-top:0.2rem;}
-    .news-list { display:grid; gap:0.8rem;}
-    .news-item { padding:0.8rem 1rem; border:1px solid #eee; border-radius:8px;}
-    .news-item h3 { margin:0 0 0.3rem; font-size:0.95rem; font-weight:500;}
-    .news-item small { color:#777; font-size:0.8rem;}
     footer { padding:1rem; text-align:center; font-size:0.8rem; color:#888; border-top:1px solid #eee;}
   </style>
 </head>
 <body>
   <header>
     <h1>Hansol Textile · Market Insight</h1>
-    <small id="date">자동 업데이트</small>
+    <small id="date"></small>
   </header>
   <main>
     <section id="stocks">
-      <h2>📊 리테일러 주가</h2>
+      <h2>📊 리테일러 주가 & 뉴스</h2>
       <table class="stocks" id="stocks-table">
         <thead>
-          <tr><th>Ticker</th><th>Name</th><th>Price</th><th>Change</th><th>Trend</th></tr>
+          <tr><th>Ticker</th><th>Name</th><th>Price</th><th>Change</th><th>1M Trend</th><th>News</th></tr>
         </thead>
         <tbody></tbody>
       </table>
     </section>
     <section id="kpi">
-      <h2>📈 주요 지표</h2>
+      <h2>📈 패션·리테일 주요 지표 (FRED)</h2>
       <div class="grid" id="kpi-cards"></div>
     </section>
-    <section id="news">
-      <h2>📰 최신 뉴스</h2>
-      <div class="news-list" id="news-list"></div>
+    <section id="ai-analysis">
+      <h2>🤖 AI 시황분석</h2>
+      <div id="analysis-box" style="padding:1rem; border:1px solid #eee; border-radius:8px; background:#fafafa;"></div>
     </section>
   </main>
   <footer>
@@ -60,79 +56,89 @@
   </footer>
 
 <script>
-async function loadCSV(url) {
-  const res = await fetch(url);
-  return await res.text();
+async function loadStocks() { const r=await fetch("/api/stocks"); return r.json(); }
+async function loadFRED() { const r=await fetch("/api/fred"); return r.json(); }
+async function loadAnalysis() { const r=await fetch("/api/analysis"); return r.json(); }
+
+function formatValue(val, unit) {
+  if (val === "." || val === undefined) return "-";
+  const num = parseFloat(val);
+  switch (unit) {
+    case "%": return num.toFixed(2) + "%";
+    case "$": 
+      if (num > 1e9) return "$" + (num/1e9).toFixed(2) + "B";
+      if (num > 1e6) return "$" + (num/1e6).toFixed(2) + "M";
+      return "$" + num.toFixed(2);
+    case "index": return num.toFixed(2);
+    default: return num;
+  }
 }
-function parseCSV(text) {
-  const lines = text.trim().split("\\n");
-  const headers = lines[0].split(",");
-  return lines.slice(1).map(line => {
-    const cols = line.split(",");
-    let obj = {};
-    headers.forEach((h,i)=> obj[h.trim()] = cols[i]?.trim());
-    return obj;
+function formatChange(change) {
+  if (change === null) return "";
+  return change >= 0 
+    ? `<span style="color:#1FA857">▲ ${change.toFixed(2)}%</span>`
+    : `<span style="color:#D64541">▼ ${Math.abs(change).toFixed(2)}%</span>`;
+}
+
+async function renderStocks(stocks) {
+  const tbody = document.querySelector("#stocks-table tbody");
+  stocks.forEach((r, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.symbol}</td>
+      <td>${r.name || "-"}</td>
+      <td class="price">${r.price.toFixed(2)}</td>
+      <td>${r.change >= 0 
+          ? `<span class="positive">▲ ${r.change.toFixed(2)}%</span>`
+          : `<span class="negative">▼ ${Math.abs(r.change).toFixed(2)}%</span>`}
+      </td>
+      <td><canvas id="chart-${idx}" class="sparkline"></canvas></td>
+      <td><div id="news-${idx}"></div></td>
+    `;
+    tbody.appendChild(tr);
+
+    // 차트
+    const labels = r.history.map(h => new Date(h.date).toLocaleDateString("ko-KR",{month:"numeric", day:"numeric"}));
+    const data = r.history.map(h => h.close);
+    new Chart(document.getElementById("chart-"+idx), {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor:(r.change>=0?"#1FA857":"#D64541"), borderWidth:2, fill:false, tension:0.2, pointRadius:0 }]},
+      options: { plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{display:false}} }
+    });
+
+    // 뉴스
+    const newsBox = document.getElementById("news-"+idx);
+    r.news.forEach(n => {
+      const div = document.createElement("div");
+      const date = new Date(n.providerPublishTime*1000).toLocaleDateString("ko-KR");
+      div.innerHTML = `<a href="${n.link}" target="_blank">${n.title}</a><br><small>${n.publisher} · ${date}</small>`;
+      newsBox.appendChild(div);
+    });
   });
 }
-async function init() {
-  try {
-    const base = "https://market-trend-dusky.vercel.app"; // 절대경로
-    // 📊 Stocks
-    const stocks = parseCSV(await loadCSV(base+"/stocks.csv"));
-    const tbody = document.querySelector("#stocks-table tbody");
-    stocks.forEach((r, idx)=>{
-      const tr = document.createElement("tr");
-      const change = parseFloat(r["1D"]);
-      let changeHTML = "";
-      if (change > 0) changeHTML = `<span class="positive">▲ ${change}%</span>`;
-      else if (change < 0) changeHTML = `<span class="negative">▼ ${Math.abs(change)}%</span>`;
-      else changeHTML = `<span>${change}%</span>`;
-      tr.innerHTML = `
-        <td>${r.Ticker}</td>
-        <td>${r.Name}</td>
-        <td class="price">${r.Price}</td>
-        <td>${changeHTML}</td>
-        <td><canvas id="chart-${idx}" class="sparkline"></canvas></td>
-      `;
-      tbody.appendChild(tr);
-      // Dummy data for sparkline (실제 구현 시 최근 5일 or 1개월 데이터 넣으면 됨)
-      new Chart(document.getElementById("chart-"+idx), {
-        type: 'line',
-        data: {
-          labels: ["Mon","Tue","Wed","Thu","Fri"],
-          datasets: [{
-            data: [r.Price*0.95, r.Price*0.97, r.Price*1.01, r.Price*0.99, r.Price],
-            borderColor: (change>=0?"#1FA857":"#D64541"),
-            borderWidth: 2,
-            fill: false,
-            tension: 0.3,
-            pointRadius: 0
-          }]
-        },
-        options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
-      });
-    });
-
-    // 📈 KPI
-    const kpis = parseCSV(await loadCSV(base+"/kpi.csv"));
-    const kpiDiv = document.getElementById("kpi-cards");
-    kpis.forEach(k=>{
-      const card = document.createElement("div");
-      card.className="card";
-      card.innerHTML=`<strong>${k.Name}</strong><div class="value">${k.Value}</div><small>${k.Date||""}</small>`;
-      kpiDiv.appendChild(card);
-    });
-
-    // 📰 News
-    const news = parseCSV(await loadCSV(base+"/news.csv"));
-    const newsList = document.getElementById("news-list");
-    news.forEach(n=>{
-      const div=document.createElement("div");
-      div.className="news-item";
-      div.innerHTML=`<h3>${n.Title}</h3><small>${n.Source} · ${n.Date}</small>`;
-      newsList.appendChild(div);
-    });
-  } catch(e){ console.error(e); }
+async function renderKPI() {
+  const fredData = await loadFRED();
+  const kpiDiv = document.getElementById("kpi-cards");
+  fredData.forEach(k => {
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML = `
+      <strong>${k.name}</strong>
+      <div class="value">${formatValue(k.value,k.unit)} ${formatChange(k.change)}</div>
+      <small>${new Date(k.date).toLocaleDateString("ko-KR")}</small>
+    `;
+    kpiDiv.appendChild(card);
+  });
+}
+async function renderAnalysis() {
+  const {analysis} = await loadAnalysis();
+  document.getElementById("analysis-box").innerText = analysis;
+}
+async function init(){
+  document.getElementById("date").textContent = new Date().toLocaleString();
+  const stocks = await loadStocks(); renderStocks(stocks);
+  await renderKPI();
+  await renderAnalysis();
 }
 init();
 </script>
