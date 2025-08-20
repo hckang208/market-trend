@@ -1,1 +1,105 @@
-<!-- Hansol Market Insight HTML -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hansol Textile · Market Insight</title>
+  <style>
+    body { margin:0; font-family:'Segoe UI',sans-serif; background:#fff; color:#111;}
+    header { padding:1rem 1.5rem; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+    header h1 { font-size:1.2rem; margin:0; font-weight:600; color:#005BAC;}
+    header small { font-size:0.85rem; color:#666;}
+    main { padding:1.5rem; display:grid; gap:2rem; max-width:1100px; margin:auto;}
+    h2 { margin:0 0 1rem; font-size:1.1rem; font-weight:600; color:#333;}
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem;}
+    .card { border:1px solid #eee; border-radius:12px; padding:1rem; background:#fafafa;}
+    .card strong { display:block; font-size:0.85rem; color:#666;}
+    .card .value { font-size:1.2rem; font-weight:600; margin-top:0.2rem;}
+    .positive { color:#1FA857;}
+    .negative { color:#D64541;}
+    table { width:100%; border-collapse:collapse; font-size:0.9rem; border:1px solid #eee; border-radius:8px; overflow:hidden;}
+    th,td { padding:0.6rem; border-bottom:1px solid #eee; text-align:center;}
+    th { background:#fafafa; font-weight:600;}
+    tr:last-child td { border-bottom:none;}
+    .news-list { display:grid; gap:0.8rem;}
+    .news-item { padding:0.8rem 1rem; border:1px solid #eee; border-radius:8px;}
+    .news-item h3 { margin:0 0 0.3rem; font-size:0.95rem; font-weight:500;}
+    .news-item small { color:#777; font-size:0.8rem;}
+    footer { padding:1rem; text-align:center; font-size:0.8rem; color:#888; border-top:1px solid #eee;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hansol Textile · Market Insight</h1>
+    <small id="date">자동 업데이트</small>
+  </header>
+  <main>
+    <section id="stocks">
+      <h2>📊 리테일러 주가</h2>
+      <table id="stocks-table">
+        <thead><tr><th>Ticker</th><th>Name</th><th>Price</</th><th>1D</th><th>1W</th><th>1M</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section id="kpi">
+      <h2>📈 주요 지표</h2>
+      <div class="grid" id="kpi-cards"></div>
+    </section>
+    <section id="news">
+      <h2>📰 최신 뉴스</h2>
+      <div class="news-list" id="news-list"></div>
+    </section>
+  </main>
+  <footer>
+    © Hansol Textile · Purchasing Division
+  </footer>
+<script>
+async function loadCSV(url) {
+  const res = await fetch(url);
+  return await res.text();
+}
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  const headers = lines[0].split(",");
+  return lines.slice(1).map(line => {
+    const cols = line.split(",");
+    let obj = {};
+    headers.forEach((h,i)=> obj[h.trim()] = cols[i]?.trim());
+    return obj;
+  });
+}
+async function init() {
+  try {
+    const base = "https://market-trend-dusky.vercel.app"; // absolute path
+    const stocks = parseCSV(await loadCSV(base+"/stocks.csv"));
+    const tbody = document.querySelector("#stocks-table tbody");
+    stocks.forEach(r=>{
+      const tr = document.createElement("tr");
+      const val = parseFloat(r["1D"]);
+      if(val>0) tr.classList.add("positive");
+      if(val<0) tr.classList.add("negative");
+      tr.innerHTML = `<td>${r.Ticker}</td><td>${r.Name}</td><td>${r.Price}</td><td>${r["1D"]}%</td><td>${r["1W"]}%</td><td>${r["1M"]}%</td>`;
+      tbody.appendChild(tr);
+    });
+    const kpis = parseCSV(await loadCSV(base+"/kpi.csv"));
+    const kpiDiv = document.getElementById("kpi-cards");
+    kpis.forEach(k=>{
+      const card = document.createElement("div");
+      card.className="card";
+      card.innerHTML=`<strong>${k.Name}</strong><div class="value">${k.Value}</div><small>${k.Date||""}</small>`;
+      kpiDiv.appendChild(card);
+    });
+    const news = parseCSV(await loadCSV(base+"/news.csv"));
+    const newsList = document.getElementById("news-list");
+    news.forEach(n=>{
+      const div=document.createElement("div");
+      div.className="news-item";
+      div.innerHTML=`<h3>${n.Title}</h3><small>${n.Source} · ${n.Date}</small>`;
+      newsList.appendChild(div);
+    });
+  } catch(e){ console.error(e); }
+}
+init();
+</script>
+</body>
+</html>
