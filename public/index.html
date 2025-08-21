@@ -2,10 +2,154 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hansol Textile · Market Insight</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { margin:0; font-family:'Segoe UI',sans-serif; background:#fff; color:#111;}
+    header { padding:1rem 1.5rem; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+    header h1 { font-size:1.2rem; margin:0; font-weight:600; color:#005BAC;}
+    header small { font-size:0.85rem; color:#666;}
+    main { padding:1.5rem; display:grid; gap:2rem; max-width:1200px; margin:auto;}
+    h2 { margin:0 0 1rem; font-size:1.1rem; font-weight:600; color:#333;}
+    .stocks { width:100%; border-collapse:collapse; font-size:0.9rem; border:1px solid #eee; border-radius:8px; overflow:hidden;}
+    .stocks th, .stocks td { padding:0.8rem; border-bottom:1px solid #eee; text-align:center;}
+    .stocks th { background:#fafafa; font-weight:600;}
+    .stocks tr:last-child td { border-bottom:none;}
+    .price { font-size:1.1rem; font-weight:600;}
+    .positive { color:#1FA857; font-weight:600;}
+    .negative { color:#D64541; font-weight:600;}
+    .sparkline { width:100px; height:40px;}
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem;}
+    .card { border:1px solid #eee; border-radius:12px; padding:1rem; background:#fafafa;}
+    .card strong { display:block; font-size:0.85rem; color:#666;}
+    .card .value { font-size:1.2rem; font-weight:600; margin-top:0.2rem;}
+    .news-list { display:grid; gap:0.8rem;}
+    .news-item { padding:0.8rem 1rem; border:1px solid #eee; border-radius:8px;}
+    .news-item h3 { margin:0 0 0.3rem; font-size:0.95rem; font-weight:500;}
+    .news-item small { color:#777; font-size:0.8rem;}
+    footer { padding:1rem; text-align:center; font-size:0.8rem; color:#888; border-top:1px solid #eee;}
+    .analysis-box { border:1px solid #ddd; border-radius:12px; padding:1rem; background:#fefefe; }
+    .analysis-box h3 { margin:0 0 0.5rem; font-size:1rem; font-weight:600; }
+  </style>
 </head>
 <body>
-  <h1>Hansol Textile · Market Insight</h1>
-  <p>대시보드 로딩 성공 🎉</p>
+  <header>
+    <h1>Hansol Textile · Market Insight</h1>
+    <small id="date">자동 업데이트</small>
+  </header>
+  <main>
+    <section id="stocks">
+      <h2>📊 리테일러 주가</h2>
+      <table class="stocks" id="stocks-table">
+        <thead>
+          <tr><th>Ticker</th><th>Name</th><th>Price</th><th>Change</th><th>Trend</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section id="kpi">
+      <h2>📈 주요 지표</h2>
+      <div class="grid" id="kpi-cards"></div>
+    </section>
+    <section id="news">
+      <h2>📰 최신 뉴스</h2>
+      <div class="news-list" id="news-list"></div>
+    </section>
+    <section id="analysis">
+      <h2>🤖 AI 시황 분석</h2>
+      <div class="analysis-box" id="analysis-box">
+        <h3>오늘의 시장 요약</h3>
+        <p id="analysis-text">불러오는 중...</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    © Hansol Textile · Purchasing Division
+  </footer>
+
+<script>
+async function fetchAPI(path) {
+  try {
+    const res = await fetch(path);
+    return await res.json();
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+async function init() {
+  // 📊 Stocks API
+  const stocks = await fetchAPI('/api/stocks');
+  const tbody = document.querySelector("#stocks-table tbody");
+  if (stocks && stocks.data) {
+    stocks.data.forEach((r, idx)=>{
+      const tr = document.createElement("tr");
+      const change = parseFloat(r.change);
+      let changeHTML = "";
+      if (change > 0) changeHTML = `<span class="positive">▲ ${change}%</span>`;
+      else if (change < 0) changeHTML = `<span class="negative">▼ ${Math.abs(change)}%</span>`;
+      else changeHTML = `<span>${change}%</span>`;
+      tr.innerHTML = `
+        <td>${r.ticker}</td>
+        <td>${r.name}</td>
+        <td class="price">${r.price}</td>
+        <td>${changeHTML}</td>
+        <td><canvas id="chart-${idx}" class="sparkline"></canvas></td>
+      `;
+      tbody.appendChild(tr);
+      new Chart(document.getElementById("chart-"+idx), {
+        type: 'line',
+        data: {
+          labels: ["Mon","Tue","Wed","Thu","Fri"],
+          datasets: [{
+            data: r.trend,
+            borderColor: (change>=0?"#1FA857":"#D64541"),
+            borderWidth: 2,
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0
+          }]
+        },
+        options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
+      });
+    });
+  }
+
+  // 📈 KPI (경제지표)
+  const kpis = await fetchAPI('/api/fred');
+  const kpiDiv = document.getElementById("kpi-cards");
+  if (kpis && kpis.data) {
+    kpis.data.forEach(k=>{
+      const card = document.createElement("div");
+      card.className="card";
+      card.innerHTML=`<strong>${k.name}</strong><div class="value">${k.value}</div><small>${k.date||""}</small>`;
+      kpiDiv.appendChild(card);
+    });
+  }
+
+  // 📰 뉴스
+  const news = await fetchAPI('/api/news');
+  const newsList = document.getElementById("news-list");
+  if (news && news.data) {
+    news.data.forEach(n=>{
+      const div=document.createElement("div");
+      div.className="news-item";
+      div.innerHTML=`<h3>${n.title}</h3><small>${n.source} · ${n.date}</small>`;
+      newsList.appendChild(div);
+    });
+  }
+
+  // 🤖 AI 분석
+  const analysis = await fetchAPI('/api/analysis');
+  if (analysis && analysis.text) {
+    document.getElementById("analysis-text").innerText = analysis.text;
+  } else {
+    document.getElementById("analysis-text").innerText = "분석 데이터를 불러오지 못했습니다.";
+  }
+}
+init();
+</script>
 </body>
 </html>
