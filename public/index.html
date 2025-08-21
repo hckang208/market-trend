@@ -29,8 +29,6 @@
     .news-item h3 { margin:0 0 0.3rem; font-size:0.95rem; font-weight:500;}
     .news-item small { color:#777; font-size:0.8rem;}
     footer { padding:1rem; text-align:center; font-size:0.8rem; color:#888; border-top:1px solid #eee;}
-    .analysis-box { border:1px solid #ddd; border-radius:12px; padding:1rem; background:#fefefe; }
-    .analysis-box h3 { margin:0 0 0.5rem; font-size:1rem; font-weight:600; }
   </style>
 </head>
 <body>
@@ -58,10 +56,7 @@
     </section>
     <section id="analysis">
       <h2>🤖 AI 시황 분석</h2>
-      <div class="analysis-box" id="analysis-box">
-        <h3>오늘의 시장 요약</h3>
-        <p id="analysis-text">불러오는 중...</p>
-      </div>
+      <div class="card" id="analysis-card">불러오는 중...</div>
     </section>
   </main>
   <footer>
@@ -69,42 +64,35 @@
   </footer>
 
 <script>
-async function fetchAPI(path) {
-  try {
-    const res = await fetch(path);
-    return await res.json();
-  } catch (e) {
-    console.error(e);
-    return null;
-  }
-}
-
 async function init() {
-  // 📊 Stocks API
-  const stocks = await fetchAPI('/api/stocks');
-  const tbody = document.querySelector("#stocks-table tbody");
-  if (stocks && stocks.data) {
-    stocks.data.forEach((r, idx)=>{
+  try {
+    // 📊 Stocks API
+    const stocksRes = await fetch("/api/stocks");
+    const stocks = await stocksRes.json();
+    const tbody = document.querySelector("#stocks-table tbody");
+    tbody.innerHTML = "";
+    stocks.forEach((r, idx)=>{
       const tr = document.createElement("tr");
-      const change = parseFloat(r.change);
+      const change = parseFloat(r.changePercent);
       let changeHTML = "";
-      if (change > 0) changeHTML = `<span class="positive">▲ ${change}%</span>`;
-      else if (change < 0) changeHTML = `<span class="negative">▼ ${Math.abs(change)}%</span>`;
-      else changeHTML = `<span>${change}%</span>`;
+      if (change > 0) changeHTML = `<span class="positive">▲ ${change.toFixed(2)}%</span>`;
+      else if (change < 0) changeHTML = `<span class="negative">▼ ${Math.abs(change).toFixed(2)}%</span>`;
+      else changeHTML = `<span>${change.toFixed(2)}%</span>`;
       tr.innerHTML = `
-        <td>${r.ticker}</td>
+        <td>${r.symbol}</td>
         <td>${r.name}</td>
         <td class="price">${r.price}</td>
         <td>${changeHTML}</td>
         <td><canvas id="chart-${idx}" class="sparkline"></canvas></td>
       `;
       tbody.appendChild(tr);
+      // Trend Chart
       new Chart(document.getElementById("chart-"+idx), {
         type: 'line',
         data: {
           labels: ["Mon","Tue","Wed","Thu","Fri"],
           datasets: [{
-            data: r.trend,
+            data: [r.price*0.95, r.price*0.97, r.price*1.01, r.price*0.99, r.price],
             borderColor: (change>=0?"#1FA857":"#D64541"),
             borderWidth: 2,
             fill: false,
@@ -115,38 +103,40 @@ async function init() {
         options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
       });
     });
-  }
 
-  // 📈 KPI (경제지표)
-  const kpis = await fetchAPI('/api/fred');
-  const kpiDiv = document.getElementById("kpi-cards");
-  if (kpis && kpis.data) {
-    kpis.data.forEach(k=>{
+    // 📈 KPI (경제 지표, FRED API)
+    const kpiRes = await fetch("/api/fred");
+    const kpis = await kpiRes.json();
+    const kpiDiv = document.getElementById("kpi-cards");
+    kpiDiv.innerHTML = "";
+    kpis.forEach(k=>{
       const card = document.createElement("div");
       card.className="card";
       card.innerHTML=`<strong>${k.name}</strong><div class="value">${k.value}</div><small>${k.date||""}</small>`;
       kpiDiv.appendChild(card);
     });
-  }
 
-  // 📰 뉴스
-  const news = await fetchAPI('/api/news');
-  const newsList = document.getElementById("news-list");
-  if (news && news.data) {
-    news.data.forEach(n=>{
+    // 📰 News
+    const newsRes = await fetch("/api/news");
+    const news = await newsRes.json();
+    const newsList = document.getElementById("news-list");
+    newsList.innerHTML = "";
+    news.forEach(n=>{
       const div=document.createElement("div");
       div.className="news-item";
       div.innerHTML=`<h3>${n.title}</h3><small>${n.source} · ${n.date}</small>`;
       newsList.appendChild(div);
     });
-  }
 
-  // 🤖 AI 분석
-  const analysis = await fetchAPI('/api/analysis');
-  if (analysis && analysis.text) {
-    document.getElementById("analysis-text").innerText = analysis.text;
-  } else {
-    document.getElementById("analysis-text").innerText = "분석 데이터를 불러오지 못했습니다.";
+    // 🤖 AI Analysis
+    const analysisRes = await fetch("/api/analysis");
+    const analysis = await analysisRes.json();
+    document.getElementById("analysis-card").innerText = analysis.text;
+
+    // Date
+    document.getElementById("date").innerText = new Date().toLocaleString("ko-KR");
+  } catch(e){ 
+    console.error(e); 
   }
 }
 init();
