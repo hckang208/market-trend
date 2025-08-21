@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/analysis",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/sendReport",
+      "schedule": "30 23 * * *"
+    }
+  ]
+}
