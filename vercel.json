@@ -1,17 +1,11 @@
 {
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/analysis",
-      "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/cron/sendReport",
-      "schedule": "30 23 * * *"
-    }
+  "version": 2,
+  "builds": [
+    { "src": "public/index.html", "use": "@vercel/static" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/", "dest": "public/index.html" },
+    { "src": "/api/(.*)", "dest": "/api/$1" }
   ]
 }
