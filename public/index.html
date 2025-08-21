@@ -1,11 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Market Trend Dashboard</title>
 </head>
 <body>
-  <h1>Market Trend Dashboard</h1>
-  <p>뉴스와 데이터를 불러오는 중...</p>
+  <h1>📊 Market Trend Dashboard</h1>
+  <div id="news">뉴스 불러오는 중...</div>
+  <div id="stocks">주식 지표 불러오는 중...</div>
+  <div id="fred">경제지표 불러오는 중...</div>
+  <script>
+    async function loadData() {
+      const news = await fetch('/api/news').then(r => r.json()).catch(() => ({error:"fail"}));
+      const stocks = await fetch('/api/stocks').then(r => r.json()).catch(() => ({error:"fail"}));
+      const fred = await fetch('/api/fred').then(r => r.json()).catch(() => ({error:"fail"}));
+
+      document.getElementById('news').innerText = JSON.stringify(news);
+      document.getElementById('stocks').innerText = JSON.stringify(stocks);
+      document.getElementById('fred').innerText = JSON.stringify(fred);
+    }
+    loadData();
+  </script>
 </body>
 </html>

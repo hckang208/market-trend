@@ -1,19 +1,15 @@
 {
   "name": "market-trend",
   "version": "1.0.0",
-  "description": "Market Trend Dashboard with news, stocks, and analysis APIs",
-  "main": "index.js",
+  "description": "Market Trend Dashboard",
   "type": "module",
+  "main": "index.js",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "node server.js",
-    "build": "echo 'No build step required'"
+    "start": "vercel dev",
+    "build": "echo 'Nothing to build'"
   },
   "dependencies": {
     "node-fetch": "^3.3.2",
     "openai": "^4.0.0"
-  },
-  "engines": {
-    "node": ">=18.x"
   }
 }
