@@ -2,45 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hansol Textile · Market Insight</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Hansol Textile · Market Insight Dashboard</h1>
-  <main>
-    <section id="stocks">
-      <h2>📊 리테일러 주가</h2>
-      <div id="stocks-table"></div>
-    </section>
-    <section id="kpi">
-      <h2>📈 주요 지표</h2>
-      <div id="kpi-cards"></div>
-    </section>
-    <section id="news">
-      <h2>📰 최신 뉴스</h2>
-      <div id="news-list"></div>
-    </section>
-    <section id="analysis">
-      <h2>🤖 AI 시황분석</h2>
-      <div id="ai-analysis"></div>
-    </section>
-  </main>
-  <script>
-    async function fetchData() {
-      const stocks = await fetch('/api/stocks').then(r=>r.json());
-      document.getElementById("stocks-table").innerText = JSON.stringify(stocks, null, 2);
-
-      const kpis = await fetch('/api/fred').then(r=>r.json());
-      document.getElementById("kpi-cards").innerText = JSON.stringify(kpis, null, 2);
-
-      const news = await fetch('/api/news').then(r=>r.json());
-      document.getElementById("news-list").innerText = JSON.stringify(news, null, 2);
-
-      const analysis = await fetch('/api/analysis').then(r=>r.json());
-      document.getElementById("ai-analysis").innerText = analysis.summary || "";
-    }
-    fetchData();
-  </script>
+  <h1>Hansol Textile · Market Insight</h1>
+  <p>대시보드 로딩 성공 🎉</p>
 </body>
 </html>
