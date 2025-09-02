@@ -7,41 +7,36 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "환경변수 RAPIDAPI_KEY 없음" });
     }
 
-    // ✅ 환율 (USD/KRW) – 무료 API
+    // 환율 (USD/KRW)
     const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
     const fxData = await fxRes.json();
     const usdKrw = fxData?.rates?.KRW || null;
 
-    // ✅ RapidAPI 공통 옵션
     const headers = {
       "X-RapidAPI-Key": apiKey,
       "X-RapidAPI-Host": "yh-finance.p.rapidapi.com",
     };
 
-    // ✅ 원유 (WTI Futures: CL=F)
-    const oilRes = await fetch(
-      "https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CL=F&region=US",
-      { headers }
-    );
-    const oilData = await oilRes.json();
+    // 안전한 fetch 함수
+    async function safeFetch(url) {
+      const r = await fetch(url, { headers });
+      const text = await r.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { error: "Invalid JSON", raw: text };
+      }
+    }
 
-    // ✅ 면화 (Cotton Futures: CT=F)
-    const cottonRes = await fetch(
-      "https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CT=F&region=US",
-      { headers }
-    );
-    const cottonData = await cottonRes.json();
+    const oilData = await safeFetch("https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CL=F&region=US");
+    const cottonData = await safeFetch("https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CT=F&region=US");
 
-    // ✅ 로그 출력 (Vercel Logs에서 확인 가능)
-    console.log("FX:", usdKrw);
-    console.log("OIL RESPONSE:", oilData);
-    console.log("COTTON RESPONSE:", cottonData);
+    console.log("OIL RAW:", oilData);
+    console.log("COTTON RAW:", cottonData);
 
-    // ✅ 값 추출
     const oil = oilData?.price?.regularMarketPrice?.raw || null;
     const cotton = cottonData?.price?.regularMarketPrice?.raw || null;
 
-    // ✅ 결과 반환
     res.status(200).json({ usdKrw, oil, cotton, scfi: null });
   } catch (err) {
     res.status(500).json({ error: err.message });
