@@ -57,7 +57,7 @@ export default function Home() {
     }
   }
 
-  // 등락률 계산 유틸
+  // (백업 계산기 – API가 퍼센트를 못 줄 때만 사용)
   const pctChange = (price, prev) => {
     if (price == null || prev == null || prev === 0) return null;
     return ((price - prev) / prev) * 100;
@@ -67,10 +67,7 @@ export default function Home() {
     <div>
       <header className="sticky top-0 z-50 backdrop-blur bg-white/70 border-b border-line">
         <div className="container flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/hansoll-logo.svg" alt="Hansoll" className="h-7 w-auto" />
-            <div className="font-black text-xl">Market Trend</div>
-          </div>
+          <div className="flex items-center gap-3"><img src="/hansoll-logo.svg" alt="Hansoll" className="h-7 w-auto" /><div className="font-black text-xl">Market Trend</div></div>
           <nav className="text-sm text-slate-600 flex gap-4">
             <a href="#" className="hover:text-ink">Dashboard</a>
             <a href="https://vercel.com" target="_blank" rel="noreferrer" className="hover:text-ink">Deploy</a>
@@ -91,78 +88,4 @@ export default function Home() {
 
         {/* 일일 등락률 요약 */}
         <div className="mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold">일일 등락률 요약</h2>
-            <div className="text-sm text-slate-500">카드를 클릭하면 Yahoo Finance로 이동</div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
-            {list.map((r) => {
-              const price = r.stock?.price ?? null;
-              const prev = r.stock?.previousClose ?? null;
-              const pct = pctChange(price, prev);
-              const color =
-                pct == null ? 'text-slate-500' :
-                pct >= 0 ? 'text-emerald-600' : 'text-red-600';
-              const sign = pct == null ? '' : (pct >= 0 ? '▲ ' : '▼ ');
-              const pctText = pct == null ? '-' : `${sign}${Math.abs(pct).toFixed(2)}%`;
-              const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
-
-              return (
-                <a
-                  key={`pct-${r.symbol}`}
-                  href={link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
-                >
-                  <div className="text-xs text-slate-500">{r.symbol}</div>
-                  <div className="text-sm font-semibold truncate">{r.stock?.longName || r.symbol}</div>
-                  <div className="mt-2 text-lg font-extrabold">{price ?? '-'}</div>
-                  <div className={`text-sm ${color}`}>{pctText}</div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* AI Insight */}
-        <div className="card p-5 mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold">AI 인사이트 (임원 보고용 요약)</h2>
-            <button
-              onClick={generateInsights}
-              disabled={aiBusy}
-              className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {aiBusy ? '분석 중…' : '최신 인사이트 생성'}
-            </button>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">현재 표시된 지표·주가·헤드라인을 바탕으로 요약합니다.</p>
-          <div className="mt-3 whitespace-pre-wrap">{insight || '버튼을 눌러 AI 분석을 생성하세요.'}</div>
-        </div>
-
-        <div className="mt-8 flex items-center justify-between">
-          <h2 className="text-xl font-extrabold">주요 리테일러</h2>
-          <div className="text-sm text-slate-500">카드에 마우스를 올리면 뉴스 로딩</div>
-        </div>
-
-        {/* Retailers */}
-        <div className="grid md:grid-cols-2 gap-4 mt-3">
-          {list.map((r) => (
-            <div key={r.symbol} onMouseEnter={()=>!r.news?.length && loadNews(r.symbol)}>
-              <RetailerCard data={r} />
-            </div>
-          ))}
-        </div>
-
-        {loading && <div className="mt-8 text-slate-500">데이터 불러오는 중…</div>}
-      </main>
-
-      <footer className="mt-10 border-t border-line">
-        <div className="container text-center text-sm text-slate-500 py-6">
-          © Market Trend — internal pilot
-        </div>
-      </footer>
-    </div>
-  );
-}
+          <div className="flex items-center j
