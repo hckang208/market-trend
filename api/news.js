@@ -1,7 +1,5 @@
-import fetch from "node-fetch";
-
-// 간단 캐싱 (메모리 저장: Vercel serverless 환경에서는 요청마다 초기화되므로 edge config/redis 쓰는게 최적)
-// 여기서는 5분(300초) 캐시
+// 간단 캐싱 (메모리 기반: Vercel serverless는 cold start마다 초기화됨)
+// 실서비스는 Redis/Edge Config 사용 권장
 const cache = new Map();
 
 export default async function handler(req, res) {
@@ -22,7 +20,7 @@ export default async function handler(req, res) {
     if (cache.has(cacheKey)) {
       const { data, timestamp } = cache.get(cacheKey);
       if (now - timestamp < 300_000) {
-        // 5분 이내 → 캐시 응답
+        // 5분 캐시
         return res.status(200).json(data);
       }
     }
@@ -50,7 +48,6 @@ export default async function handler(req, res) {
     const data = await r.json();
     const news = data?.value || [];
 
-    // 캐싱 저장
     cache.set(cacheKey, { data: news, timestamp: now });
 
     res.status(200).json(news);
