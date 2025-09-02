@@ -32,10 +32,21 @@
     <!-- 2. 주요 지표 -->
     <h3 class="section-title">2. 주요 지표</h3>
     <div class="row g-3">
+      <!-- 환율 -->
       <div class="col-md-3"><div class="card p-3">환율 (USD/KRW): <span id="fx">---</span></div></div>
+      <!-- 면화 -->
       <div class="col-md-3"><div class="card p-3">면화 가격: <span id="cotton">---</span></div></div>
+      <!-- SCFI -->
       <div class="col-md-3"><div class="card p-3">SCFI 지수: <span id="scfi">---</span></div></div>
-      <div class="col-md-3"><div class="card p-3">유가: <span id="oil">---</span></div></div>
+      <!-- 유가 -->
+      <div class="col-md-3"><div class="card p-3">유가 (WTI): <span id="oil">---</span></div></div>
+
+      <!-- Apparel CPI -->
+      <div class="col-md-4"><div class="card p-3">미국 CPI (Apparel): <span id="cpiApparel">---</span></div></div>
+      <!-- Retail Sales -->
+      <div class="col-md-4"><div class="card p-3">리테일 판매액 (의류): <span id="retailSales">---</span></div></div>
+      <!-- Inventory Ratio -->
+      <div class="col-md-4"><div class="card p-3">재고/판매 비율 (의류): <span id="inventoryRatio">---</span></div></div>
     </div>
     <div class="text-end mt-2">
       <button class="btn btn-outline-primary btn-sm">더보기</button>
@@ -75,10 +86,15 @@
       try {
         const res = await fetch("/api/indicators");
         const data = await res.json();
+
         document.getElementById("fx").innerText = data.usdKrw ? data.usdKrw.toLocaleString() : "-";
         document.getElementById("cotton").innerText = data.cotton ? data.cotton + " ¢/lb" : "-";
         document.getElementById("scfi").innerText = data.scfi || "-";
         document.getElementById("oil").innerText = data.oil ? data.oil + " USD" : "-";
+
+        document.getElementById("cpiApparel").innerText = data.cpiApparel ? data.cpiApparel.toFixed(2) : "-";
+        document.getElementById("retailSales").innerText = data.retailSales ? data.retailSales.toLocaleString() : "-";
+        document.getElementById("inventoryRatio").innerText = data.inventoryRatio ? data.inventoryRatio.toFixed(2) : "-";
       } catch (err) {
         console.error("지표 로딩 실패", err);
       }
