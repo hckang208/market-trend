@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const apiKey = process.env.RAPIDAPI_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "환경변수 RAPIDAPI_KEY 없음" });
+      return res.status(500).json({ error: "환경변수 RAPIDAPI_KEY 없음 (Vercel Settings 확인 필요)" });
     }
 
     const { symbol } = req.query;
@@ -12,9 +12,10 @@ export default async function handler(req, res) {
 
     // 심볼별 region 자동 분기
     let region = "US";
-    if (symbol.endsWith(".T")) region = "JP";   // 일본 주식
+    if (symbol.endsWith(".T")) region = "JP";   // 일본 (Fast Retailing)
     else if (symbol === "BABA") region = "HK";  // 알리바바 → 홍콩
     else if (symbol.includes(".HK")) region = "HK";
+    else if (symbol === "9983.T") region = "JP"; // 유니클로
 
     const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(
       symbol
@@ -30,16 +31,20 @@ export default async function handler(req, res) {
 
     if (!r.ok) {
       const text = await r.text();
-      console.error("Yahoo API Error:", r.status, text);
-      return res
-        .status(r.status)
-        .json({ error: "Yahoo Finance API 호출 실패", detail: text });
+      console.error("Yahoo API Error:", symbol, r.status, text);
+      return res.status(r.status).json({
+        error: "Yahoo Finance API 호출 실패",
+        symbol,
+        region,
+        detail: text,
+      });
     }
 
     const data = await r.json();
 
     res.status(200).json({
       symbol,
+      region,
       longName: data?.quoteType?.longName || symbol,
       price: data?.price?.regularMarketPrice?.raw || null,
       currency: data?.price?.currency || null,
