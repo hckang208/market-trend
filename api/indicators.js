@@ -7,38 +7,42 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "환경변수 RAPIDAPI_KEY 없음" });
     }
 
-    const { symbol } = req.query;
-    if (!symbol) {
-      return res.status(400).json({ error: "symbol 파라미터 필요" });
-    }
+    // ✅ 환율 (USD/KRW) – 무료 API
+    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
+    const fxData = await fxRes.json();
+    const usdKrw = fxData?.rates?.KRW || null;
 
-    const response = await fetch(
-      `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${symbol}&region=US`,
-      {
-        headers: {
-          "X-RapidAPI-Key": apiKey,
-          "X-RapidAPI-Host": "yh-finance.p.rapidapi.com"
-        }
-      }
+    // ✅ RapidAPI 공통 옵션
+    const headers = {
+      "X-RapidAPI-Key": apiKey,
+      "X-RapidAPI-Host": "yh-finance.p.rapidapi.com",
+    };
+
+    // ✅ 원유 (WTI Futures: CL=F)
+    const oilRes = await fetch(
+      "https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CL=F&region=US",
+      { headers }
     );
+    const oilData = await oilRes.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: "API 요청 실패" });
-    }
+    // ✅ 면화 (Cotton Futures: CT=F)
+    const cottonRes = await fetch(
+      "https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CT=F&region=US",
+      { headers }
+    );
+    const cottonData = await cottonRes.json();
 
-    const data = await response.json();
+    // ✅ 로그 출력 (Vercel Logs에서 확인 가능)
+    console.log("FX:", usdKrw);
+    console.log("OIL RESPONSE:", oilData);
+    console.log("COTTON RESPONSE:", cottonData);
 
-    res.status(200).json({
-      symbol,
-      longName: data.price?.longName || symbol,
-      price: data.price?.regularMarketPrice?.fmt || null,
-      currency: data.price?.currency || "USD",
-      previousClose: data.price?.regularMarketPreviousClose?.fmt || null,
-      open: data.price?.regularMarketOpen?.fmt || null,
-      dayHigh: data.price?.regularMarketDayHigh?.fmt || null,
-      dayLow: data.price?.regularMarketDayLow?.fmt || null,
-      marketCap: data.price?.marketCap?.fmt || null,
-    });
+    // ✅ 값 추출
+    const oil = oilData?.price?.regularMarketPrice?.raw || null;
+    const cotton = cottonData?.price?.regularMarketPrice?.raw || null;
+
+    // ✅ 결과 반환
+    res.status(200).json({ usdKrw, oil, cotton, scfi: null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
