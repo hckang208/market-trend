@@ -12,20 +12,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "symbol 파라미터 필요" });
     }
 
-    const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(symbol)}&region=US`;
+    const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(
+      symbol
+    )}&region=US`;
 
     const r = await fetch(url, {
       method: "GET",
       headers: {
         "X-RapidAPI-Key": apiKey,
-        "X-RapidAPI-Host": "yh-finance.p.rapidapi.com"
-      }
+        "X-RapidAPI-Host": "yh-finance.p.rapidapi.com",
+      },
     });
 
     if (!r.ok) {
       const text = await r.text();
       console.error("Yahoo API Error:", r.status, text);
-      return res.status(r.status).json({ error: "Yahoo Finance API 호출 실패", detail: text });
+      return res
+        .status(r.status)
+        .json({ error: "Yahoo Finance API 호출 실패", detail: text });
     }
 
     const data = await r.json();
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
       open: data?.price?.regularMarketOpen?.raw || null,
       dayHigh: data?.price?.regularMarketDayHigh?.raw || null,
       dayLow: data?.price?.regularMarketDayLow?.raw || null,
-      marketCap: data?.price?.marketCap?.fmt || null
+      marketCap: data?.price?.marketCap?.fmt || null,
     });
   } catch (err) {
     console.error("API stocks handler error:", err);
