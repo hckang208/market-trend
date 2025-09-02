@@ -7,37 +7,36 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "환경변수 RAPIDAPI_KEY 없음" });
     }
 
-    // 환율 (USD/KRW)
+    // ✅ 환율 (USD/KRW)
     const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
     const fxData = await fxRes.json();
     const usdKrw = fxData?.rates?.KRW || null;
 
+    // ✅ Yahoo Finance (유가 + 면화)
     const headers = {
       "X-RapidAPI-Key": apiKey,
       "X-RapidAPI-Host": "yh-finance.p.rapidapi.com",
     };
 
-    // 안전한 fetch 함수
-    async function safeFetch(url) {
-      const r = await fetch(url, { headers });
-      const text = await r.text();
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { error: "Invalid JSON", raw: text };
-      }
-    }
+    const quotesRes = await fetch(
+      "https://yh-finance.p.rapidapi.com/market/v2/get-quotes?region=US&symbols=CL=F,CT=F",
+      { headers }
+    );
+    const quotesData = await quotesRes.json();
 
-    const oilData = await safeFetch("https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CL=F&region=US");
-    const cottonData = await safeFetch("https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=CT=F&region=US");
+    const oilQuote = quotesData?.quoteResponse?.result?.find(r => r.symbol === "CL=F");
+    const cottonQuote = quotesData?.quoteResponse?.result?.find(r => r.symbol === "CT=F");
 
-    console.log("OIL RAW:", oilData);
-    console.log("COTTON RAW:", cottonData);
+    const oil = oilQuote?.regularMarketPrice || null;
+    const cotton = cottonQuote?.regularMarketPrice || null;
 
-    const oil = oilData?.price?.regularMarketPrice?.raw || null;
-    const cotton = cottonData?.price?.regularMarketPrice?.raw || null;
+    // ✅ 로그 (Vercel Logs 확인용)
+    console.log("Quotes Data:", quotesData);
 
-    res.status(200).json({ usdKrw, oil, cotton, scfi: null });
+    // ✅ SCFI (placeholder)
+    const scfi = null;
+
+    res.status(200).json({ usdKrw, oil, cotton, scfi });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
