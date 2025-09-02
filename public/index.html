@@ -61,43 +61,50 @@
       </div>
     </div>
 
-    <!-- 2~4. 슬라이드 영역 -->
-    <h3 class="section-title">2~4. 주요 지표 / Retailer 주가 / 원부자재 현황</h3>
-    <div id="dashboardCarousel" class="carousel slide" data-bs-ride="carousel">
+    <!-- 2. 주요 지표 -->
+    <h3 class="section-title">2. 주요 지표</h3>
+    <div id="indicatorsCarousel" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-inner">
-
-        <!-- Slide 1: 주요 지표 -->
         <div class="carousel-item active">
-          <h4>주요 지표</h4>
           <div class="row g-3">
             <div class="col-md-3"><div class="card p-3">환율 (USD/KRW): ---</div></div>
             <div class="col-md-3"><div class="card p-3">면화 가격: ---</div></div>
             <div class="col-md-3"><div class="card p-3">SCFI 지수: ---</div></div>
             <div class="col-md-3"><div class="card p-3">유가: ---</div></div>
           </div>
-          <div class="text-end mt-2">
-            <button class="btn btn-outline-primary btn-sm">더보기</button>
-            <button class="btn btn-primary btn-sm">AI 분석보기</button>
-          </div>
         </div>
+        <!-- 필요 시 추가 slide -->
+      </div>
+      <div class="text-end mt-2">
+        <button class="btn btn-outline-primary btn-sm">더보기</button>
+        <button class="btn btn-primary btn-sm">AI 분석보기</button>
+      </div>
+    </div>
 
-        <!-- Slide 2: Retailer 주가 -->
-        <div class="carousel-item">
-          <h4>주요 Retailer 주가</h4>
+    <!-- 3. 주요 Retailer 주가 -->
+    <h3 class="section-title">3. 주요 Retailer 주가</h3>
+    <div id="retailerCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
           <div class="row g-3">
             <div class="col-md-4"><div class="card p-3">Walmart (WMT): ---</div></div>
             <div class="col-md-4"><div class="card p-3">Target (TGT): ---</div></div>
             <div class="col-md-4"><div class="card p-3">Abercrombie (ANF): ---</div></div>
           </div>
-          <div class="text-end mt-2">
-            <button class="btn btn-outline-primary btn-sm">더보기</button>
-            <button class="btn btn-primary btn-sm">AI 분석보기</button>
-          </div>
         </div>
+        <!-- 필요 시 추가 slide -->
+      </div>
+      <div class="text-end mt-2">
+        <button class="btn btn-outline-primary btn-sm">더보기</button>
+        <button class="btn btn-primary btn-sm">AI 분석보기</button>
+      </div>
+    </div>
 
-        <!-- Slide 3: 원부자재 현황 -->
-        <div class="carousel-item">
-          <h4>원부자재 현황</h4>
+    <!-- 4. 원부자재 현황 -->
+    <h3 class="section-title">4. 원부자재 현황</h3>
+    <div id="materialsCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
           <div class="row g-3">
             <div class="col-md-6">
               <div class="card p-3">
@@ -112,21 +119,13 @@
               </div>
             </div>
           </div>
-          <div class="text-end mt-2">
-            <button class="btn btn-outline-primary btn-sm">더보기</button>
-            <button class="btn btn-primary btn-sm">AI 분석보기</button>
-          </div>
         </div>
-
+        <!-- 필요 시 추가 slide -->
       </div>
-
-      <!-- Controls -->
-      <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon"></span>
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
-        <span class="carousel-control-next-icon"></span>
-      </button>
+      <div class="text-end mt-2">
+        <button class="btn btn-outline-primary btn-sm">더보기</button>
+        <button class="btn btn-primary btn-sm">AI 분석보기</button>
+      </div>
     </div>
 
     <!-- 5. 주요 섬유 뉴스 -->
