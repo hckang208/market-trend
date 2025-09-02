@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
   try {
     const apiKey = process.env.RAPIDAPI_KEY;
@@ -14,8 +12,8 @@ export default async function handler(req, res) {
 
     // 심볼별 region 자동 분기
     let region = "US";
-    if (symbol.endsWith(".T")) region = "JP"; // 일본(도쿄 증권거래소)
-    else if (symbol === "BABA") region = "HK"; // 알리바바 → 홍콩
+    if (symbol.endsWith(".T")) region = "JP";   // 일본 주식
+    else if (symbol === "BABA") region = "HK";  // 알리바바 → 홍콩
     else if (symbol.includes(".HK")) region = "HK";
 
     const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(
