@@ -1,0 +1,14 @@
+{
+  "name": "market-trend",
+  "version": "1.0.0",
+  "description": "Market Trend Dashboard",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "vercel dev",
+    "build": "echo 'Nothing to build'"
+  },
+  "dependencies": {
+    "openai": "^4.0.0"
+  }
+}
