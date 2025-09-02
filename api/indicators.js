@@ -7,7 +7,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "환경변수 FRED_API_KEY 없음" });
     }
 
-    // FRED API endpoints
     const urls = {
       usdKrw: `https://api.stlouisfed.org/fred/series/observations?series_id=DEXKOUS&api_key=${fredKey}&file_type=json`,
       cotton: `https://api.stlouisfed.org/fred/series/observations?series_id=COTTON&api_key=${fredKey}&file_type=json`,
