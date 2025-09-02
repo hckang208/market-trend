@@ -57,11 +57,15 @@
     async function fetchStock(symbol) {
       try {
         const res = await fetch(`/api/stocks?symbol=${symbol}`);
-        if (!res.ok) throw new Error("API 요청 실패");
-        return await res.json();
+        const data = await res.json();   // 항상 JSON 파싱 시도
+
+        if (!res.ok) {
+          return { error: data.error || "API 요청 실패", symbol };
+        }
+        return data;
       } catch (err) {
         console.error(symbol, err);
-        return { error: true, symbol };
+        return { error: "네트워크 오류", symbol };
       }
     }
 
@@ -79,7 +83,7 @@
           col.innerHTML = `
             <div class="stock-card">
               <h5>${s.name} (${s.code})</h5>
-              <p class="text-danger">데이터 불러오기 실패</p>
+              <p class="text-danger">❌ ${data.error}</p>
             </div>
           `;
         } else {
