@@ -31,46 +31,46 @@
 
     <!-- 2. 주요 지표 -->
     <h3 class="section-title">2. 주요 지표</h3>
-    <div id="indicatorsCarousel" class="carousel slide" data-bs-ride="carousel">
-      <div class="carousel-inner">
-        <div class="carousel-item active">
-          <div class="row g-3">
-            <div class="col-md-3"><div class="card p-3">환율 (USD/KRW): <span id="fx">---</span></div></div>
-            <div class="col-md-3"><div class="card p-3">면화 가격: <span id="cotton">---</span></div></div>
-            <div class="col-md-3"><div class="card p-3">SCFI 지수: <span id="scfi">---</span></div></div>
-            <div class="col-md-3"><div class="card p-3">유가: <span id="oil">---</span></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="text-end mt-2">
-        <button class="btn btn-outline-primary btn-sm">더보기</button>
-        <button class="btn btn-primary btn-sm">AI 분석보기</button>
-      </div>
+    <div class="row g-3">
+      <div class="col-md-3"><div class="card p-3">환율 (USD/KRW): <span id="fx">---</span></div></div>
+      <div class="col-md-3"><div class="card p-3">면화 가격: <span id="cotton">---</span></div></div>
+      <div class="col-md-3"><div class="card p-3">SCFI 지수: <span id="scfi">---</span></div></div>
+      <div class="col-md-3"><div class="card p-3">유가: <span id="oil">---</span></div></div>
+    </div>
+    <div class="text-end mt-2">
+      <button class="btn btn-outline-primary btn-sm">더보기</button>
+      <button class="btn btn-primary btn-sm">AI 분석보기</button>
     </div>
 
-    <!-- 나머지 섹션(3~8) 그대로 유지 -->
+    <!-- 3. 주요 Retailer 주가 -->
     <h3 class="section-title">3. 주요 Retailer 주가</h3>
-    <div class="card p-3">여기서 /api/stocks 붙여서 데이터 표시 예정</div>
+    <div class="row g-3" id="retailers"></div>
 
+    <!-- 4. 원부자재 현황 -->
     <h3 class="section-title">4. 원부자재 현황</h3>
     <div class="card p-3">Cotton/Polyester 그래프 자리</div>
 
+    <!-- 5. 주요 섬유 뉴스 -->
     <h3 class="section-title">5. 주요 섬유 뉴스</h3>
     <div class="card p-3">뉴스 카드 자리</div>
 
+    <!-- 6. 사내 부자재 사고 -->
     <h3 class="section-title">6. 사내 부자재 사고</h3>
     <div class="card p-3"><ul><li>샘플 사고</li></ul></div>
 
-    <h3 class="section-title">7. 발주시 유의사항</h3>
+    <!-- 7. 발주시 유의사항 -->
+    <h3 class="section-title">7. 발주시 유의사항 (Chatbot)</h3>
     <div class="card p-3">Chatbot 자리</div>
 
-    <h3 class="section-title">8. 기타 자료</h3>
+    <!-- 8. 기타 자료 -->
+    <h3 class="section-title">8. 기타 부자재 자료</h3>
     <div class="card p-3"><ul><li><a href="#">샘플자료.pdf</a></li></ul></div>
 
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // 2. 주요 지표
     async function loadIndicators() {
       try {
         const res = await fetch("/api/indicators");
@@ -83,7 +83,57 @@
         console.error("지표 로딩 실패", err);
       }
     }
+
+    // 3. 주요 Retailer 주가
+    const retailers = [
+      { code: "WMT", name: "Walmart" },
+      { code: "TGT", name: "Target" },
+      { code: "ANF", name: "Abercrombie & Fitch" }
+    ];
+
+    async function fetchStock(symbol) {
+      try {
+        const res = await fetch(`/api/stocks?symbol=${symbol}`);
+        if (!res.ok) throw new Error("API 요청 실패");
+        return await res.json();
+      } catch (err) {
+        console.error(symbol, err);
+        return { error: true, symbol };
+      }
+    }
+
+    async function loadRetailers() {
+      const container = document.getElementById("retailers");
+      container.innerHTML = "";
+
+      for (const r of retailers) {
+        const data = await fetchStock(r.code);
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+
+        if (data.error) {
+          col.innerHTML = `
+            <div class="card p-3">
+              <h6>${r.name} (${r.code})</h6>
+              <p class="text-danger">데이터 불러오기 실패</p>
+            </div>`;
+        } else {
+          col.innerHTML = `
+            <div class="card p-3">
+              <h6>${data.longName} (${data.symbol})</h6>
+              <p class="fw-bold">${data.price} ${data.currency}</p>
+              <p class="text-muted">전일종가: ${data.previousClose || "-"} | 시가: ${data.open || "-"}</p>
+              <p class="text-muted">고가/저가: ${data.dayHigh || "-"} / ${data.dayLow || "-"}</p>
+              <p class="text-muted">시가총액: ${data.marketCap || "-"}</p>
+            </div>`;
+        }
+        container.appendChild(col);
+      }
+    }
+
+    // 실행
     loadIndicators();
+    loadRetailers();
   </script>
 </body>
 </html>
