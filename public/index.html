@@ -57,11 +57,19 @@
     async function fetchStock(symbol) {
       try {
         const res = await fetch(`/api/stocks?symbol=${symbol}`);
-        const data = await res.json();   // 항상 JSON 파싱 시도
+        const text = await res.text();   // 원본 응답을 문자열로 받음
+
+        let data = {};
+        try {
+          data = text ? JSON.parse(text) : {};  // JSON이면 파싱, 아니면 빈 객체
+        } catch (parseErr) {
+          return { error: "잘못된 JSON 응답", symbol };
+        }
 
         if (!res.ok) {
-          return { error: data.error || "API 요청 실패", symbol };
+          return { error: data.error || `API 요청 실패 (${res.status})`, symbol };
         }
+
         return data;
       } catch (err) {
         console.error(symbol, err);
