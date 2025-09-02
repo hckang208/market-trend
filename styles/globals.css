@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { --ink:#0F172A; --sub:#475569; --accent:#2563eb; --line:#e5e7eb; --bg:#f8fafc; }
+:root { --ink:#0F172A; --sub:#475569; --accent:#1B79D9; --line:#e5e7eb; --bg:#f8fafc; }
 
 html, body { background: var(--bg); color: var(--ink); }
 .container { max-width: 1160px; margin: 0 auto; padding: 24px; }

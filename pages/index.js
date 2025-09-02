@@ -61,7 +61,7 @@ export default function Home() {
     <div>
       <header className="sticky top-0 z-50 backdrop-blur bg-white/70 border-b border-line">
         <div className="container flex items-center justify-between">
-          <div className="font-black text-xl">Market Trend</div>
+          <div className="flex items-center gap-3"><img src="/hansoll-logo.svg" alt="Hansoll" className="h-7 w-auto" /><div className="font-black text-xl">Market Trend</div></div>
           <nav className="text-sm text-slate-600 flex gap-4">
             <a href="#" className="hover:text-ink">Dashboard</a>
             <a href="https://vercel.com" target="_blank" rel="noreferrer" className="hover:text-ink">Deploy</a>
@@ -84,7 +84,7 @@ export default function Home() {
         <div className="card p-5 mt-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-extrabold">AI 인사이트 (임원 보고용 요약)</h2>
-            <button onClick={generateInsights} disabled={aiBusy} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            <button onClick={generateInsights} disabled={aiBusy} className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
               {aiBusy ? '분석 중…' : '최신 인사이트 생성'}
             </button>
           </div>
