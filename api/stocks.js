@@ -2,13 +2,12 @@ import fetch from "node-fetch";
 
 export default async function handler(req, res) {
   try {
-    // 기본값 Walmart(WMT)
-    const symbol = req.query.symbol || "WMT"; 
+    const symbol = req.query.symbol || "WMT";
     const apiKey = process.env.RAPIDAPI_KEY;
 
     if (!apiKey) {
       return res.status(500).json({
-        error: "환경변수 RAPIDAPI_KEY가 설정되지 않았습니다. Vercel Dashboard → Settings → Environment Variables 에서 추가하세요.",
+        error: "환경변수 RAPIDAPI_KEY가 설정되지 않았습니다.",
         symbol
       });
     }
@@ -23,19 +22,24 @@ export default async function handler(req, res) {
       }
     });
 
-    // 응답이 실패했을 때도 JSON으로 반환
+    const text = await response.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (err) {
+      return res.status(500).json({ error: "백엔드 JSON 파싱 실패", symbol });
+    }
+
     if (!response.ok) {
       return res.status(response.status).json({
-        error: `Yahoo Finance API 요청 실패: ${response.status} ${response.statusText}`,
+        error: data.error || `Yahoo Finance API 요청 실패 (${response.status})`,
         symbol
       });
     }
 
-    const data = await response.json();
-
-    // 필요한 정보만 추려서 반환
+    // 정상일 경우 필요한 데이터 추출
     const result = {
-      symbol: symbol,
+      symbol,
       price: data.price?.regularMarketPrice?.raw || null,
       currency: data.price?.currency || null,
       marketCap: data.price?.marketCap?.fmt || null,
@@ -50,9 +54,6 @@ export default async function handler(req, res) {
     res.status(200).json(result);
 
   } catch (error) {
-    res.status(500).json({ 
-      error: error.message,
-      symbol: req.query.symbol || "WMT"
-    });
+    res.status(500).json({ error: error.message, symbol: req.query.symbol || "WMT" });
   }
 }
