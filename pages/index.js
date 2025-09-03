@@ -154,10 +154,24 @@ export default function Home() {
           <KpiCard title="US CPI (Index)" value={ind?.cpi?.latest} sub={ind?.cpi?.date} />
         </div>
 
+        {/* 금리/스프레드 */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
+          <KpiCard title="미국 기준금리 (Fed Funds, %)" value={ind?.fedfunds?.latest} sub={ind?.fedfunds?.date} />
+          <KpiCard title="미국 10년물 국채(%, DGS10)" value={ind?.dgs10?.latest} sub={ind?.dgs10?.date} />
+          <KpiCard title="미국 2년물 국채(%, DGS2)" value={ind?.dgs2?.latest} sub={ind?.dgs2?.date} />
+          <KpiCard title="금리 스프레드(10Y–2Y, bp)" value={ind?.t10y2y?.latest} sub={ind?.t10y2y?.date} />
+        </div>
+
+        {/* 리테일 수요 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <KpiCard title="미국 소매판매 (총액)" value={ind?.retail_sales_total?.latest} sub={ind?.retail_sales_total?.date} />
+          <KpiCard title="의류·액세서리 매출" value={ind?.retail_sales_clothing?.latest} sub={ind?.retail_sales_clothing?.date} />
+        </div>
+
         {/* 일일 등락률 요약 */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold">일일 등락률 요약</h2>
+            <h2 className="text-xl font-extrabold">2.일일 주요 Retailer 주가 등락률</h2>
             <div className="text-sm text-slate-500">카드를 클릭하면 Yahoo Finance로 이동</div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
