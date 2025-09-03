@@ -1,6 +1,6 @@
 // pages/index.js
 import { useEffect, useState } from 'react';
-import KpiProCard from '../components/KpiProCard';
+import KpiCard from '../components/KpiCard';
 
 export default function Home() {
   const [ind, setInd] = useState(null);
@@ -72,17 +72,17 @@ export default function Home() {
     if (newsBusy) return;
     try {
       setNewsBusy(true);
-      setNewsInsight(""); // 새로 로드시 이전 요약 초기화
+      setNewsInsight("");
       const seen = new Set();
       const merged = [];
 
       for (const r of list) {
-        const q = r?.stock?.longName || r.symbol; // 회사명 우선
+        const q = r?.stock?.longName || r.symbol;
         try {
           const res = await fetch(`/api/news?q=${encodeURIComponent(q)}`);
           if (!res.ok) continue;
           const arr = await res.json();
-          for (const n of (arr || []).slice(0, 3)) { // 각 심볼 상위 3개
+          for (const n of (arr || []).slice(0, 3)) {
             const key = n?.url || n?.title;
             if (!key || seen.has(key)) continue;
             seen.add(key);
@@ -95,7 +95,6 @@ export default function Home() {
               published: n?.datePublished || n?.date || ''
             });
           }
-          // 429 방지 딜레이
           await new Promise(res => setTimeout(res, 300));
         } catch (e) {
           console.warn('news error for', q, e);
@@ -117,7 +116,6 @@ export default function Home() {
     }
     try {
       setNewsAiBusy(true);
-      // deck을 심볼별로 묶어 retailers payload에 뉴스로 주입
       const retailersForSummary = list.map(r => {
         const news = deck
           .filter(d => d.symbol === r.symbol)
@@ -145,7 +143,6 @@ export default function Home() {
     }
   }
 
-  // 퍼센트 보조 계산기(백업용)
   const pctChange = (price, prev) => {
     if (price == null || prev == null || prev === 0) return null;
     return ((price - prev) / prev) * 100;
@@ -172,7 +169,7 @@ export default function Home() {
 
         {/* KPI 1행: 기존 3종 (클릭 시 FRED 원본 이동) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiProCard
+          <KpiCard
             title="WTI (USD/bbl)"
             unit=""
             data={ind?.wti}
@@ -180,7 +177,7 @@ export default function Home() {
             hint="원가측면(에너지) 압력"
             href="https://fred.stlouisfed.org/series/DCOILWTICO"
           />
-          <KpiProCard
+          <KpiCard
             title="USD/KRW"
             unit=""
             data={ind?.usdkrw}
@@ -188,7 +185,7 @@ export default function Home() {
             hint="환리스크(결제/정산) 민감"
             href="https://fred.stlouisfed.org/series/DEXKOUS"
           />
-          <KpiProCard
+          <KpiCard
             title="US CPI (Index)"
             unit=""
             data={ind?.cpi}
@@ -200,7 +197,7 @@ export default function Home() {
 
         {/* KPI 2행: 기준금리/스프레드/재고/고용 (클릭 시 FRED 원본 이동) */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
-          <KpiProCard
+          <KpiCard
             title="미국 기준금리 (Fed Funds, %)"
             unit="%"
             data={ind?.fedfunds}
@@ -208,7 +205,7 @@ export default function Home() {
             hint="금융여건(자금조달·재고) 압력"
             href="https://fred.stlouisfed.org/series/FEDFUNDS"
           />
-          <KpiProCard
+          <KpiCard
             title="금리 스프레드 (10Y–2Y, bp)"
             unit="bp"
             data={ind?.t10y2y}
@@ -216,7 +213,7 @@ export default function Home() {
             hint="경기 사이클 선행 시그널"
             href="https://fred.stlouisfed.org/series/T10Y2Y"
           />
-          <KpiProCard
+          <KpiCard
             title="재고/판매 비율 (ISRATIO)"
             unit=""
             data={ind?.inventory_ratio}
@@ -224,7 +221,7 @@ export default function Home() {
             hint="리테일러 재고부담"
             href="https://fred.stlouisfed.org/series/ISRATIO"
           />
-          <KpiProCard
+          <KpiCard
             title="실업률 (UNRATE, %)"
             unit="%"
             data={ind?.unemployment}
@@ -234,7 +231,7 @@ export default function Home() {
           />
         </div>
 
-        {/* 2. 일일 등락률 (제목만 변경, 로직은 그대로 유지) */}
+        {/* 2. 일일 등락률 */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-extrabold">2.일일 주요 Retailer 주가 등락률</h2>
@@ -244,10 +241,6 @@ export default function Home() {
             {list.map((r) => {
               const price = r.stock?.price ?? null;
               const prev = r.stock?.previousClose ?? null;
-
-              // 1순위: API의 changePercent
-              // 2순위: change / (price - change)
-              // 3순위: (price - prev) / prev
               const pct =
                 (r.stock?.changePercent != null)
                   ? Number(r.stock.changePercent)
