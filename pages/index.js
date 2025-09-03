@@ -18,120 +18,6 @@ const fmtSignPct = (n, d = 2) => {
 };
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
-const NUMBER_FIELDS = ["value","price","index","rate","last","close","avg","level","current"];
-const HISTORY_FIELDS = ["history","values","series","data","timeseries","timeline"];
-
-const pickNumber = (x) => {
-  if (x == null) return null;
-  if (typeof x === "number") return isFinite(x) ? x : null;
-  if (typeof x === "string") {
-    const n = Number(x.replace(/[, ]/g, ""));
-    return isFinite(n) ? n : null;
-  }
-  if (Array.isArray(x)) {
-    for (const i of x) {
-      const n = pickNumber(i);
-      if (n != null) return n;
-    }
-    return null;
-  }
-  if (typeof x === "object") {
-    for (const k of NUMBER_FIELDS) if (k in x) {
-      const n = pickNumber(x[k]); if (n != null) return n;
-    }
-    for (const k of Object.keys(x)) {
-      const n = pickNumber(x[k]); if (n != null) return n;
-    }
-  }
-  return null;
-};
-const pickHistory = (x) => {
-  const toSeries = (arr) => {
-    const out = [];
-    for (const v of arr || []) {
-      if (Array.isArray(v)) {
-        const n = pickNumber(v[v.length - 1]);
-        if (n != null) out.push(n);
-      } else if (typeof v === "object") {
-        const n = pickNumber(v);
-        if (n != null) out.push(n);
-      } else {
-        const n = pickNumber(v);
-        if (n != null) out.push(n);
-      }
-    }
-    return out;
-  };
-  if (!x) return null;
-  if (Array.isArray(x)) {
-    const s = toSeries(x);
-    return s.length >= 2 ? s.slice(-24) : null;
-  }
-  if (typeof x === "object") {
-    for (const k of HISTORY_FIELDS) {
-      if (k in x) {
-        const s = toSeries(x[k]);
-        if (s.length >= 2) return s.slice(-24);
-      }
-    }
-    const cur = pickNumber(x);
-    const prev = pickNumber(x.prev ?? x.previous ?? x.prior ?? null);
-    if (cur != null && prev != null) return [prev, cur];
-  }
-  return null;
-};
-
-/* =========================
-   지표 키별 별칭
-========================= */
-const IND_ALIASES = {
-  wti: ["wti","WTI","oil","dcoilwtico","brent"],
-  usdkrw: ["usdkrw","USDKRW","usd_krw","krw","DEXKOUS"],
-  cpi: ["cpi","CPI","cpiaucsl","CPIAUCSL"],
-  fedfunds: ["fedfunds","FEDFUNDS","policy_rate","ffr"],
-  t10y2y: ["t10y2y","T10Y2Y","spread_10y_2y","yield_spread"],
-  inventory_ratio: ["inventory_ratio","ISRATIO","isratio","inventories_to_sales"],
-  unemployment: ["unemployment","UNRATE","unrate","jobless_rate"],
-};
-const getIndValue = (obj, stdKey) => {
-  if (!obj) return null;
-  const aliases = IND_ALIASES[stdKey] || [stdKey];
-  const keys = Object.keys(obj);
-  const lowerMap = new Map(keys.map(k => [k.toLowerCase(), k]));
-  for (const a of aliases) {
-    const hit = lowerMap.get(a.toLowerCase());
-    if (hit) { const n = pickNumber(obj[hit]); if (n != null) return n; }
-  }
-  for (const a of aliases) {
-    const target = a.toLowerCase();
-    const hit = keys.find(k => k.toLowerCase().includes(target));
-    if (hit) { const n = pickNumber(obj[hit]); if (n != null) return n; }
-  }
-  return null;
-};
-const getIndSeries = (obj, stdKey) => {
-  if (!obj) return null;
-  const aliases = IND_ALIASES[stdKey] || [stdKey];
-  const keys = Object.keys(obj);
-  const lowerMap = new Map(keys.map(k => [k.toLowerCase(), k]));
-  for (const a of aliases) {
-    const hit = lowerMap.get(a.toLowerCase());
-    if (hit) {
-      const s = pickHistory(obj[hit]);
-      if (s && s.length >= 2) return s;
-    }
-  }
-  for (const a of aliases) {
-    const target = a.toLowerCase();
-    const hit = keys.find(k => k.toLowerCase().includes(target));
-    if (hit) {
-      const s = pickHistory(obj[hit]);
-      if (s && s.length >= 2) return s;
-    }
-  }
-  return null;
-};
-
 /* =========================
    헤더
 ========================= */
@@ -313,7 +199,7 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 (스파크라인 + 이전대비, 클릭 → 원본 + 업데이트 시간)
+   2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
 ========================= */
 function Sparkline({ series = [], width = 110, height = 32 }) {
   if (!series || series.length < 2) return null;
@@ -343,7 +229,7 @@ function IndicatorsSection() {
       try {
         const r = await fetch("/api/indicators", { cache: "no-store" });
         const j = await r.json();
-        if (!r.ok) throw new Error("지표 API 오류");
+        if (!r.ok) throw new Error(j?.error || "지표 API 오류");
         setState({ loading: false, data: j, error: "" });
         setLastUpdated(j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString());
       } catch (e) {
@@ -376,7 +262,7 @@ function IndicatorsSection() {
       <h3 style={styles.h3}>주요 지표</h3>
       {lastUpdated && (
         <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-          업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+          전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
         </div>
       )}
       {state.loading && <div>불러오는 중...</div>}
@@ -385,22 +271,15 @@ function IndicatorsSection() {
       {!state.loading && !state.error && (
         <div style={styles.grid4}>
           {curated.map((c) => {
-            const v = getIndValue(state.data, c.key);
-            const s = getIndSeries(state.data, c.key);
-            let deltaPct = null;
-            if (s && s.length >= 2) {
-              const prev = s[s.length - 2], now = s[s.length - 1];
-              if (isFinite(prev) && isFinite(now) && prev !== 0) deltaPct = ((now - prev) / prev) * 100;
-            } else {
-              const raw = state.data;
-              const tryKeys = IND_ALIASES[c.key] || [c.key];
-              const hit = Object.keys(raw || {}).find(k => tryKeys.some(a => k.toLowerCase().includes(a.toLowerCase())));
-              const node = hit ? raw[hit] : null;
-              const cp = node?.changePercent ?? node?.percent ?? node?.delta ?? null;
-              if (isFinite(Number(cp))) deltaPct = Number(cp);
-            }
+            const node = state.data?.[c.key] || null;
+            const v = node?.value ?? null;
+            const s = node?.history || [];
+            const deltaPct = node?.changePercent ?? null;
+            const yoyPct = node?.yoyPercent ?? null;
             const href = LINK[c.key];
-            const up = deltaPct != null ? deltaPct >= 0 : (s ? s[s.length - 1] >= s[0] : true);
+            const up = deltaPct != null ? deltaPct >= 0 : (s.length >= 2 ? s[s.length - 1] >= s[0] : true);
+            const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
+            const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
 
             return (
               <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
@@ -409,7 +288,13 @@ function IndicatorsSection() {
                 <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
                   {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                 </div>
+                {yoyPct != null && (
+                  <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
+                    YoY: {fmtSignPct(yoyPct)}
+                  </div>
+                )}
                 <Sparkline series={s || []} />
+                {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
                 <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
               </a>
             );
@@ -448,18 +333,18 @@ function StocksSection() {
             try {
               const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
               const j = await r.json();
+              if (!r.ok) throw new Error(j?.error || "stocks api error");
               const name = j.longName || j.name || NAME_MAP[s] || s;
               const price = j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
               let pct = 0;
               if (isFinite(Number(price)) && isFinite(Number(prevClose)) && Number(prevClose) !== 0) {
                 pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
-              } else {
-                const fallback = j.changePercent ?? j.percent ?? j.change_percentage ?? j.deltaPct ?? null;
-                pct = isFinite(Number(fallback)) ? Number(fallback) : 0;
+              } else if (isFinite(Number(j.changePercent))) {
+                pct = Number(j.changePercent);
               }
               return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct };
-            } catch {
+            } catch (e) {
               return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
             }
           })
@@ -504,20 +389,13 @@ function StocksSection() {
 }
 
 /* =========================
-   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (정확도 강화 토글 + 한국 RSS 병합)
+   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (한국: 필터 없이 최근 2일)
 ========================= */
 const BRAND_TERMS = [
   "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
   "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
 ];
 const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
-const KOREAN_BRAND_TERMS = [
-  "월마트","빅토리아시크릿","아베크롬비","카터스","콜스","유니클로","패스트리테일링",
-  "에어리","둘루스","언더아머","아리츠아","아마존","알리바바",
-  "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
-  "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
-];
-const KOREAN_INDUSTRY_TERMS = ["패션","의류","섬유","의복","SPA","유통","리테일","apparel","textile","garment","fashion"];
 
 function NewsTabsSection() {
   const [tab, setTab] = useState("brand"); // brand | industry | korea
@@ -528,7 +406,6 @@ function NewsTabsSection() {
   const [busy, setBusy] = useState({ brand:false, industry:false, kr:false });
   const [err, setErr] = useState("");
 
-  // 글로벌 화이트리스트(잡음 줄이기)
   const DOMAINS = "reuters.com,fashionunited.com,wwd.com,businesswire.com,forbes.com,apnews.com,bloomberg.com,ft.com,cnbc.com";
   const EXCLUDE = "celebrity,lookbook,outfit,beauty,gossip,concert,fandom";
 
@@ -550,11 +427,8 @@ function NewsTabsSection() {
       const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
       const arr = await r.json();
       setBrandNews(arr || []);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(s => ({ ...s, brand: false }));
-    }
+    } catch (e) { setErr(String(e)); }
+    finally { setBusy(s => ({ ...s, brand: false })); }
   };
 
   const loadIndustry = async () => {
@@ -573,11 +447,8 @@ function NewsTabsSection() {
       const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
       const arr = await r.json();
       setIndustryNews(arr || []);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(s => ({ ...s, industry: false }));
-    }
+    } catch (e) { setErr(String(e)); }
+    finally { setBusy(s => ({ ...s, industry: false })); }
   };
 
   const loadKorea = async () => {
@@ -585,52 +456,17 @@ function NewsTabsSection() {
     try {
       setBusy(s => ({ ...s, kr: true }));
       setErr("");
-
-      // 1) 한국섬유신문 RSS (정확도강화 기본 ON)
-      const rssQs = new URLSearchParams({
-        feeds: "http://www.ktnews.com/rss/allArticle.xml",
-        brand: KOREAN_BRAND_TERMS.join("|"),
-        industry: KOREAN_INDUSTRY_TERMS.join("|"),
-        must: andStrict ? "brand,industry" : "",
-        limit: "40",
-        days: "30",
-        exclude: "연예,룩북,화보,뷰티,가십,콘서트,팬덤,스포츠",
-      });
-      const rssRes = await fetch(`/api/news-kr-rss?${rssQs.toString()}`, { cache: "no-store" })
-        .then(r => r.json())
-        .catch(()=>[]);
-
-      // 2) 보조: Bing/NewsAPI 기반 한국 검색 (한국 도메인 화이트리스트)
+      // 필터 없이, 최근 2일치 RSS
       const qs = new URLSearchParams({
-        brand: KOREAN_BRAND_TERMS.join("|"),
-        industry: KOREAN_INDUSTRY_TERMS.join("|"),
-        must: andStrict ? "brand,industry" : "",
-        language: "ko",
-        limit: "40",
-        days: "21",
-        domains: "ktnews.com,itnk.co.kr,kofoti.or.kr,textopia.or.kr,bizm.kr,etnews.com,sedaily.com,hankyung.com",
-        exclude: "연예,룩북,화보,뷰티,가십,콘서트,팬덤,스포츠",
-        market: "ko-KR",
+        feeds: "http://www.ktnews.com/rss/allArticle.xml",
+        days: "2",
+        limit: "120"
       });
-      const apiRes = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" })
-        .then(r => r.json())
-        .catch(()=>[]);
-
-      // 3) 합치고 중복 제거
-      const seen = new Set();
-      const merged = [...rssRes, ...apiRes].filter(a => {
-        const key = a.url || a.title;
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      setKrNews(merged);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(s => ({ ...s, kr: false }));
-    }
+      const r = await fetch(`/api/news-kr-rss?${qs.toString()}`, { cache: "no-store" });
+      const arr = await r.json();
+      setKrNews(arr || []);
+    } catch (e) { setErr(String(e)); }
+    finally { setBusy(s => ({ ...s, kr: false })); }
   };
 
   useEffect(() => {
@@ -649,7 +485,7 @@ function NewsTabsSection() {
             <a key={idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
               <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
               <div style={{ fontSize: 12, color: "#6b7280" }}>
-                {(a.source?.name || a.source || (a.url ? new URL(a.url).hostname : ""))}
+                {(a.source?.name || (a.url ? new URL(a.url).hostname : ""))}
                 {a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
               </div>
             </a>
