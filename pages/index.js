@@ -396,4 +396,6 @@ const NAME_MAP = {
   VSCO: "Victoria's Secret",
   KSS: "Kohl's",
   AMZN: "Amazon",
-  BABA: "A
+  BABA: "Alibaba",
+  "9983.T": "Fast Retailing (Uniqlo)",
+};
