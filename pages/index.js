@@ -20,10 +20,6 @@ const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 /* =========================
    1) 부자재구매현황 DASHBOARD (수기입력)
-   - LocalStorage 저장
-   - 매입비중 자동계산
-   - 공급현황 스택바
-   - CTA + AI Daily Report 링크
 ========================= */
 function ProcurementTopBlock() {
   const LS_KEY = "procure.dashboard.v1";
@@ -126,10 +122,7 @@ function ProcurementTopBlock() {
 
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
-        <Card
-          title="총 부자재매입액"
-          value={fmtCurrency(data.materialSpend, data.currency)}
-        />
+        <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
         <div style={styles.card}>
           <div style={styles.cardTitle}>매출 대비 부자재 매입비중</div>
           <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
@@ -207,9 +200,7 @@ function ProcurementTopBlock() {
               <input
                 type="number"
                 value={data.materialSpend}
-                onChange={(e) =>
-                  setData((d) => ({ ...d, materialSpend: Number(e.target.value) }))
-                }
+                onChange={(e) => setData((d) => ({ ...d, materialSpend: Number(e.target.value) }))}
               />
             </div>
           </div>
@@ -295,17 +286,10 @@ function ProcurementTopBlock() {
         </div>
       )}
 
-      {/* CTA 더미 링크 */}
       <div style={styles.ctaRow}>
-        <a href="#incidents" style={styles.ctaDark}>
-          부자재 관련사고
-        </a>
-        <a href="#materials" style={styles.ctaDark}>
-          부자재 관련 자료
-        </a>
-        <a href="/chatbot" style={styles.ctaLight}>
-          AI Chatbot (한솔부자재)
-        </a>
+        <a href="#incidents" style={styles.ctaDark}>부자재 관련사고</a>
+        <a href="#materials" style={styles.ctaDark}>부자재 관련 자료</a>
+        <a href="/chatbot" style={styles.ctaLight}>AI Chatbot (한솔부자재)</a>
       </div>
     </section>
   );
@@ -313,7 +297,6 @@ function ProcurementTopBlock() {
 
 /* =========================
    2) 주요지표 섹션 (/api/indicators)
-   - 키가 무엇이든 안전하게 표시
 ========================= */
 function IndicatorsSection() {
   const [state, setState] = useState({ loading: true, data: null, error: "" });
@@ -333,7 +316,6 @@ function IndicatorsSection() {
 
   const entries = useMemo(() => {
     if (!state.data) return [];
-    // 객체이면 [key, value]로 변환
     if (typeof state.data === "object" && !Array.isArray(state.data)) {
       return Object.entries(state.data);
     }
@@ -398,4 +380,193 @@ const NAME_MAP = {
   AMZN: "Amazon",
   BABA: "Alibaba",
   "9983.T": "Fast Retailing (Uniqlo)",
+};
+
+function StocksSection() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const out = await Promise.all(
+          SYMBOLS.map(async (s) => {
+            try {
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`);
+              const j = await r.json();
+              const name = j.longName || j.name || NAME_MAP[s] || s;
+              const price =
+                j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const pct =
+                j.changePercent ?? j.percent ?? j.change_percentage ?? j.deltaPct ?? null;
+              return {
+                symbol: s,
+                name,
+                price: isFinite(Number(price)) ? Number(price) : null,
+                pct: isFinite(Number(pct)) ? Number(pct) : 0,
+              };
+            } catch {
+              return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
+            }
+          })
+        );
+        setRows(out);
+        setLoading(false);
+      } catch (e) {
+        setErr(String(e));
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
+
+  return (
+    <section style={{ marginTop: 24 }}>
+      <h3 style={styles.h3}>일일 리테일러 주가 등락률</h3>
+      {loading && <div>불러오는 중...</div>}
+      {err && <div style={styles.err}>에러: {err}</div>}
+      {!loading && !err && (
+        <div style={styles.grid4}>
+          {sorted.map((r) => (
+            <div key={r.symbol} style={styles.card}>
+              <div style={styles.cardTitle}>
+                {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+              </div>
+              <div style={styles.cardValue}>
+                {r.price != null ? fmtNum(r.price, 2) : "-"}
+              </div>
+              <div
+                style={{
+                  ...styles.cardSub,
+                  fontWeight: 900,
+                  color: r.pct >= 0 ? "#065f46" : "#991b1b",
+                }}
+              >
+                {fmtSignPct(r.pct)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   4) 뉴스 모음 (/api/news)
+========================= */
+function NewsSection() {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/news?cat=retail,fashion,textile");
+        const j = await r.json();
+        const arr = Array.isArray(j) ? j : j.articles || j.items || [];
+        setArticles(arr.slice(0, 20));
+        setLoading(false);
+      } catch (e) {
+        setErr(String(e));
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <section style={{ marginTop: 24 }}>
+      <h3 style={styles.h3}>주요 Retailer / Fashion 뉴스</h3>
+      {loading && <div>불러오는 중...</div>}
+      {err && <div style={styles.err}>에러: {err}</div>}
+      {!loading && !err && (
+        <div style={{ display: "grid", gap: 12 }}>
+          {articles.map((a, idx) => {
+            const title = a.title || a.headline || "(제목 없음)";
+            const url = a.url || a.link || "#";
+            const source = a.source?.name || a.source || a.publisher || "";
+            const time = a.publishedAt || a.pubDate || a.date || "";
+            return (
+              <a key={idx} href={url} target="_blank" rel="noreferrer" style={styles.newsItem}>
+                <div style={{ fontWeight: 900 }}>{title}</div>
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  {source ? `${source} · ` : ""}{time}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   페이지 컴포넌트 (default export)
+========================= */
+export default function Home() {
+  return (
+    <>
+      <Head>
+        <title>Hansol Purchasing — Market & Materials</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+        <ProcurementTopBlock />
+        <IndicatorsSection />
+        <StocksSection />
+        <NewsSection />
+      </main>
+    </>
+  );
+}
+
+/* =========================
+   인라인 스타일
+========================= */
+const styles = {
+  h2: { margin: "6px 0 2px", fontSize: 20, fontWeight: 900 },
+  h3: { margin: "12px 0 10px", fontSize: 18, fontWeight: 900 },
+  meta: { color: "#6b7280", fontSize: 13 },
+  err: { color: "#b91c1c", fontWeight: 700 },
+
+  blockWrap: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginTop: 10 },
+  headerRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  tools: { display: "flex", gap: 8, alignItems: "center" },
+
+  grid5: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 12, marginTop: 12 },
+  grid4: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12 },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 },
+  grid2: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 },
+
+  card: { border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 12px" },
+  cardTitle: { fontSize: 12, color: "#6b7280", fontWeight: 800, marginBottom: 6 },
+  cardValue: { fontSize: 20, fontWeight: 900 },
+  cardSub: { fontSize: 12, color: "#6b7280" },
+
+  progressWrap: { background: "#f3f4f6", borderRadius: 999, height: 8, marginTop: 8, overflow: "hidden" },
+  progressBar: { background: "#111827", height: 8 },
+
+  innerBlock: { border: "1px dashed #e5e7eb", borderRadius: 12, padding: 12, marginTop: 12 },
+  blockTitle: { fontWeight: 900, fontSize: 13, marginBottom: 8 },
+  stackBar: { display: "flex", width: "100%", height: 12, borderRadius: 999, overflow: "hidden", background: "#f3f4f6" },
+  seg: { height: "100%" },
+  legend: { display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "#374151" },
+
+  editBox: { border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 12, background: "#fafafa" },
+  row: { display: "grid", gap: 6 },
+
+  ctaRow: { display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  ctaDark: { background: "#111827", color: "#fff", textDecoration: "none", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13 },
+  ctaLight: { border: "1px solid #111827", color: "#111827", textDecoration: "none", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13, background: "#fff" },
+
+  btnGray: { background: "#f3f4f6", border: "1px solid #e5e7eb", padding: "8px 10px", borderRadius: 10, fontWeight: 700, fontSize: 13, color: "#111" },
+  btnBlue: { background: "#2563eb", border: "1px solid #1d4ed8", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13, color: "#fff", textDecoration: "none" },
+  btnDanger: { background: "#fee2e2", border: "1px solid #fecaca", padding: "8px 10px", borderRadius: 10, fontWeight: 700, fontSize: 13, color: "#991b1b" },
+
+  newsItem: { display: "block", padding: 12, border: "1px solid #e5e7eb", borderRadius: 12, textDecoration: "none", color: "#111" },
 };
