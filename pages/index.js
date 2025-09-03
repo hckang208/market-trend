@@ -419,8 +419,14 @@ function IndicatorsSection() {
 ========================= */
 const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
 const NAME_MAP = {
-  WMT: "Walmart", TGT: "Target", ANF: "Abercrombie & Fitch", VSCO: "Victoria's Secret",
-  KSS: "Kohl's", AMZN: "Amazon", BABA: "Alibaba", "9983.T": "Fast Retailing (Uniqlo)",
+  WMT: "Walmart",
+  TGT: "Target",
+  ANF: "Abercrombie & Fitch",
+  VSCO: "Victoria's Secret",
+  KSS: "Kohl's",
+  AMZN: "Amazon",
+  BABA: "Alibaba",
+  "9983.T": "Fast Retailing (Uniqlo)",
 };
 
 function StocksSection() {
@@ -494,9 +500,11 @@ const BRAND_TERMS = [
 const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
 const KOREAN_BRAND_TERMS = [
   "월마트","빅토리아시크릿","아베크롬비","카터스","콜스","유니클로","패스트리테일링",
-  "에어리","둘루스","언더아머","아리츠아","아마존","알리바바"
+  "에어리","둘루스","언더아머","아리츠아","아마존","알리바바",
+  "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
+  "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
 ];
-const KOREAN_INDUSTRY_TERMS = ["패션","의류","섬유","의복","SPA","유통","리테일"];
+const KOREAN_INDUSTRY_TERMS = ["패션","의류","섬유","의복","SPA","유통","리테일","apparel","textile","garment","fashion"];
 
 function NewsTabsSection() {
   const [tab, setTab] = useState("brand"); // brand | industry | korea
@@ -564,21 +572,47 @@ function NewsTabsSection() {
     try {
       setBusy(s => ({ ...s, kr: true }));
       setErr("");
-      // 한국 특화 도메인 타겟 + ko
+
+      // 1) 한국섬유신문 RSS (정확도강화 기본 ON)
+      const rssQs = new URLSearchParams({
+        feeds: "http://www.ktnews.com/rss/allArticle.xml",
+        brand: KOREAN_BRAND_TERMS.join("|"),
+        industry: KOREAN_INDUSTRY_TERMS.join("|"),
+        must: andStrict ? "brand,industry" : "",
+        limit: "40",
+        days: "30",
+        exclude: "연예,룩북,화보,뷰티,가십,콘서트,팬덤,스포츠",
+      });
+      const rssRes = await fetch(`/api/news-kr-rss?${rssQs.toString()}`, { cache: "no-store" })
+        .then(r => r.json())
+        .catch(()=>[]);
+
+      // 2) 보조: Bing/NewsAPI 기반 한국 검색 (한국 도메인 화이트리스트)
       const qs = new URLSearchParams({
-        brand: [...KOREAN_BRAND_TERMS, ...BRAND_TERMS].join("|"),
-        industry: [...KOREAN_INDUSTRY_TERMS, ...INDUSTRY_TERMS].join("|"),
+        brand: KOREAN_BRAND_TERMS.join("|"),
+        industry: KOREAN_INDUSTRY_TERMS.join("|"),
         must: andStrict ? "brand,industry" : "",
         language: "ko",
         limit: "40",
         days: "21",
         domains: "ktnews.com,itnk.co.kr,kofoti.or.kr,textopia.or.kr,bizm.kr,etnews.com,sedaily.com,hankyung.com",
-        exclude: EXCLUDE,
+        exclude: "연예,룩북,화보,뷰티,가십,콘서트,팬덤,스포츠",
         market: "ko-KR",
       });
-      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
-      const arr = await r.json();
-      setKrNews(arr || []);
+      const apiRes = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" })
+        .then(r => r.json())
+        .catch(()=>[]);
+
+      // 3) 합치고 중복 제거
+      const seen = new Set();
+      const merged = [...rssRes, ...apiRes].filter(a => {
+        const key = a.url || a.title;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setKrNews(merged);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -602,7 +636,7 @@ function NewsTabsSection() {
             <a key={idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
               <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
               <div style={{ fontSize: 12, color: "#6b7280" }}>
-                {(a.source?.name || a.source || new URL(a.url).hostname)}
+                {(a.source?.name || a.source || (a.url ? new URL(a.url).hostname : ""))}
                 {a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
               </div>
             </a>
@@ -712,7 +746,7 @@ const styles = {
 
   ctaRow: { display:"flex", gap:8, marginTop:12, flexWrap:"wrap" },
   ctaDark: { background:"#111827", color:"#fff", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13 },
-  ctaLight: { border:"1px solid #111827", color:"#111827", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, background:"#fff" },
+  ctaLight: { border:"1px solid "#111827", color:"#111827", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, background:"#fff" },
 
   btnGray: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"8px 10px", borderRadius:10, fontWeight:700, fontSize:13, color:"#111" },
   btnBlue: { background:"#2563eb", border:"1px solid #1d4ed8", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, color:"#fff", textDecoration:"none" },
