@@ -46,7 +46,6 @@ const pickNumber = (x) => {
   return null;
 };
 const pickHistory = (x) => {
-  // 다양한 구조에서 [..numbers] 뽑기 (최대 최근 24개)
   const toSeries = (arr) => {
     const out = [];
     for (const v of arr || []) {
@@ -75,7 +74,6 @@ const pickHistory = (x) => {
         if (s.length >= 2) return s.slice(-24);
       }
     }
-    // prev/previous가 있으면 2점 시리즈라도 구성
     const cur = pickNumber(x);
     const prev = pickNumber(x.prev ?? x.previous ?? x.prior ?? null);
     if (cur != null && prev != null) return [prev, cur];
@@ -332,12 +330,7 @@ function Sparkline({ series = [], width = 110, height = 32 }) {
   const up = series[series.length - 1] >= series[0];
   return (
     <svg width={width} height={height} style={{ display: "block", marginTop: 6 }}>
-      <polyline
-        fill="none"
-        stroke={up ? "#065f46" : "#991b1b"}
-        strokeWidth="2"
-        points={pts}
-      />
+      <polyline fill="none" stroke={up ? "#065f46" : "#991b1b"} strokeWidth="2" points={pts} />
     </svg>
   );
 }
@@ -388,23 +381,18 @@ function IndicatorsSection() {
           {curated.map((c) => {
             const v = getIndValue(state.data, c.key);
             const s = getIndSeries(state.data, c.key);
-            // 이전값(히스토리 마지막 2개 기준) 또는 obj의 changePercent 사용
             let deltaPct = null;
             if (s && s.length >= 2) {
               const prev = s[s.length - 2], now = s[s.length - 1];
-              if (prev && isFinite(prev) && isFinite(now) && prev !== 0) {
-                deltaPct = ((now - prev) / prev) * 100;
-              }
+              if (isFinite(prev) && isFinite(now) && prev !== 0) deltaPct = ((now - prev) / prev) * 100;
             } else {
               const raw = state.data;
-              const hitKey = (IND_ALIASES[c.key] || [c.key]).find(a =>
-                Object.keys(raw).some(k => k.toLowerCase() === a.toLowerCase() || k.toLowerCase().includes(a.toLowerCase()))
-              );
-              const node = hitKey ? raw[Object.keys(raw).find(k => k.toLowerCase() === hitKey?.toLowerCase() || k.toLowerCase().includes(hitKey?.toLowerCase()))] : null;
+              const tryKeys = IND_ALIASES[c.key] || [c.key];
+              const hit = Object.keys(raw || {}).find(k => tryKeys.some(a => k.toLowerCase().includes(a.toLowerCase())));
+              const node = hit ? raw[hit] : null;
               const cp = node?.changePercent ?? node?.percent ?? node?.delta ?? null;
               if (isFinite(Number(cp))) deltaPct = Number(cp);
             }
-
             const href = LINK[c.key];
             const up = deltaPct != null ? deltaPct >= 0 : (s ? s[s.length - 1] >= s[0] : true);
 
@@ -497,51 +485,52 @@ function StocksSection() {
 }
 
 /* =========================
-   4) 뉴스 — 그룹 분리(브랜드/산업) + 한국뉴스 버튼
+   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (정확도 강화 토글)
 ========================= */
 const BRAND_TERMS = [
   "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
   "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
 ];
 const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
+const KOREAN_BRAND_TERMS = [
+  "월마트","빅토리아시크릿","아베크롬비","카터스","콜스","유니클로","패스트리테일링",
+  "에어리","둘루스","언더아머","아리츠아","아마존","알리바바"
+];
+const KOREAN_INDUSTRY_TERMS = ["패션","의류","섬유","의복","SPA","유통","리테일"];
 
-const KOREAN_TERMS = ["패션","의류","섬유","의복","리테일","유통","SPA","패스트리테일링","월마트","아마존","알리바바","아리츠아","언더아머","빅토리아시크릿","아베크롬비","카터스","콜스","유니클로","에어리","둘루스"];
-
-const makeOrQuery = (arr) =>
-  arr.map(s => `"${s.replace(/"/g, '\\"')}"`).join(" OR ");
-
-function NewsGroupsSection() {
+function NewsTabsSection() {
+  const [tab, setTab] = useState("brand"); // brand | industry | korea
+  const [andStrict, setAndStrict] = useState(true); // 정확도 강화(AND)
   const [brandNews, setBrandNews] = useState([]);
   const [industryNews, setIndustryNews] = useState([]);
   const [krNews, setKrNews] = useState([]);
   const [busy, setBusy] = useState({ brand:false, industry:false, kr:false });
+  const [err, setErr] = useState("");
 
-  const twoPhaseFilter = (items) => {
-    const terms = [...BRAND_TERMS, ...INDUSTRY_TERMS];
-    const re = new RegExp(terms.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i");
-    const seen = new Set();
-    const out = [];
-    for (const a of items || []) {
-      const title = a?.title || "";
-      const source = a?.source?.name || a?.source || "";
-      const desc = a?.description || "";
-      const url = a?.url || "";
-      if (!url || seen.has(url)) continue;
-      if (!re.test(`${title} ${source} ${desc}`)) continue;
-      seen.add(url);
-      out.push(a);
-    }
-    return out;
-  };
+  // 글로벌 화이트리스트(잡음 줄이기)
+  const DOMAINS = "reuters.com,fashionunited.com,wwd.com,businesswire.com,forbes.com,apnews.com,bloomberg.com,ft.com,cnbc.com";
+  const EXCLUDE = "celebrity,lookbook,outfit,beauty,gossip,concert,fandom";
 
   const loadBrand = async () => {
     if (busy.brand) return;
     try {
       setBusy(s => ({ ...s, brand: true }));
-      const q = makeOrQuery(BRAND_TERMS);
-      const r = await fetch(`/api/news?q=${encodeURIComponent(q)}&limit=40&ts=${Date.now()}`, { cache: "no-store" });
+      setErr("");
+      const qs = new URLSearchParams({
+        brand: BRAND_TERMS.join("|"),
+        industry: INDUSTRY_TERMS.join("|"),
+        must: andStrict ? "brand,industry" : "",
+        language: "en",
+        limit: "40",
+        days: "14",
+        domains: DOMAINS,
+        exclude: EXCLUDE,
+      });
+      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
       const arr = await r.json();
-      setBrandNews(twoPhaseFilter(arr));
+      setBrandNews(arr || []);
+    } catch (e) {
+      setErr(String(e));
     } finally {
       setBusy(s => ({ ...s, brand: false }));
     }
@@ -551,109 +540,101 @@ function NewsGroupsSection() {
     if (busy.industry) return;
     try {
       setBusy(s => ({ ...s, industry: true }));
-      const q = makeOrQuery(INDUSTRY_TERMS);
-      const r = await fetch(`/api/news?q=${encodeURIComponent(q)}&limit=40&ts=${Date.now()}`, { cache: "no-store" });
+      setErr("");
+      const qs = new URLSearchParams({
+        industry: INDUSTRY_TERMS.join("|"),
+        language: "en",
+        limit: "40",
+        days: "14",
+        domains: DOMAINS,
+        exclude: EXCLUDE,
+      });
+      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
       const arr = await r.json();
-      setIndustryNews(twoPhaseFilter(arr));
+      setIndustryNews(arr || []);
+    } catch (e) {
+      setErr(String(e));
     } finally {
       setBusy(s => ({ ...s, industry: false }));
     }
   };
 
-  const loadKorean = async () => {
+  const loadKorea = async () => {
     if (busy.kr) return;
     try {
       setBusy(s => ({ ...s, kr: true }));
-      const q = makeOrQuery(KOREAN_TERMS);
-      const r = await fetch(`/api/news?q=${encodeURIComponent(q)}&language=ko&limit=40&ts=${Date.now()}`, { cache: "no-store" });
+      setErr("");
+      // 한국 특화 도메인 타겟 + ko
+      const qs = new URLSearchParams({
+        brand: [...KOREAN_BRAND_TERMS, ...BRAND_TERMS].join("|"),
+        industry: [...KOREAN_INDUSTRY_TERMS, ...INDUSTRY_TERMS].join("|"),
+        must: andStrict ? "brand,industry" : "",
+        language: "ko",
+        limit: "40",
+        days: "21",
+        domains: "ktnews.com,itnk.co.kr,kofoti.or.kr,textopia.or.kr,bizm.kr,etnews.com,sedaily.com,hankyung.com",
+        exclude: EXCLUDE,
+        market: "ko-KR",
+      });
+      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
       const arr = await r.json();
-      // 한국뉴스는 한글 키워드로 필터 — 단, 중복 제거
-      const re = new RegExp(KOREAN_TERMS.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i");
-      const seen = new Set();
-      const out = [];
-      for (const a of arr || []) {
-        const title = a?.title || "";
-        const source = a?.source?.name || a?.source || "";
-        const desc = a?.description || "";
-        const url = a?.url || "";
-        if (!url || seen.has(url)) continue;
-        if (!re.test(`${title} ${source} ${desc}`)) continue;
-        seen.add(url);
-        out.push(a);
-      }
-      setKrNews(out);
+      setKrNews(arr || []);
+    } catch (e) {
+      setErr(String(e));
     } finally {
       setBusy(s => ({ ...s, kr: false }));
     }
   };
 
+  useEffect(() => {
+    loadBrand();
+    loadIndustry();
+    loadKorea();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const Section = ({ title, items }) => (
+    <div style={{ marginTop: 12 }}>
+      <div style={styles.blockTitle}>{title}</div>
+      {items.length === 0 ? <div style={{ color:"#6b7280" }}>관련 기사가 아직 없어요.</div> : (
+        <div style={{ display:"grid", gap:12 }}>
+          {items.map((a, idx) => (
+            <a key={idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
+              <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                {(a.source?.name || a.source || new URL(a.url).hostname)}
+                {a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-        <h3 style={styles.h3}>뉴스 피드 (브랜드 / 산업 / 한국)</h3>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={loadBrand} disabled={busy.brand} style={styles.btnGray}>
-            {busy.brand ? "브랜드 로딩…" : "브랜드 뉴스"}
-          </button>
-          <button onClick={loadIndustry} disabled={busy.industry} style={styles.btnGray}>
-            {busy.industry ? "산업 로딩…" : "산업 뉴스"}
-          </button>
-          <button onClick={loadKorean} disabled={busy.kr} style={styles.btnBlue}>
-            {busy.kr ? "한국뉴스 로딩…" : "한국 뉴스(β)"}
-          </button>
+          <button onClick={() => setTab("brand")} style={{ ...styles.btnTab, ...(tab==="brand"?styles.btnTabActive:{}) }}>브랜드</button>
+          <button onClick={() => setTab("industry")} style={{ ...styles.btnTab, ...(tab==="industry"?styles.btnTabActive:{}) }}>산업</button>
+          <button onClick={() => setTab("korea")} style={{ ...styles.btnTab, ...(tab==="korea"?styles.btnTabActive:{}) }}>한국</button>
+        </div>
+        <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
+          <input type="checkbox" checked={andStrict} onChange={(e)=>setAndStrict(e.target.checked)} />
+          정확도 강화(AND: 고객사 ∩ 업계)
+        </label>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={loadBrand} disabled={busy.brand} style={styles.btnGray}>{busy.brand?"브랜드 로딩…":"브랜드 새로고침"}</button>
+          <button onClick={loadIndustry} disabled={busy.industry} style={styles.btnGray}>{busy.industry?"산업 로딩…":"산업 새로고침"}</button>
+          <button onClick={loadKorea} disabled={busy.kr} style={styles.btnBlue}>{busy.kr?"한국 로딩…":"한국 새로고침"}</button>
         </div>
       </div>
+      {err && <div style={styles.err}>&middot; 뉴스 오류: {err}</div>}
 
-      {/* 브랜드 뉴스 */}
-      {brandNews.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={styles.blockTitle}>브랜드 뉴스</div>
-          <div style={{ display:"grid", gap:12 }}>
-            {brandNews.map((a, idx) => (
-              <a key={"b"+idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
-                <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  {(a.source?.name || a.source || "")}{a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 산업 뉴스 */}
-      {industryNews.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={styles.blockTitle}>산업 동향 뉴스</div>
-          <div style={{ display:"grid", gap:12 }}>
-            {industryNews.map((a, idx) => (
-              <a key={"i"+idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
-                <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  {(a.source?.name || a.source || "")}{a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 한국 뉴스 */}
-      {krNews.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={styles.blockTitle}>한국 뉴스 (베타)</div>
-          <div style={{ display:"grid", gap:12 }}>
-            {krNews.map((a, idx) => (
-              <a key={"k"+idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
-                <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  {(a.source?.name || a.source || "")}{a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      {tab==="brand" && <Section title="브랜드 뉴스" items={brandNews} />}
+      {tab==="industry" && <Section title="산업 동향 뉴스" items={industryNews} />}
+      {tab==="korea" && <Section title="한국 뉴스" items={krNews} />}
     </section>
   );
 }
@@ -675,7 +656,7 @@ export default function Home() {
         <ProcurementTopBlock />
         <IndicatorsSection />
         <StocksSection />
-        <NewsGroupsSection />
+        <NewsTabsSection />
       </main>
 
       <footer style={styles.footer}>
@@ -738,6 +719,8 @@ const styles = {
   btnDanger: { background:"#fee2e2", border:"1px solid #fecaca", padding:"8px 10px", borderRadius:10, fontWeight:700, fontSize:13, color:"#991b1b" },
 
   newsItem: { display:"block", padding:12, border:"1px solid #e5e7eb", borderRadius:12, textDecoration:"none", color:"#111" },
+  btnTab: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"6px 10px", borderRadius:8, fontWeight:700, fontSize:13, color:"#111" },
+  btnTabActive: { background:"#111827", color:"#fff", borderColor:"#111827" },
 
   footer: { borderTop:"1px solid #e5e7eb", marginTop:10, background:"#fff" },
 };
