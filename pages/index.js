@@ -19,6 +19,51 @@ const fmtSignPct = (n, d = 2) => {
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 /* =========================
+   공통: AI 분석 박스
+========================= */
+function AIBox({ block, payload }) {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!payload) return;
+    (async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        const r = await fetch("/api/ai-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            block,
+            language: "ko",
+            mode: "brief",
+            data: payload,
+          }),
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
+        setText(j.summary || "");
+      } catch (e) {
+        setErr(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [block, JSON.stringify(payload || {})]);
+
+  return (
+    <div style={styles.aiBox}>
+      <div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>
+      {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
+      {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
+      {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
+    </div>
+  );
+}
+
+/* =========================
    헤더
 ========================= */
 function HeaderBar() {
@@ -146,6 +191,8 @@ function ProcurementTopBlock() {
         </div>
       </div>
 
+      <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
+
       {openEdit && (
         <div style={styles.editBox}>
           <div style={styles.row}>
@@ -257,6 +304,20 @@ function IndicatorsSection() {
     { key: "unemployment", title: "실업률(%)" },
   ];
 
+  const payloadForAI = useMemo(() => {
+    const d = state.data || {};
+    const out = {};
+    curated.forEach((c) => {
+      out[c.key] = {
+        value: d?.[c.key]?.value ?? null,
+        changePercent: d?.[c.key]?.changePercent ?? null,
+        yoyPercent: d?.[c.key]?.yoyPercent ?? null,
+        lastDate: d?.[c.key]?.lastDate ?? null,
+      };
+    });
+    return { indicators: out, lastUpdated };
+  }, [state.data, lastUpdated]);
+
   return (
     <section style={{ marginTop: 24 }}>
       <h3 style={styles.h3}>주요 지표</h3>
@@ -269,37 +330,40 @@ function IndicatorsSection() {
       {state.error && <div style={styles.err}>에러: {state.error}</div>}
 
       {!state.loading && !state.error && (
-        <div style={styles.grid4}>
-          {curated.map((c) => {
-            const node = state.data?.[c.key] || null;
-            const v = node?.value ?? null;
-            const s = node?.history || [];
-            const deltaPct = node?.changePercent ?? null;
-            const yoyPct = node?.yoyPercent ?? null;
-            const href = LINK[c.key];
-            const up = deltaPct != null ? deltaPct >= 0 : (s.length >= 2 ? s[s.length - 1] >= s[0] : true);
-            const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
-            const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
+        <>
+          <div style={styles.grid4}>
+            {curated.map((c) => {
+              const node = state.data?.[c.key] || null;
+              const v = node?.value ?? null;
+              const s = node?.history || [];
+              const deltaPct = node?.changePercent ?? null;
+              const yoyPct = node?.yoyPercent ?? null;
+              const href = LINK[c.key];
+              const up = deltaPct != null ? deltaPct >= 0 : (s.length >= 2 ? s[s.length - 1] >= s[0] : true);
+              const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
+              const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
 
-            return (
-              <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
-                <div style={styles.cardTitle}>{c.title}</div>
-                <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
-                <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
-                  {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
-                </div>
-                {yoyPct != null && (
-                  <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
-                    YoY: {fmtSignPct(yoyPct)}
+              return (
+                <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
+                  <div style={styles.cardTitle}>{c.title}</div>
+                  <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
+                  <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
+                    {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                   </div>
-                )}
-                <Sparkline series={s || []} />
-                {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
-              </a>
-            );
-          })}
-        </div>
+                  {yoyPct != null && (
+                    <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
+                      YoY: {fmtSignPct(yoyPct)}
+                    </div>
+                  )}
+                  <Sparkline series={s || []} />
+                  {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
+                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                </a>
+              );
+            })}
+          </div>
+          <AIBox block="indicators" payload={payloadForAI} />
+        </>
       )}
     </section>
   );
@@ -359,6 +423,7 @@ function StocksSection() {
   }, []);
 
   const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
+  const aiPayload = useMemo(() => ({ rows: sorted }), [JSON.stringify(sorted)]);
 
   return (
     <section style={{ marginTop: 24 }}>
@@ -366,23 +431,26 @@ function StocksSection() {
       {loading && <div>불러오는 중...</div>}
       {err && <div style={styles.err}>에러: {err}</div>}
       {!loading && !err && (
-        <div style={styles.grid4}>
-          {sorted.map((r) => {
-            const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
-            return (
-              <a key={r.symbol} href={link} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터(야후 파이낸스) 열기">
-                <div style={styles.cardTitle}>
-                  {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
-                </div>
-                <div style={styles.cardValue}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
-                  {fmtSignPct(r.pct)}
-                </div>
-                <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
-              </a>
-            );
-          })}
-        </div>
+        <>
+          <div style={styles.grid4}>
+            {sorted.map((r) => {
+              const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
+              return (
+                <a key={r.symbol} href={link} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터(야후 파이낸스) 열기">
+                  <div style={styles.cardTitle}>
+                    {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+                  </div>
+                  <div style={styles.cardValue}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
+                  <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
+                    {fmtSignPct(r.pct)}
+                  </div>
+                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                </a>
+              );
+            })}
+          </div>
+          <AIBox block="stocks" payload={aiPayload} />
+        </>
       )}
     </section>
   );
@@ -456,7 +524,6 @@ function NewsTabsSection() {
     try {
       setBusy(s => ({ ...s, kr: true }));
       setErr("");
-      // 필터 없이, 최근 2일치 RSS
       const qs = new URLSearchParams({
         feeds: "http://www.ktnews.com/rss/allArticle.xml",
         days: "2",
@@ -473,7 +540,6 @@ function NewsTabsSection() {
     loadBrand();
     loadIndustry();
     loadKorea();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const Section = ({ title, items }) => (
@@ -494,6 +560,16 @@ function NewsTabsSection() {
       )}
     </div>
   );
+
+  const aiPayload = useMemo(() => ({
+    brandCount: brandNews.length,
+    industryCount: industryNews.length,
+    koreaCount: krNews.length,
+    brandTop: brandNews.slice(0, 5),
+    industryTop: industryNews.slice(0, 5),
+    koreaTop: krNews.slice(0, 5),
+    andStrict,
+  }), [JSON.stringify(brandNews), JSON.stringify(industryNews), JSON.stringify(krNews), andStrict]);
 
   return (
     <section style={{ marginTop: 24 }}>
@@ -518,6 +594,8 @@ function NewsTabsSection() {
       {tab==="brand" && <Section title="브랜드 뉴스" items={brandNews} />}
       {tab==="industry" && <Section title="산업 동향 뉴스" items={industryNews} />}
       {tab==="korea" && <Section title="한국 뉴스" items={krNews} />}
+
+      <AIBox block="news" payload={aiPayload} />
     </section>
   );
 }
@@ -603,7 +681,9 @@ const styles = {
 
   newsItem: { display:"block", padding:12, border:"1px solid #e5e7eb", borderRadius:12, textDecoration:"none", color:"#111" },
   btnTab: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"6px 10px", borderRadius:8, fontWeight:700, fontSize:13, color:"#111" },
-  btnTabActive: { background:"#111827", color:"#fff", borderColor:"#111827" },
+  btnTabActive: { background:"#111827", color:"#fff", border:"1px solid #111827" },
+
+  aiBox: { marginTop:10, padding:10, background:"#f9fafb", border:"1px dashed #d1d5db", borderRadius:8, fontSize:13, color:"#111" },
 
   footer: { borderTop:"1px solid #e5e7eb", marginTop:10, background:"#fff" },
 };
