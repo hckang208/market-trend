@@ -1,3 +1,4 @@
+// /pages/api/stocks.js
 export default async function handler(req, res) {
   try {
     const apiKey = process.env.RAPIDAPI_KEY;
@@ -8,12 +9,14 @@ export default async function handler(req, res) {
     const { symbol } = req.query;
     if (!symbol) return res.status(400).json({ error: "symbol 파라미터 필요" });
 
-    // 심볼별 region 분기
+    // 심볼별 region 간단 분기
     let region = "US";
-    if (symbol.endsWith(".T") || symbol === "9983.T") region = "JP";
-    else if (symbol === "BABA" || symbol.includes(".HK")) region = "HK";
+    if (symbol.endsWith(".T")) region = "JP";
+    if (symbol.endsWith(".HK")) region = "HK";
 
-    const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(symbol)}&region=${region}`;
+    const url = `https://yh-finance.p.rapidapi.com/stock/v2/get-summary?symbol=${encodeURIComponent(
+      symbol
+    )}&region=${region}`;
 
     const r = await fetch(url, {
       headers: {
@@ -33,30 +36,45 @@ export default async function handler(req, res) {
     }
 
     const data = await r.json();
-
-    // 안전한 추출 + 폴백
     const p = data?.price || {};
     const sd = data?.summaryDetail || {};
 
+    // 현재가
     const price =
       p?.regularMarketPrice?.raw ??
       p?.postMarketPrice?.raw ??
       null;
 
-    const previousClose =
+    // 절대값 change
+    let change =
+      p?.regularMarketChange?.raw ??
+      null;
+
+    // 이전 종가 (없으면 price - change 로 보정)
+    let previousClose =
       p?.regularMarketPreviousClose?.raw ??
       sd?.previousClose?.raw ??
       null;
 
-    // Yahoo가 주는 퍼센트 우선 사용, 없으면 계산
-    const changePercent =
+    if (previousClose == null && price != null && change != null) {
+      previousClose = price - change;
+    }
+
+    // 퍼센트: API 값 우선 → 없으면 연산
+    let changePercent =
       p?.regularMarketChangePercent?.raw ??
-      (price != null && previousClose != null && previousClose !== 0
+      (previousClose != null && previousClose !== 0 && price != null
         ? ((price - previousClose) / previousClose) * 100
         : null);
 
-    const change =
-      price != null && previousClose != null ? price - previousClose : null;
+    if (changePercent == null && change != null && price != null && price !== change) {
+      // previousClose 미확정이어도 change/price 로 보정
+      changePercent = (change / (price - change)) * 100;
+    }
+
+    if (change == null && price != null && previousClose != null) {
+      change = price - previousClose;
+    }
 
     const longName =
       p?.longName || p?.shortName || data?.quoteType?.longName || symbol;
@@ -69,7 +87,7 @@ export default async function handler(req, res) {
       currency: p?.currency || null,
       previousClose,
       change,
-      changePercent, // <-- 프론트에서 이 값 바로 사용
+      changePercent, // 프론트에서 우선 사용
       marketCap: p?.marketCap?.fmt ?? null,
     });
   } catch (e) {
