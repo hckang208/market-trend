@@ -140,8 +140,7 @@ function HeaderBar() {
     <header style={styles.headerWrap}>
       <div style={styles.headerInner}>
         <div style={styles.brand}>
-          <img src="/hansoll-logo.svg" alt="Hansoll" style={{ height: 24 }} />
-          <span>Market Trend</span>
+          <span>Hansoll Market Trend</span>
         </div>
         <nav style={styles.nav}>
           <a href="/" style={styles.navLink}>Dashboard</a>
@@ -314,7 +313,7 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 (스파크라인 + 이전대비, 클릭 → 원본)
+   2) 주요지표 (스파크라인 + 이전대비, 클릭 → 원본 + 업데이트 시간)
 ========================= */
 function Sparkline({ series = [], width = 110, height = 32 }) {
   if (!series || series.length < 2) return null;
@@ -337,6 +336,7 @@ function Sparkline({ series = [], width = 110, height = 32 }) {
 
 function IndicatorsSection() {
   const [state, setState] = useState({ loading: true, data: null, error: "" });
+  const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -345,6 +345,7 @@ function IndicatorsSection() {
         const j = await r.json();
         if (!r.ok) throw new Error("지표 API 오류");
         setState({ loading: false, data: j, error: "" });
+        setLastUpdated(j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString());
       } catch (e) {
         setState({ loading: false, data: null, error: String(e) });
       }
@@ -373,6 +374,11 @@ function IndicatorsSection() {
   return (
     <section style={{ marginTop: 24 }}>
       <h3 style={styles.h3}>주요 지표</h3>
+      {lastUpdated && (
+        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+          업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+        </div>
+      )}
       {state.loading && <div>불러오는 중...</div>}
       {state.error && <div style={styles.err}>에러: {state.error}</div>}
 
@@ -415,7 +421,7 @@ function IndicatorsSection() {
 }
 
 /* =========================
-   3) 일일 리테일러 주가 등락률
+   3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
 ========================= */
 const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
 const NAME_MAP = {
@@ -444,8 +450,15 @@ function StocksSection() {
               const j = await r.json();
               const name = j.longName || j.name || NAME_MAP[s] || s;
               const price = j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
-              const pct = j.changePercent ?? j.percent ?? j.change_percentage ?? j.deltaPct ?? null;
-              return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct: isFinite(Number(pct)) ? Number(pct) : 0 };
+              const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
+              let pct = 0;
+              if (isFinite(Number(price)) && isFinite(Number(prevClose)) && Number(prevClose) !== 0) {
+                pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
+              } else {
+                const fallback = j.changePercent ?? j.percent ?? j.change_percentage ?? j.deltaPct ?? null;
+                pct = isFinite(Number(fallback)) ? Number(fallback) : 0;
+              }
+              return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct };
             } catch {
               return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
             }
@@ -464,7 +477,7 @@ function StocksSection() {
 
   return (
     <section style={{ marginTop: 24 }}>
-      <h3 style={styles.h3}>일일 리테일러 주가 등락률</h3>
+      <h3 style={styles.h3}>일일 리테일러 주가 등락률 (전일 종가 대비)</h3>
       {loading && <div>불러오는 중...</div>}
       {err && <div style={styles.err}>에러: {err}</div>}
       {!loading && !err && (
@@ -491,7 +504,7 @@ function StocksSection() {
 }
 
 /* =========================
-   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (정확도 강화 토글)
+   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (정확도 강화 토글 + 한국 RSS 병합)
 ========================= */
 const BRAND_TERMS = [
   "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
@@ -746,7 +759,7 @@ const styles = {
 
   ctaRow: { display:"flex", gap:8, marginTop:12, flexWrap:"wrap" },
   ctaDark: { background:"#111827", color:"#fff", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13 },
-  ctaLight: { border:"1px solid "#111827", color:"#111827", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, background:"#fff" },
+  ctaLight: { border:"1px solid #111827", color:"#111827", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, background:"#fff" },
 
   btnGray: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"8px 10px", borderRadius:10, fontWeight:700, fontSize:13, color:"#111" },
   btnBlue: { background:"#2563eb", border:"1px solid #1d4ed8", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, color:"#fff", textDecoration:"none" },
