@@ -1,10 +1,24 @@
 // pages/index.js
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import KpiCard from "../components/KpiCard";
 
-/* ========= 공용 헬퍼 ========= */
-// 어떤 형태(value/price/index/rate/last/close/문자열)로 와도 숫자만 뽑기
+/* =========================
+   유틸
+========================= */
+const fmtNum = (n, d = 2) => {
+  const v = Number(n);
+  if (!isFinite(v)) return "-";
+  return v.toLocaleString(undefined, { maximumFractionDigits: d });
+};
+const fmtSignPct = (n, d = 2) => {
+  const v = Number(n);
+  if (!isFinite(v)) return "0.00%";
+  const s = v >= 0 ? "+" : "";
+  return `${s}${v.toFixed(d)}%`;
+};
+const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
+
+/* 숫자 안전 추출: value/price/index/rate/last/close/문자열 모두 커버 */
 const val = (x) => {
   if (x == null) return null;
   if (typeof x === "number") return isFinite(x) ? x : null;
@@ -20,7 +34,7 @@ const val = (x) => {
   return null;
 };
 
-// 지표 키 별칭(환경마다 키명이 다른 경우 대비)
+/* (지표 키별 별칭) API 마다 키명이 달라도 매핑되게 */
 const IND_ALIASES = {
   wti: ["wti", "WTI", "oil", "dcoilwtico", "brent"],
   usdkrw: ["usdkrw", "USDKRW", "usd_krw", "krw", "DEXKOUS"],
@@ -41,422 +55,683 @@ const getInd = (obj, key) => {
   return null;
 };
 
-const pctChange = (price, prev) => {
-  if (price == null || prev == null || prev === 0) return null;
-  return ((price - prev) / prev) * 100;
-};
-
-/* ========= KPI 카드 전체 클릭 래퍼 ========= */
-function Kpi({ href, ...props }) {
-  const handle = (e) => {
-    // 내부에 a 태그가 있으면 중복 오픈 막기
-    if (e.target.closest("a")) return;
-    if (href) window.open(href, "_blank", "noopener,noreferrer");
-  };
+/* =========================
+   상단 헤더 (추가)
+========================= */
+function HeaderBar() {
   return (
-    <div
-      onClick={handle}
-      role="button"
-      title="원본 데이터 열기"
-      className="cursor-pointer"
-    >
-      <KpiCard {...props} href={href} />
-    </div>
+    <header style={styles.headerWrap}>
+      <div style={styles.headerInner}>
+        <div style={styles.brand}>
+          <img src="/hansoll-logo.svg" alt="Hansoll" style={{ height: 24 }} />
+          <span>Market Trend</span>
+        </div>
+        <nav style={styles.nav}>
+          <a href="/" style={styles.navLink}>Dashboard</a>
+          <a href="/daily-report" style={styles.navLink}>AI Daily Report</a>
+        </nav>
+      </div>
+    </header>
   );
 }
 
-export default function Home() {
-  const [ind, setInd] = useState(null);
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // AI 요약
-  const [insight, setInsight] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-
-  // 뉴스
-  const [deck, setDeck] = useState([]);
-  const [newsBusy, setNewsBusy] = useState(false);
-  const [newsInsight, setNewsInsight] = useState("");
-  const [newsAiBusy, setNewsAiBusy] = useState(false);
-
-  const symbols = ["WMT", "TGT", "KSS", "VSCO", "ANF", "CRI", "9983.T", "AMZN", "BABA"];
-  const NAME_MAP = {
-    WMT: "Walmart Inc.",
-    TGT: "Target Corporation",
-    KSS: "Kohl's Corporation",
-    VSCO: "Victoria's Secret & Co.",
-    ANF: "Abercrombie & Fitch Co.",
-    CRI: "Carter's, Inc.",
-    "9983.T": "Fast Retailing Co., Ltd.",
-    AMZN: "Amazon.com, Inc.",
-    BABA: "Alibaba Group Holding Limited",
+/* =========================
+   1) 부자재구매현황 DASHBOARD (수기입력)
+========================= */
+function ProcurementTopBlock() {
+  const LS_KEY = "procure.dashboard.v1";
+  const defaultData = {
+    currency: "USD",
+    period: "월간",
+    periodLabel: "",
+    revenue: 0,
+    materialSpend: 0,
+    styles: 0,
+    poCount: 0,
+    supplyBreakdown: { domestic: 0, thirdCountry: 0, local: 0 },
   };
+
+  const [data, setData] = useState(defaultData);
+  const [openEdit, setOpenEdit] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) setData({ ...defaultData, ...JSON.parse(raw) });
+    } catch {}
+  }, []);
+
+  const ratio = useMemo(() => {
+    const r = Number(data.revenue || 0);
+    const m = Number(data.materialSpend || 0);
+    if (r <= 0) return 0;
+    return clamp((m / r) * 100, 0, 100);
+  }, [data]);
+
+  const supply = useMemo(() => {
+    const d = Number(data.supplyBreakdown.domestic || 0);
+    const t = Number(data.supplyBreakdown.thirdCountry || 0);
+    const l = Number(data.supplyBreakdown.local || 0);
+    const sum = d + t + l || 1;
+    return {
+      domestic: clamp((d / sum) * 100),
+      thirdCountry: clamp((t / sum) * 100),
+      local: clamp((l / sum) * 100),
+    };
+  }, [data]);
+
+  const save = () => {
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+    setOpenEdit(false);
+  };
+  const reset = () => {
+    localStorage.removeItem(LS_KEY);
+    setData(defaultData);
+  };
+
+  const fmtCurrency = (value, currency = "USD") => {
+    const num = Number(value || 0);
+    try {
+      if (currency === "KRW") {
+        return new Intl.NumberFormat("ko-KR", {
+          style: "currency",
+          currency: "KRW",
+          maximumFractionDigits: 0,
+        }).format(num);
+      }
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(num);
+    } catch {
+      return (currency === "KRW" ? "₩" : "$") + num.toLocaleString();
+    }
+  };
+
+  const Card = ({ title, value, sub }) => (
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>{title}</div>
+      <div style={styles.cardValue}>{value}</div>
+      {sub ? <div style={styles.cardSub}>{sub}</div> : null}
+    </div>
+  );
+
+  return (
+    <section style={styles.blockWrap}>
+      <div style={styles.headerRow}>
+        <div>
+          <h2 style={styles.h2}>부자재구매현황 DASHBOARD</h2>
+          <div style={styles.meta}>
+            기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b>{" "}
+            / 통화: <b>{data.currency}</b>
+          </div>
+        </div>
+        <div style={styles.tools}>
+          <button onClick={() => setOpenEdit((v) => !v)} style={styles.btnGray}>
+            ✏️ 편집
+          </button>
+          <a href="/daily-report" style={styles.btnBlue}>
+            🤖 AI Daily Report
+          </a>
+        </div>
+      </div>
+
+      <div style={styles.grid5}>
+        <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
+        <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>매출 대비 부자재 매입비중</div>
+          <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
+          <div style={styles.progressWrap}>
+            <div style={{ ...styles.progressBar, width: `${ratio}%` }} />
+          </div>
+        </div>
+        <Card title="총 오더수(스타일)" value={fmtNum(data.styles, 0)} />
+        <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
+      </div>
+
+      <div style={styles.innerBlock}>
+        <div style={styles.blockTitle}>공급현황 (국내 / 3국 / 현지)</div>
+        <div style={styles.stackBar}>
+          <div
+            style={{ ...styles.seg, background: "#111827", width: `${supply.domestic}%` }}
+            title={`국내 ${fmtNum(supply.domestic, 1)}%`}
+          />
+          <div
+            style={{ ...styles.seg, background: "#4B5563", width: `${supply.thirdCountry}%` }}
+            title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`}
+          />
+          <div
+            style={{ ...styles.seg, background: "#9CA3AF", width: `${supply.local}%` }}
+            title={`현지 ${fmtNum(supply.local, 1)}%`}
+          />
+        </div>
+        <div style={styles.legend}>
+          <span>국내 {fmtNum(supply.domestic, 1)}%</span>
+          <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
+          <span>현지 {fmtNum(supply.local, 1)}%</span>
+        </div>
+      </div>
+
+      {openEdit && (
+        <div style={styles.editBox}>
+          <div style={styles.row}>
+            <label>기간 표시</label>
+            <input
+              value={data.periodLabel || ""}
+              onChange={(e) => setData((d) => ({ ...d, periodLabel: e.target.value }))}
+              placeholder="예: 2025-09"
+            />
+          </div>
+          <div style={styles.row}>
+            <label>방식</label>
+            <input
+              value={data.period || ""}
+              onChange={(e) => setData((d) => ({ ...d, period: e.target.value }))}
+              placeholder="월간 / 주간 / 일간 등"
+            />
+          </div>
+          <div style={styles.row}>
+            <label>통화</label>
+            <select
+              value={data.currency}
+              onChange={(e) => setData((d) => ({ ...d, currency: e.target.value }))}
+            >
+              <option value="USD">USD</option>
+              <option value="KRW">KRW</option>
+            </select>
+          </div>
+
+          <div style={styles.grid2}>
+            <div style={styles.row}>
+              <label>총 매출액</label>
+              <input
+                type="number"
+                value={data.revenue}
+                onChange={(e) => setData((d) => ({ ...d, revenue: Number(e.target.value) }))}
+              />
+            </div>
+            <div style={styles.row}>
+              <label>총 부자재매입액</label>
+              <input
+                type="number"
+                value={data.materialSpend}
+                onChange={(e) => setData((d) => ({ ...d, materialSpend: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          <div style={styles.grid2}>
+            <div style={styles.row}>
+              <label>총 오더수(스타일)</label>
+              <input
+                type="number"
+                value={data.styles}
+                onChange={(e) => setData((d) => ({ ...d, styles: Number(e.target.value) }))}
+              />
+            </div>
+            <div style={styles.row}>
+              <label>총 발행 PO수</label>
+              <input
+                type="number"
+                value={data.poCount}
+                onChange={(e) => setData((d) => ({ ...d, poCount: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 8, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
+            <div style={styles.blockTitle}>공급현황(%) — 합계 100 기준</div>
+            <div style={styles.grid3}>
+              <div style={styles.row}>
+                <label>국내(%)</label>
+                <input
+                  type="number"
+                  value={data.supplyBreakdown.domestic}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) },
+                    }))
+                  }
+                />
+              </div>
+              <div style={styles.row}>
+                <label>3국(%)</label>
+                <input
+                  type="number"
+                  value={data.supplyBreakdown.thirdCountry}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: {
+                        ...d.supplyBreakdown,
+                        thirdCountry: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div style={styles.row}>
+                <label>현지(%)</label>
+                <input
+                  type="number"
+                  value={data.supplyBreakdown.local}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button onClick={save} style={styles.btnBlue}>
+              저장
+            </button>
+            <button onClick={() => setOpenEdit(false)} style={styles.btnGray}>
+              닫기
+            </button>
+            <button onClick={reset} style={styles.btnDanger}>
+              초기화
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={styles.ctaRow}>
+        <a href="#incidents" style={styles.ctaDark}>부자재 관련사고</a>
+        <a href="#materials" style={styles.ctaDark}>부자재 관련 자료</a>
+        <a href="/chatbot" style={styles.ctaLight}>AI Chatbot (한솔부자재)</a>
+      </div>
+    </section>
+  );
+}
+
+/* =========================
+   2) 주요지표 섹션 (클릭 → 원본 데이터)
+========================= */
+function IndicatorsSection() {
+  const [state, setState] = useState({ loading: true, data: null, error: "" });
 
   useEffect(() => {
     (async () => {
       try {
-        const indRes = await fetch("/api/indicators?ts=" + Date.now(), { cache: "no-store" });
-        if (indRes.ok) setInd(await indRes.json());
+        const r = await fetch("/api/indicators", { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) throw new Error("지표 API 오류");
+        setState({ loading: false, data: j, error: "" });
+      } catch (e) {
+        setState({ loading: false, data: null, error: String(e) });
+      }
+    })();
+  }, []);
 
-        const now = Date.now();
-        const rows = await Promise.all(
-          symbols.map(async (s, i) => {
-            const resp = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}&ts=${now}_${i}`, { cache: "no-store" });
-            const stock = resp.ok ? await resp.json() : null;
-            return { symbol: s, stock, news: [] };
+  /* 원본 링크 맵 */
+  const LINK = {
+    wti: "https://fred.stlouisfed.org/series/DCOILWTICO",
+    usdkrw: "https://fred.stlouisfed.org/series/DEXKOUS",
+    cpi: "https://fred.stlouisfed.org/series/CPIAUCSL",
+    fedfunds: "https://fred.stlouisfed.org/series/FEDFUNDS",
+    t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
+    inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
+    unemployment: "https://fred.stlouisfed.org/series/UNRATE",
+  };
+
+  /* 큐레이티드 핵심 카드 (항상 위에 고정 노출) */
+  const curated = [
+    { key: "wti", title: "WTI (USD/bbl)" },
+    { key: "usdkrw", title: "USD/KRW" },
+    { key: "cpi", title: "US CPI (Index)" },
+    { key: "fedfunds", title: "미국 기준금리(%)" },
+    { key: "t10y2y", title: "금리 스프레드(10Y–2Y, bp)" },
+    { key: "inventory_ratio", title: "재고/판매 비율" },
+    { key: "unemployment", title: "실업률(%)" },
+  ];
+
+  return (
+    <section style={{ marginTop: 24 }}>
+      <h3 style={styles.h3}>주요 지표</h3>
+      {state.loading && <div>불러오는 중...</div>}
+      {state.error && <div style={styles.err}>에러: {state.error}</div>}
+
+      {!state.loading && !state.error && (
+        <>
+          {/* 2-1. 큐레이티드 핵심 지표 (클릭 → 원본) */}
+          <div style={styles.grid4}>
+            {curated.map((c) => {
+              const v = getInd(state.data, c.key);
+              const href = LINK[c.key];
+              return (
+                <a
+                  key={c.key}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ ...styles.card, ...styles.cardLink }}
+                  title="원본 데이터 열기"
+                >
+                  <div style={styles.cardTitle}>{c.title}</div>
+                  <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
+                  <div style={{ ...styles.cardSub, color: "#6b7280" }}>원본 보기 ↗</div>
+                </a>
+              );
+            })}
+          </div>
+
+          {/* 2-2. 기타 지표 (API 응답 상위 12개, 있으면 노출 / 알려진 키는 링크 제공) */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ ...styles.blockTitle, marginBottom: 8 }}>기타 지표</div>
+            <div style={styles.grid4}>
+              {Object.entries(state.data || {})
+                .slice(0, 12)
+                .map(([k, obj]) => {
+                  // 값/변화율 안전 추출
+                  let value = "-";
+                  let sub = "";
+                  if (obj && typeof obj === "object") {
+                    const maybeVal = val(obj);
+                    const maybeChg =
+                      obj.changePercent ?? obj.change_percentage ?? obj.percent ?? obj.change ?? obj.delta;
+                    value = maybeVal != null ? fmtNum(maybeVal) : "-";
+                    if (isFinite(Number(maybeChg))) sub = fmtSignPct(Number(maybeChg));
+                  } else if (isFinite(Number(obj))) {
+                    value = fmtNum(obj);
+                  } else if (obj != null) {
+                    value = String(obj);
+                  }
+
+                  // 알려진 키면 원본 링크
+                  const linkKey = Object.keys(IND_ALIASES).find((std) =>
+                    (IND_ALIASES[std] || []).includes(k)
+                  );
+                  const href = linkKey ? LINK[linkKey] : null;
+
+                  const cardInner = (
+                    <>
+                      <div style={styles.cardTitle}>{k}</div>
+                      <div style={styles.cardValue}>{value}</div>
+                      {sub ? (
+                        <div
+                          style={{
+                            ...styles.cardSub,
+                            color: Number(sub.replace(/[+%]/g, "")) >= 0 ? "#065f46" : "#991b1b",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {sub}
+                        </div>
+                      ) : null}
+                    </>
+                  );
+
+                  return href ? (
+                    <a
+                      key={k}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ ...styles.card, ...styles.cardLink }}
+                      title="원본 데이터 열기"
+                    >
+                      {cardInner}
+                    </a>
+                  ) : (
+                    <div key={k} style={styles.card}>
+                      {cardInner}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   3) 일일 리테일러 주가 등락률 (/api/stocks)
+========================= */
+const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
+const NAME_MAP = {
+  WMT: "Walmart",
+  TGT: "Target",
+  ANF: "Abercrombie & Fitch",
+  VSCO: "Victoria's Secret",
+  KSS: "Kohl's",
+  AMZN: "Amazon",
+  BABA: "Alibaba",
+  "9983.T": "Fast Retailing (Uniqlo)",
+};
+
+function StocksSection() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const out = await Promise.all(
+          SYMBOLS.map(async (s) => {
+            try {
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
+              const j = await r.json();
+              const name = j.longName || j.name || NAME_MAP[s] || s;
+              const price =
+                j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const pct =
+                j.changePercent ?? j.percent ?? j.change_percentage ?? j.deltaPct ?? null;
+              return {
+                symbol: s,
+                name,
+                price: isFinite(Number(price)) ? Number(price) : null,
+                pct: isFinite(Number(pct)) ? Number(pct) : 0,
+              };
+            } catch {
+              return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
+            }
           })
         );
-        setList(rows);
+        setRows(out);
+        setLoading(false);
       } catch (e) {
-        console.error(e);
-      } finally {
+        setErr(String(e));
         setLoading(false);
       }
     })();
   }, []);
 
-  async function generateInsights() {
-    try {
-      setAiBusy(true);
-      const body = JSON.stringify({ indicators: ind, retailers: list });
-      const r = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body });
-      if (!r.ok) return setInsight(`AI 분석 실패: ${await r.text()}`);
-      const j = await r.json();
-      setInsight(j.summary || "");
-    } catch (e) {
-      setInsight(`AI 분석 실패: ${e.message}`);
-    } finally {
-      setAiBusy(false);
-    }
-  }
-
-  async function loadNewsDeck() {
-    if (newsBusy) return;
-    try {
-      setNewsBusy(true);
-      setNewsInsight("");
-      const seen = new Set();
-      const merged = [];
-      for (const r of list) {
-        const q = r?.stock?.longName || r.symbol;
-        try {
-          const res = await fetch(`/api/news?q=${encodeURIComponent(q)}&ts=${Date.now()}`, { cache: "no-store" });
-          if (!res.ok) continue;
-          const arr = await res.json();
-          for (const n of (arr || []).slice(0, 3)) {
-            const key = n?.url || n?.title;
-            if (!key || seen.has(key)) continue;
-            seen.add(key);
-            merged.push({
-              symbol: r.symbol,
-              name: NAME_MAP[r.symbol] || r?.stock?.longName || r.symbol,
-              title: n?.title || n?.url || "(제목 없음)",
-              url: n?.url || "#",
-              source: n?.source || (n?.provider && (n.provider[0]?.name || n.provider?.name)) || "",
-              published: n?.datePublished || n?.date || "",
-            });
-          }
-          await new Promise((res) => setTimeout(res, 300)); // 429 완화
-        } catch {}
-      }
-      merged.sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
-      setDeck(merged);
-    } finally {
-      setNewsBusy(false);
-    }
-  }
-
-  async function loadCategoryNews(cats = "retail,fashion,textile") {
-    if (newsBusy) return;
-    try {
-      setNewsBusy(true);
-      setNewsInsight("");
-      const r = await fetch(`/api/news?cat=${encodeURIComponent(cats)}&limit=30&ts=${Date.now()}`, { cache: "no-store" });
-      if (!r.ok) throw new Error(await r.text());
-      setDeck(await r.json());
-    } catch {
-      setDeck([]);
-    } finally {
-      setNewsBusy(false);
-    }
-  }
-
-  async function generateNewsInsights() {
-    if (!deck.length) {
-      setNewsInsight("먼저 뉴스 목록을 로드하세요. (뉴스 모아보기 또는 카테고리 뉴스)");
-      return;
-    }
-    try {
-      setNewsAiBusy(true);
-      const retailersForSummary = list.map((r) => {
-        const news = deck.filter((d) => (d.symbol ? d.symbol === r.symbol : false)).map((d) => ({ title: d.title, url: d.url }));
-        return { ...r, news };
-      });
-      const body = JSON.stringify({ indicators: ind, retailers: retailersForSummary, headlines: deck });
-      const r = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body });
-      if (!r.ok) return setNewsInsight(`AI 뉴스 요약 실패: ${await r.text()}`);
-      const j = await r.json();
-      setNewsInsight(j.summary || "");
-    } catch (e) {
-      setNewsInsight(`AI 뉴스 요약 실패: ${e.message}`);
-    } finally {
-      setNewsAiBusy(false);
-    }
-  }
+  const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
 
   return (
-    <div>
+    <section style={{ marginTop: 24 }}>
+      <h3 style={styles.h3}>일일 리테일러 주가 등락률</h3>
+      {loading && <div>불러오는 중...</div>}
+      {err && <div style={styles.err}>에러: {err}</div>}
+      {!loading && !err && (
+        <div style={styles.grid4}>
+          {sorted.map((r) => {
+            const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
+            return (
+              <a
+                key={r.symbol}
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                style={{ ...styles.card, ...styles.cardLink }}
+                title="원본 데이터(야후 파이낸스) 열기"
+              >
+                <div style={styles.cardTitle}>
+                  {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+                </div>
+                <div style={styles.cardValue}>
+                  {r.price != null ? fmtNum(r.price, 2) : "-"}
+                </div>
+                <div
+                  style={{
+                    ...styles.cardSub,
+                    fontWeight: 900,
+                    color: r.pct >= 0 ? "#065f46" : "#991b1b",
+                  }}
+                >
+                  {fmtSignPct(r.pct)}
+                </div>
+                <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   4) 뉴스 모음 (/api/news)
+========================= */
+function NewsSection() {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/news?cat=retail,fashion,textile", { cache: "no-store" });
+        const j = await r.json();
+        const arr = Array.isArray(j) ? j : j.articles || j.items || [];
+        setArticles(arr.slice(0, 20));
+        setLoading(false);
+      } catch (e) {
+        setErr(String(e));
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <section style={{ marginTop: 24 }}>
+      <h3 style={styles.h3}>주요 Retailer / Fashion 뉴스</h3>
+      {loading && <div>불러오는 중...</div>}
+      {err && <div style={styles.err}>에러: {err}</div>}
+      {!loading && !err && (
+        <div style={{ display: "grid", gap: 12 }}>
+          {articles.map((a, idx) => {
+            const title = a.title || a.headline || "(제목 없음)";
+            const url = a.url || a.link || "#";
+            const source = a.source?.name || a.source || a.publisher || "";
+            const time = a.publishedAt || a.pubDate || a.date || "";
+            return (
+              <a key={idx} href={url} target="_blank" rel="noreferrer" style={styles.newsItem}>
+                <div style={{ fontWeight: 900 }}>{title}</div>
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  {source ? `${source} · ` : ""}{time}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   페이지 컴포넌트 (default export)
+========================= */
+export default function Home() {
+  return (
+    <>
       <Head>
         <title>Hansol Purchasing — Market & Materials</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* ======= 헤더 ======= */}
-      <header className="sticky top-0 z-50 backdrop-blur bg-white/70 border-b border-line">
-        <div className="container flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/hansoll-logo.svg" alt="Hansoll" className="h-7 w-auto" />
-            <div className="font-black text-xl">Market Trend</div>
-          </div>
-          <nav className="text-sm text-slate-600 flex gap-4">
-            <a href="#" className="hover:text-ink">Dashboard</a>
-            <a href="/daily-report" className="hover:text-ink">AI Daily Report</a>
-          </nav>
-        </div>
-      </header>
+      <HeaderBar />
 
-      <main className="container">
-        <h1 className="text-2xl font-black mb-4">구매시황 Dashboard</h1>
-        <p className="muted mb-6">미국 리테일러 OEM 관점의 핵심지표와 리테일러 주가 동향을 한눈에.</p>
-
-        {/* ======= 1. 주요 지표 (카드 클릭 → 원본 데이터 새 탭) ======= */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Kpi
-            title="WTI (USD/bbl)"
-            unit=""
-            data={getInd(ind, "wti")}
-            decimals={2}
-            hint="원가측면(에너지) 압력"
-            href="https://fred.stlouisfed.org/series/DCOILWTICO"
-          />
-          <Kpi
-            title="USD/KRW"
-            unit=""
-            data={getInd(ind, "usdkrw")}
-            decimals={2}
-            hint="환리스크(결제/정산) 민감"
-            href="https://fred.stlouisfed.org/series/DEXKOUS"
-          />
-          <Kpi
-            title="US CPI (Index)"
-            unit=""
-            data={getInd(ind, "cpi")}
-            decimals={2}
-            hint="소비자 물가 레벨"
-            href="https://fred.stlouisfed.org/series/CPIAUCSL"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
-          <Kpi
-            title="미국 기준금리 (Fed Funds, %)"
-            unit="%"
-            data={getInd(ind, "fedfunds")}
-            decimals={2}
-            hint="금융여건(자금조달·재고) 압력"
-            href="https://fred.stlouisfed.org/series/FEDFUNDS"
-          />
-          <Kpi
-            title="금리 스프레드 (10Y–2Y, bp)"
-            unit="bp"
-            data={getInd(ind, "t10y2y")}
-            decimals={0}
-            hint="경기 사이클 선행 시그널"
-            href="https://fred.stlouisfed.org/series/T10Y2Y"
-          />
-          <Kpi
-            title="재고/판매 비율 (ISRATIO)"
-            unit=""
-            data={getInd(ind, "inventory_ratio")}
-            decimals={2}
-            hint="리테일러 재고부담"
-            href="https://fred.stlouisfed.org/series/ISRATIO"
-          />
-          <Kpi
-            title="실업률 (UNRATE, %)"
-            unit="%"
-            data={getInd(ind, "unemployment")}
-            decimals={2}
-            hint="수요 체력(고용시장)"
-            href="https://fred.stlouisfed.org/series/UNRATE"
-          />
-        </div>
-
-        {/* ======= 2. 일일 등락률 (카드 전체 클릭 → Yahoo Finance) ======= */}
-        <RetailerCards list={list} NAME_MAP={NAME_MAP} />
-
-        {/* ======= AI 인사이트 ======= */}
-        <div className="card p-5 mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold">AI 인사이트 (임원 보고용 요약)</h2>
-            <button
-              onClick={generateInsights}
-              disabled={aiBusy}
-              className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {aiBusy ? "분석 중…" : "최신 인사이트 생성"}
-            </button>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">현재 표시된 지표·주가·헤드라인을 바탕으로 요약합니다.</p>
-          <div className="mt-3 whitespace-pre-wrap">
-            {insight || "버튼을 눌러 AI 분석을 생성하세요."}
-          </div>
-        </div>
-
-        {/* ======= 3. 뉴스 모음 + 뉴스 AI 요약 ======= */}
-        <NewsPanel
-          list={list}
-          deck={deck}
-          newsBusy={newsBusy}
-          newsAiBusy={newsAiBusy}
-          loadNewsDeck={loadNewsDeck}
-          loadCategoryNews={loadCategoryNews}
-          generateNewsInsights={generateNewsInsights}
-          setDeck={setDeck}
-          newsInsight={newsInsight}
-        />
-
-        {loading && <div className="mt-8 text-slate-500">데이터 불러오는 중…</div>}
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+        <ProcurementTopBlock />
+        <IndicatorsSection />
+        <StocksSection />
+        <NewsSection />
       </main>
 
-      <footer className="mt-10 border-t border-line">
-        <div className="container text-center text-sm text-slate-500 py-6">
+      <footer style={styles.footer}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", color: "#6b7280", fontSize: 12 }}>
           © Market Trend — internal pilot
         </div>
       </footer>
-    </div>
+    </>
   );
 }
 
-/* ======= 리테일러 카드/뉴스 패널 ======= */
+/* =========================
+   인라인 스타일
+========================= */
+const styles = {
+  /* 헤더 */
+  headerWrap: {
+    position: "sticky", top: 0, zIndex: 50,
+    backdropFilter: "blur(6px)",
+    background: "rgba(255,255,255,0.75)",
+    borderBottom: "1px solid #e5e7eb",
+  },
+  headerInner: {
+    maxWidth: 1200, margin: "0 auto", padding: "10px 16px",
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+  },
+  brand: { display: "flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 18 },
+  nav: { display: "flex", gap: 16, fontSize: 14, color: "#6b7280" },
+  navLink: { color: "inherit", textDecoration: "none" },
 
-function RetailerCards({ list, NAME_MAP }) {
-  return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-extrabold">2. 일일 주요 Retailer 주가 등락률</h2>
-        <div className="text-sm text-slate-500">카드를 클릭하면 Yahoo Finance로 이동</div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
-        {list.map((r) => {
-          const price =
-            r.stock?.price ??
-            r.stock?.regularMarketPrice ??
-            r.stock?.close ?? null;
-          const prev = r.stock?.previousClose ?? null;
+  /* 컨텐츠 */
+  h2: { margin: "6px 0 2px", fontSize: 20, fontWeight: 900 },
+  h3: { margin: "12px 0 10px", fontSize: 18, fontWeight: 900 },
+  meta: { color: "#6b7280", fontSize: 13 },
+  err: { color: "#b91c1c", fontWeight: 700 },
 
-          const pct =
-            r.stock?.changePercent != null
-              ? Number(r.stock.changePercent)
-              : r.stock?.change != null && price != null && price - Number(r.stock.change) !== 0
-              ? (Number(r.stock.change) / (price - Number(r.stock.change))) * 100
-              : pctChange(price, prev);
+  blockWrap: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginTop: 10 },
+  headerRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  tools: { display: "flex", gap: 8, alignItems: "center" },
 
-          const color = pct == null ? "text-slate-500" : pct >= 0 ? "text-emerald-600" : "text-red-600";
-          const sign = pct == null ? "" : pct >= 0 ? "▲ " : "▼ ";
-          const pctText = pct == null ? "-" : `${sign}${Math.abs(pct).toFixed(2)}%`;
-          const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
+  grid5: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 12, marginTop: 12 },
+  grid4: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12 },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 },
+  grid2: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 },
 
-          const displayName =
-            NAME_MAP[r.symbol] ||
-            (r.stock?.symbol === r.symbol ? r.stock?.longName : null) ||
-            r.stock?.longName ||
-            r.symbol;
+  card: { border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 12px" },
+  cardLink: { textDecoration: "none", color: "#111" },
+  cardTitle: { fontSize: 12, color: "#6b7280", fontWeight: 800, marginBottom: 6 },
+  cardValue: { fontSize: 20, fontWeight: 900 },
+  cardSub: { fontSize: 12, color: "#6b7280" },
 
-          return (
-            <a
-              key={`pct-${r.symbol}`}
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              title="원본 데이터(야후 파이낸스) 열기"
-              className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
-            >
-              <div className="text-xs text-slate-500">{r.symbol}</div>
-              <div className="text-sm font-semibold truncate">{displayName}</div>
-              <div className="mt-2 text-lg font-extrabold">{price ?? "-"}</div>
-              <div className={`text-sm ${color}`}>{pctText}</div>
-            </a>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+  progressWrap: { background: "#f3f4f6", borderRadius: 999, height: 8, marginTop: 8, overflow: "hidden" },
+  progressBar: { background: "#111827", height: 8 },
 
-function NewsPanel({
-  list,
-  deck,
-  newsBusy,
-  newsAiBusy,
-  loadNewsDeck,
-  loadCategoryNews,
-  generateNewsInsights,
-  setDeck,
-  newsInsight,
-}) {
-  return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-extrabold">주요 Retailer 관련 뉴스 모음</h2>
-        <div className="flex gap-2">
-          <button onClick={loadNewsDeck} disabled={newsBusy} className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50">
-            {newsBusy ? "뉴스 수집 중…" : "뉴스 모아보기(종목별)"}
-          </button>
-          <button onClick={() => loadCategoryNews()} disabled={newsBusy} className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50">
-            {newsBusy ? "뉴스 수집 중…" : "카테고리 뉴스(리테일/패션/텍스타일)"}
-          </button>
-          <button onClick={generateNewsInsights} disabled={newsAiBusy} className="px-3 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
-            {newsAiBusy ? "요약 중…" : "뉴스 AI 요약"}
-          </button>
-        </div>
-      </div>
-      <p className="text-sm text-slate-500 mt-1">종목별 상위 뉴스 또는 카테고리 뉴스를 최신순으로 정리합니다. (중복 제거)</p>
+  innerBlock: { border: "1px dashed #e5e7eb", borderRadius: 12, padding: 12, marginTop: 12 },
+  blockTitle: { fontWeight: 900, fontSize: 13, marginBottom: 8 },
+  stackBar: { display: "flex", width: "100%", height: 12, borderRadius: 999, overflow: "hidden", background: "#f3f4f6" },
+  seg: { height: "100%" },
+  legend: { display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "#374151" },
 
-      <div className="mt-3 space-y-3">
-        {deck.length === 0 && !newsBusy && (
-          <div className="text-slate-500 text-sm">아직 뉴스가 없습니다. 버튼을 눌러 로드하세요.</div>
-        )}
-        {deck.map((n, idx) => (
-          <a
-            key={idx}
-            href={n.url}
-            target="_blank"
-            rel="noreferrer"
-            className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs px-2 py-0.5 rounded-full border bg-white">
-                {n.symbol || "NEWS"}
-              </div>
-              <div className="text-xs text-slate-500">
-                {n.source || ""}
-                {n.published ? ` · ${new Date(n.published).toLocaleString()}` : ""}
-              </div>
-            </div>
-            <div className="mt-1 font-semibold">{n.title}</div>
-            {n.name && <div className="text-xs text-slate-500 mt-0.5 truncate">{n.name}</div>}
-          </a>
-        ))}
-      </div>
+  editBox: { border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, marginTop: 12, background: "#fafafa" },
+  row: { display: "grid", gap: 6 },
 
-      {newsInsight && (
-        <div className="card p-5 mt-4">
-          <h3 className="text-lg font-bold">뉴스 기반 AI 요약</h3>
-          <div className="mt-2 whitespace-pre-wrap">{newsInsight}</div>
-        </div>
-      )}
-    </div>
-  );
-}
+  ctaRow: { display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  ctaDark: { background: "#111827", color: "#fff", textDecoration: "none", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13 },
+  ctaLight: { border: "1px solid #111827", color: "#111827", textDecoration: "none", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13, background: "#fff" },
+
+  btnGray: { background: "#f3f4f6", border: "1px solid #e5e7eb", padding: "8px 10px", borderRadius: 10, fontWeight: 700, fontSize: 13, color: "#111" },
+  btnBlue: { background: "#2563eb", border: "1px solid #1d4ed8", padding: "8px 12px", borderRadius: 10, fontWeight: 800, fontSize: 13, color: "#fff", textDecoration: "none" },
+  btnDanger: { background: "#fee2e2", border: "1px solid #fecaca", padding: "8px 10px", borderRadius: 10, fontWeight: 700, fontSize: 13, color: "#991b1b" },
+
+  newsItem: { display: "block", padding: 12, border: "1px solid #e5e7eb", borderRadius: 12, textDecoration: "none", color: "#111" },
+
+  footer: { borderTop: "1px solid #e5e7eb", marginTop: 10, background: "#fff" },
+};
