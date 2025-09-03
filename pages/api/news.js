@@ -3,7 +3,6 @@ function buildQuery({ brand = "", industry = "", must = "", exclude = "" }) {
   const brands = brand.split("|").map((s) => s.trim()).filter(Boolean);
   const inds = industry.split("|").map((s) => s.trim()).filter(Boolean);
   const ex = exclude.split(",").map((s) => s.trim()).filter(Boolean);
-
   const group = (arr) => (arr.length ? "(" + arr.map((t) => `"${t}"`).join(" OR ") + ")" : "");
 
   const andMode = must.includes("brand") && must.includes("industry");

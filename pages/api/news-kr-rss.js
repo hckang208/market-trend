@@ -15,7 +15,7 @@ function parseRSS(xml) {
       title: pick("title"),
       url: pick("link"),
       publishedAt: pick("pubDate"),
-      source: { name: "한국섬유신문" },
+      source: { name: (xml.includes("<title>") ? (xml.match(/<title>(.*?)<\/title>/i)?.[1] || "RSS") : "RSS") },
       description: pick("description"),
     });
   }
@@ -25,12 +25,9 @@ function parseRSS(xml) {
 export default async function handler(req, res) {
   const {
     feeds = "http://www.ktnews.com/rss/allArticle.xml",
-    brand = "",
-    industry = "",
-    must = "",
-    limit = "40",
-    days = "30",
-    exclude = "",
+    // when unfiltered, we ignore brand/industry/must/exclude
+    limit = "120",
+    days = "2",
   } = req.query;
 
   const feedList = String(feeds)
@@ -47,42 +44,35 @@ export default async function handler(req, res) {
           const xml = await r.text();
           const items = parseRSS(xml);
           all.push(...items);
-        } catch {
-          // ignore individual feed errors
-        }
+        } catch {}
       })
     );
 
     const since = new Date();
-    since.setDate(since.getDate() - Math.max(1, Number(days) || 30));
+    since.setDate(since.getDate() - Math.max(1, Number(days) || 2));
 
-    const brands = brand.split("|").map((s) => s.toLowerCase()).filter(Boolean);
-    const inds = industry.split("|").map((s) => s.toLowerCase()).filter(Boolean);
-    const mustBrand = must.includes("brand");
-    const mustInd = must.includes("industry");
-    const ex = exclude.split(",").map((s) => s.toLowerCase().trim()).filter(Boolean);
-
-    const pass = (a) => {
-      const text = `${a.title || ""} ${a.description || ""}`.toLowerCase();
-      if (ex.some((w) => text.includes(w))) return false;
-      const hasB = brands.length ? brands.some((w) => text.includes(w)) : true;
-      const hasI = inds.length ? inds.some((w) => text.includes(w)) : true;
-      if (mustBrand && !hasB) return false;
-      if (mustInd && !hasI) return false;
+    // Filter by date only
+    const filtered = all.filter((a) => {
       const dt = a.publishedAt ? new Date(a.publishedAt) : null;
       if (dt && isFinite(dt.getTime()) && dt < since) return false;
-      return hasB || hasI;
-    };
+      return true;
+    });
 
-    const filtered = all.filter(pass).slice(0, Math.min(100, Number(limit) || 40));
+    // Sort by publishedAt desc
+    filtered.sort((a, b) => {
+      const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return tb - ta;
+    });
 
+    // Dedup by URL
     const seen = new Set();
     const dedup = filtered.filter((a) => {
       const key = a.url || a.title;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
-    });
+    }).slice(0, Math.min(200, Number(limit) || 120));
 
     res.status(200).json(dedup);
   } catch (e) {
