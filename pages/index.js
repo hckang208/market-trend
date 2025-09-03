@@ -20,7 +20,7 @@ export default function Home() {
   // 주요 리테일러 심볼
   const symbols = ['WMT','TGT','KSS','VSCO','ANF','CRI','9983.T','AMZN','BABA'];
 
-  // 심볼 → 회사명 안전 맵 (표시 안정화용)
+  // 심볼 → 회사명 안전 맵 (표시 안정화)
   const NAME_MAP = {
     WMT: 'Walmart Inc.',
     TGT: 'Target Corporation',
@@ -36,18 +36,21 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        // 거시 지표
-        const indRes = await fetch('/api/indicators');
+        // 거시 지표 (브라우저 캐시 우회)
+        const indRes = await fetch('/api/indicators?ts=' + Date.now(), { cache: 'no-store' });
         if (indRes.ok) setInd(await indRes.json());
 
-        // 주가
-        const out = [];
-        for (const s of symbols) {
-          const sRes = await fetch(`/api/stocks?symbol=${s}`);
-          const stock = sRes.ok ? await sRes.json() : null;
-          out.push({ symbol: s, stock, news: [] });
-        }
-        setList(out);
+        // 주가: 동시 요청 + 쿼리 파라미터로 캐시 버스터 + no-store
+        const now = Date.now();
+        const rows = await Promise.all(
+          symbols.map(async (s, i) => {
+            const url = `/api/stocks?symbol=${encodeURIComponent(s)}&ts=${now}_${i}`;
+            const resp = await fetch(url, { cache: 'no-store' });
+            const stock = resp.ok ? await resp.json() : null;
+            return { symbol: s, stock, news: [] };
+          })
+        );
+        setList(rows);
       } catch (e) {
         console.error(e);
       } finally {
@@ -92,7 +95,7 @@ export default function Home() {
       for (const r of list) {
         const q = r?.stock?.longName || r.symbol;
         try {
-          const res = await fetch(`/api/news?q=${encodeURIComponent(q)}`);
+          const res = await fetch(`/api/news?q=${encodeURIComponent(q)}&ts=${Date.now()}`, { cache: 'no-store' });
           if (!res.ok) continue;
           const arr = await res.json();
           for (const n of (arr || []).slice(0, 3)) {
@@ -108,7 +111,7 @@ export default function Home() {
               published: n?.datePublished || n?.date || ''
             });
           }
-          // 429 방지 딜레이
+          // 429 방지
           await new Promise(res => setTimeout(res, 300));
         } catch (e) {
           console.warn('news error for', q, e);
@@ -128,7 +131,7 @@ export default function Home() {
     try {
       setNewsBusy(true);
       setNewsInsight('');
-      const r = await fetch(`/api/news?cat=${encodeURIComponent(cats)}&limit=30`);
+      const r = await fetch(`/api/news?cat=${encodeURIComponent(cats)}&limit=30&ts=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) throw new Error(await r.text());
       const arr = await r.json();
       setDeck(arr);
@@ -288,9 +291,9 @@ export default function Home() {
               const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
 
               const displayName =
-                NAME_MAP[r.symbol] ??
-                (r.stock?.symbol === r.symbol ? r.stock?.longName : null) ??
-                r.stock?.longName ??
+                NAME_MAP[r.symbol] ||
+                (r.stock?.symbol === r.symbol ? r.stock?.longName : null) ||
+                r.stock?.longName ||
                 r.symbol;
 
               return (
