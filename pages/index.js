@@ -6,11 +6,11 @@ export default function Home() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 전체(지표+주가+일부 헤드라인) 기반 요약
+  // 전체(지표+주가) 기반 요약
   const [insight, setInsight] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
-  // 뉴스 모음 상태 + 뉴스 기반 요약
+  // 뉴스 모음 + 뉴스 기반 요약
   const [deck, setDeck] = useState([]);           // {symbol,name,title,url,source,published}
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsInsight, setNewsInsight] = useState("");
@@ -68,7 +68,7 @@ export default function Home() {
     if (newsBusy) return;
     try {
       setNewsBusy(true);
-      setNewsInsight(""); // 새로 로드하면 이전 요약은 초기화
+      setNewsInsight(""); // 새 로드시 이전 요약 초기화
       const seen = new Set();
       const merged = [];
 
@@ -105,7 +105,7 @@ export default function Home() {
     }
   }
 
-  // 뉴스 기반 AI 요약 (deck을 심볼별로 붙여서 /api/analysis에 전달)
+  // 뉴스 기반 AI 요약
   async function generateNewsInsights() {
     if (!deck.length) {
       setNewsInsight("먼저 ‘뉴스 모아보기’를 눌러 뉴스를 로드하세요.");
@@ -141,7 +141,7 @@ export default function Home() {
     }
   }
 
-  // 등락률 보조 계산기(백업용)
+  // 퍼센트 보조 계산기(백업용)
   const pctChange = (price, prev) => {
     if (price == null || prev == null || prev === 0) return null;
     return ((price - prev) / prev) * 100;
@@ -183,7 +183,17 @@ export default function Home() {
             {list.map((r) => {
               const price = r.stock?.price ?? null;
               const prev = r.stock?.previousClose ?? null;
-              const pct = (r.stock?.changePercent != null) ? r.stock.changePercent : pctChange(price, prev);
+
+              // 1순위: API의 changePercent
+              // 2순위: change / (price - change)
+              // 3순위: (price - prev) / prev
+              const pct =
+                (r.stock?.changePercent != null)
+                  ? Number(r.stock.changePercent)
+                  : (r.stock?.change != null && price != null && (price - Number(r.stock.change)) !== 0)
+                    ? (Number(r.stock.change) / (price - Number(r.stock.change))) * 100
+                    : pctChange(price, prev);
+
               const color = pct == null ? 'text-slate-500' : (pct >= 0 ? 'text-emerald-600' : 'text-red-600');
               const sign = pct == null ? '' : (pct >= 0 ? '▲ ' : '▼ ');
               const pctText = pct == null ? '-' : `${sign}${Math.abs(pct).toFixed(2)}%`;
