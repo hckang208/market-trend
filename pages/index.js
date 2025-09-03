@@ -4,7 +4,7 @@ import Head from "next/head";
 import KpiCard from "../components/KpiCard";
 
 /* ========= 공용 헬퍼 ========= */
-// 객체/문자/숫자 어떤 형태로 와도 "숫자"만 뽑아주는 함수
+// 어떤 형태(value/price/index/rate/last/close/문자열)로 와도 숫자만 뽑기
 const val = (x) => {
   if (x == null) return null;
   if (typeof x === "number") return isFinite(x) ? x : null;
@@ -20,11 +20,11 @@ const val = (x) => {
   return null;
 };
 
-// 지표 키가 API마다 다를 가능성 → 별칭 리스트를 순회해 값을 찾는다
+// 지표 키 별칭(환경마다 키명이 다른 경우 대비)
 const IND_ALIASES = {
   wti: ["wti", "WTI", "oil", "dcoilwtico", "brent"],
   usdkrw: ["usdkrw", "USDKRW", "usd_krw", "krw", "DEXKOUS"],
-  cpi: ["cpi", "CPI", "cpiaucsl"],
+  cpi: ["cpi", "CPI", "cpiaucsl", "CPIAUCSL"],
   fedfunds: ["fedfunds", "FEDFUNDS", "policy_rate", "ffr"],
   t10y2y: ["t10y2y", "T10Y2Y", "spread_10y_2y", "yield_spread"],
   inventory_ratio: ["inventory_ratio", "ISRATIO", "isratio", "inventories_to_sales"],
@@ -41,31 +41,46 @@ const getInd = (obj, key) => {
   return null;
 };
 
-// 퍼센트 계산(예비용)
 const pctChange = (price, prev) => {
   if (price == null || prev == null || prev === 0) return null;
   return ((price - prev) / prev) * 100;
 };
+
+/* ========= KPI 카드 전체 클릭 래퍼 ========= */
+function Kpi({ href, ...props }) {
+  const handle = (e) => {
+    // 내부에 a 태그가 있으면 중복 오픈 막기
+    if (e.target.closest("a")) return;
+    if (href) window.open(href, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <div
+      onClick={handle}
+      role="button"
+      title="원본 데이터 열기"
+      className="cursor-pointer"
+    >
+      <KpiCard {...props} href={href} />
+    </div>
+  );
+}
 
 export default function Home() {
   const [ind, setInd] = useState(null);
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 전체(지표+주가) 기반 요약
+  // AI 요약
   const [insight, setInsight] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
-  // 뉴스 모음 + 뉴스 기반 요약
-  const [deck, setDeck] = useState([]); // [{symbol,name,title,url,source,published}]
+  // 뉴스
+  const [deck, setDeck] = useState([]);
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsInsight, setNewsInsight] = useState("");
   const [newsAiBusy, setNewsAiBusy] = useState(false);
 
-  // 주요 리테일러 심볼
   const symbols = ["WMT", "TGT", "KSS", "VSCO", "ANF", "CRI", "9983.T", "AMZN", "BABA"];
-
-  // 심볼 → 회사명 안정 맵
   const NAME_MAP = {
     WMT: "Walmart Inc.",
     TGT: "Target Corporation",
@@ -81,19 +96,13 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        // 거시 지표: 브라우저 캐시 우회 + no-store
         const indRes = await fetch("/api/indicators?ts=" + Date.now(), { cache: "no-store" });
-        if (indRes.ok) {
-          const j = await indRes.json();
-          setInd(j);
-        }
+        if (indRes.ok) setInd(await indRes.json());
 
-        // 주가: 동시 요청
         const now = Date.now();
         const rows = await Promise.all(
           symbols.map(async (s, i) => {
-            const url = `/api/stocks?symbol=${encodeURIComponent(s)}&ts=${now}_${i}`;
-            const resp = await fetch(url, { cache: "no-store" });
+            const resp = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}&ts=${now}_${i}`, { cache: "no-store" });
             const stock = resp.ok ? await resp.json() : null;
             return { symbol: s, stock, news: [] };
           })
@@ -107,21 +116,12 @@ export default function Home() {
     })();
   }, []);
 
-  // 전체 데이터(지표+주가) 기반 요약
   async function generateInsights() {
     try {
       setAiBusy(true);
       const body = JSON.stringify({ indicators: ind, retailers: list });
-      const r = await fetch("/api/analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        setInsight(`AI 분석 실패: ${t}`);
-        return;
-      }
+      const r = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      if (!r.ok) return setInsight(`AI 분석 실패: ${await r.text()}`);
       const j = await r.json();
       setInsight(j.summary || "");
     } catch (e) {
@@ -131,7 +131,6 @@ export default function Home() {
     }
   }
 
-  // 뉴스 모음 로딩 (종목별, 순차 호출로 429 완화)
   async function loadNewsDeck() {
     if (newsBusy) return;
     try {
@@ -139,13 +138,10 @@ export default function Home() {
       setNewsInsight("");
       const seen = new Set();
       const merged = [];
-
       for (const r of list) {
         const q = r?.stock?.longName || r.symbol;
         try {
-          const res = await fetch(`/api/news?q=${encodeURIComponent(q)}&ts=${Date.now()}`, {
-            cache: "no-store",
-          });
+          const res = await fetch(`/api/news?q=${encodeURIComponent(q)}&ts=${Date.now()}`, { cache: "no-store" });
           if (!res.ok) continue;
           const arr = await res.json();
           for (const n of (arr || []).slice(0, 3)) {
@@ -157,20 +153,13 @@ export default function Home() {
               name: NAME_MAP[r.symbol] || r?.stock?.longName || r.symbol,
               title: n?.title || n?.url || "(제목 없음)",
               url: n?.url || "#",
-              source:
-                n?.source ||
-                (n?.provider && (n.provider[0]?.name || n.provider?.name)) ||
-                "",
+              source: n?.source || (n?.provider && (n.provider[0]?.name || n.provider?.name)) || "",
               published: n?.datePublished || n?.date || "",
             });
           }
-          // 429 방지
-          await new Promise((res) => setTimeout(res, 300));
-        } catch (e) {
-          console.warn("news error for", q, e);
-        }
+          await new Promise((res) => setTimeout(res, 300)); // 429 완화
+        } catch {}
       }
-
       merged.sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
       setDeck(merged);
     } finally {
@@ -178,28 +167,21 @@ export default function Home() {
     }
   }
 
-  // 카테고리 뉴스 로딩
   async function loadCategoryNews(cats = "retail,fashion,textile") {
     if (newsBusy) return;
     try {
       setNewsBusy(true);
       setNewsInsight("");
-      const r = await fetch(
-        `/api/news?cat=${encodeURIComponent(cats)}&limit=30&ts=${Date.now()}`,
-        { cache: "no-store" }
-      );
+      const r = await fetch(`/api/news?cat=${encodeURIComponent(cats)}&limit=30&ts=${Date.now()}`, { cache: "no-store" });
       if (!r.ok) throw new Error(await r.text());
-      const arr = await r.json();
-      setDeck(arr);
-    } catch (e) {
-      console.warn("category news error", e);
+      setDeck(await r.json());
+    } catch {
       setDeck([]);
     } finally {
       setNewsBusy(false);
     }
   }
 
-  // 뉴스 기반 AI 요약
   async function generateNewsInsights() {
     if (!deck.length) {
       setNewsInsight("먼저 뉴스 목록을 로드하세요. (뉴스 모아보기 또는 카테고리 뉴스)");
@@ -208,27 +190,12 @@ export default function Home() {
     try {
       setNewsAiBusy(true);
       const retailersForSummary = list.map((r) => {
-        const news = deck
-          .filter((d) => (d.symbol ? d.symbol === r.symbol : false))
-          .map((d) => ({ title: d.title, url: d.url }));
+        const news = deck.filter((d) => (d.symbol ? d.symbol === r.symbol : false)).map((d) => ({ title: d.title, url: d.url }));
         return { ...r, news };
       });
-
-      const body = JSON.stringify({
-        indicators: ind,
-        retailers: retailersForSummary,
-        headlines: deck,
-      });
-      const r = await fetch("/api/analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        setNewsInsight(`AI 뉴스 요약 실패: ${t}`);
-        return;
-      }
+      const body = JSON.stringify({ indicators: ind, retailers: retailersForSummary, headlines: deck });
+      const r = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      if (!r.ok) return setNewsInsight(`AI 뉴스 요약 실패: ${await r.text()}`);
       const j = await r.json();
       setNewsInsight(j.summary || "");
     } catch (e) {
@@ -245,7 +212,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* ======= 헤더 (그대로 유지) ======= */}
+      {/* ======= 헤더 ======= */}
       <header className="sticky top-0 z-50 backdrop-blur bg-white/70 border-b border-line">
         <div className="container flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -261,13 +228,11 @@ export default function Home() {
 
       <main className="container">
         <h1 className="text-2xl font-black mb-4">구매시황 Dashboard</h1>
-        <p className="muted mb-6">
-          미국 리테일러 OEM 관점의 핵심지표와 리테일러 주가 동향을 한눈에.
-        </p>
+        <p className="muted mb-6">미국 리테일러 OEM 관점의 핵심지표와 리테일러 주가 동향을 한눈에.</p>
 
-        {/* ======= 1. 주요 지표 (값 추출 안전화) ======= */}
+        {/* ======= 1. 주요 지표 (카드 클릭 → 원본 데이터 새 탭) ======= */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiCard
+          <Kpi
             title="WTI (USD/bbl)"
             unit=""
             data={getInd(ind, "wti")}
@@ -275,7 +240,7 @@ export default function Home() {
             hint="원가측면(에너지) 압력"
             href="https://fred.stlouisfed.org/series/DCOILWTICO"
           />
-          <KpiCard
+          <Kpi
             title="USD/KRW"
             unit=""
             data={getInd(ind, "usdkrw")}
@@ -283,7 +248,7 @@ export default function Home() {
             hint="환리스크(결제/정산) 민감"
             href="https://fred.stlouisfed.org/series/DEXKOUS"
           />
-          <KpiCard
+          <Kpi
             title="US CPI (Index)"
             unit=""
             data={getInd(ind, "cpi")}
@@ -294,7 +259,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
-          <KpiCard
+          <Kpi
             title="미국 기준금리 (Fed Funds, %)"
             unit="%"
             data={getInd(ind, "fedfunds")}
@@ -302,7 +267,7 @@ export default function Home() {
             hint="금융여건(자금조달·재고) 압력"
             href="https://fred.stlouisfed.org/series/FEDFUNDS"
           />
-          <KpiCard
+          <Kpi
             title="금리 스프레드 (10Y–2Y, bp)"
             unit="bp"
             data={getInd(ind, "t10y2y")}
@@ -310,7 +275,7 @@ export default function Home() {
             hint="경기 사이클 선행 시그널"
             href="https://fred.stlouisfed.org/series/T10Y2Y"
           />
-          <KpiCard
+          <Kpi
             title="재고/판매 비율 (ISRATIO)"
             unit=""
             data={getInd(ind, "inventory_ratio")}
@@ -318,7 +283,7 @@ export default function Home() {
             hint="리테일러 재고부담"
             href="https://fred.stlouisfed.org/series/ISRATIO"
           />
-          <KpiCard
+          <Kpi
             title="실업률 (UNRATE, %)"
             unit="%"
             data={getInd(ind, "unemployment")}
@@ -328,10 +293,10 @@ export default function Home() {
           />
         </div>
 
-        {/* ======= 2. 일일 등락률 ======= */}
+        {/* ======= 2. 일일 등락률 (카드 전체 클릭 → Yahoo Finance) ======= */}
         <RetailerCards list={list} NAME_MAP={NAME_MAP} />
 
-        {/* ======= AI 인사이트(지표+주가) ======= */}
+        {/* ======= AI 인사이트 ======= */}
         <div className="card p-5 mt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-extrabold">AI 인사이트 (임원 보고용 요약)</h2>
@@ -343,9 +308,7 @@ export default function Home() {
               {aiBusy ? "분석 중…" : "최신 인사이트 생성"}
             </button>
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            현재 표시된 지표·주가·헤드라인을 바탕으로 요약합니다.
-          </p>
+          <p className="text-slate-500 text-sm mt-1">현재 표시된 지표·주가·헤드라인을 바탕으로 요약합니다.</p>
           <div className="mt-3 whitespace-pre-wrap">
             {insight || "버튼을 눌러 AI 분석을 생성하세요."}
           </div>
@@ -376,7 +339,7 @@ export default function Home() {
   );
 }
 
-/* ======= 소단위 컴포넌트 (리테일러 카드/뉴스 패널) ======= */
+/* ======= 리테일러 카드/뉴스 패널 ======= */
 
 function RetailerCards({ list, NAME_MAP }) {
   return (
@@ -400,8 +363,7 @@ function RetailerCards({ list, NAME_MAP }) {
               ? (Number(r.stock.change) / (price - Number(r.stock.change))) * 100
               : pctChange(price, prev);
 
-          const color =
-            pct == null ? "text-slate-500" : pct >= 0 ? "text-emerald-600" : "text-red-600";
+          const color = pct == null ? "text-slate-500" : pct >= 0 ? "text-emerald-600" : "text-red-600";
           const sign = pct == null ? "" : pct >= 0 ? "▲ " : "▼ ";
           const pctText = pct == null ? "-" : `${sign}${Math.abs(pct).toFixed(2)}%`;
           const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
@@ -418,6 +380,7 @@ function RetailerCards({ list, NAME_MAP }) {
               href={link}
               target="_blank"
               rel="noreferrer"
+              title="원본 데이터(야후 파이낸스) 열기"
               className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
             >
               <div className="text-xs text-slate-500">{r.symbol}</div>
@@ -448,32 +411,18 @@ function NewsPanel({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-extrabold">주요 Retailer 관련 뉴스 모음</h2>
         <div className="flex gap-2">
-          <button
-            onClick={loadNewsDeck}
-            disabled={newsBusy}
-            className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50"
-          >
+          <button onClick={loadNewsDeck} disabled={newsBusy} className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50">
             {newsBusy ? "뉴스 수집 중…" : "뉴스 모아보기(종목별)"}
           </button>
-          <button
-            onClick={() => loadCategoryNews()}
-            disabled={newsBusy}
-            className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50"
-          >
+          <button onClick={() => loadCategoryNews()} disabled={newsBusy} className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50">
             {newsBusy ? "뉴스 수집 중…" : "카테고리 뉴스(리테일/패션/텍스타일)"}
           </button>
-          <button
-            onClick={generateNewsInsights}
-            disabled={newsAiBusy}
-            className="px-3 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
-          >
+          <button onClick={generateNewsInsights} disabled={newsAiBusy} className="px-3 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
             {newsAiBusy ? "요약 중…" : "뉴스 AI 요약"}
           </button>
         </div>
       </div>
-      <p className="text-sm text-slate-500 mt-1">
-        종목별 상위 뉴스 또는 카테고리 뉴스를 최신순으로 정리합니다. (중복 제거)
-      </p>
+      <p className="text-sm text-slate-500 mt-1">종목별 상위 뉴스 또는 카테고리 뉴스를 최신순으로 정리합니다. (중복 제거)</p>
 
       <div className="mt-3 space-y-3">
         {deck.length === 0 && !newsBusy && (
