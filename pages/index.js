@@ -18,23 +18,41 @@ const fmtSignPct = (n, d = 2) => {
 };
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
-/* 숫자 안전 추출: value/price/index/rate/last/close/문자열 모두 커버 */
-const val = (x) => {
+/* ===== 숫자 안전 추출: value/price/index/rate/last/close/문자열/배열/중첩 객체까지 커버 ===== */
+const NUMBER_FIELDS = ["value", "price", "index", "rate", "last", "close", "avg", "level"];
+
+const pickNumber = (x) => {
   if (x == null) return null;
   if (typeof x === "number") return isFinite(x) ? x : null;
   if (typeof x === "string") {
     const n = Number(x.replace(/[, ]/g, ""));
     return isFinite(n) ? n : null;
   }
+  if (Array.isArray(x)) {
+    for (const i of x) {
+      const n = pickNumber(i);
+      if (n != null) return n;
+    }
+    return null;
+  }
   if (typeof x === "object") {
-    const cand =
-      x.value ?? x.price ?? x.index ?? x.rate ?? x.last ?? x.close ?? x.avg ?? x.level;
-    if (cand != null) return val(cand);
+    // 1) 알려진 숫자 필드 우선
+    for (const k of NUMBER_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(x, k)) {
+        const n = pickNumber(x[k]);
+        if (n != null) return n;
+      }
+    }
+    // 2) 1차 키들 훑기
+    for (const k of Object.keys(x)) {
+      const n = pickNumber(x[k]);
+      if (n != null) return n;
+    }
   }
   return null;
 };
 
-/* (지표 키별 별칭) API 마다 키명이 달라도 매핑되게 */
+/* ===== 지표 키별 별칭 (응답 키명이 달라도 매핑) ===== */
 const IND_ALIASES = {
   wti: ["wti", "WTI", "oil", "dcoilwtico", "brent"],
   usdkrw: ["usdkrw", "USDKRW", "usd_krw", "krw", "DEXKOUS"],
@@ -44,19 +62,35 @@ const IND_ALIASES = {
   inventory_ratio: ["inventory_ratio", "ISRATIO", "isratio", "inventories_to_sales"],
   unemployment: ["unemployment", "UNRATE", "unrate", "jobless_rate"],
 };
-const getInd = (obj, key) => {
+
+const getInd = (obj, stdKey) => {
   if (!obj) return null;
-  for (const k of IND_ALIASES[key] || [key]) {
-    if (Object.prototype.hasOwnProperty.call(obj, k)) {
-      const v = val(obj[k]);
-      if (v != null) return v;
+  const aliases = IND_ALIASES[stdKey] || [stdKey];
+
+  // 1) 정확히 일치(대소문자 무시)
+  const keys = Object.keys(obj);
+  const lowerMap = new Map(keys.map((k) => [k.toLowerCase(), k]));
+  for (const a of aliases) {
+    const hit = lowerMap.get(String(a).toLowerCase());
+    if (hit) {
+      const n = pickNumber(obj[hit]);
+      if (n != null) return n;
+    }
+  }
+  // 2) 부분 일치 (예: "dexkous" 포함 키)
+  for (const a of aliases) {
+    const target = String(a).toLowerCase();
+    const hit = keys.find((k) => k.toLowerCase().includes(target));
+    if (hit) {
+      const n = pickNumber(obj[hit]);
+      if (n != null) return n;
     }
   }
   return null;
 };
 
 /* =========================
-   상단 헤더 (추가)
+   상단 헤더
 ========================= */
 function HeaderBar() {
   return (
@@ -150,11 +184,16 @@ function ProcurementTopBlock() {
   };
 
   const Card = ({ title, value, sub }) => (
-    <div style={styles.card}>
+    <a
+      style={{ ...styles.card, ...styles.cardLink }}
+      href="#"
+      onClick={(e) => e.preventDefault()}
+      title="수기입력 카드"
+    >
       <div style={styles.cardTitle}>{title}</div>
       <div style={styles.cardValue}>{value}</div>
       {sub ? <div style={styles.cardSub}>{sub}</div> : null}
-    </div>
+    </a>
   );
 
   return (
@@ -180,13 +219,18 @@ function ProcurementTopBlock() {
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
         <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
-        <div style={styles.card}>
+        <a
+          style={{ ...styles.card, ...styles.cardLink }}
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          title="수기입력 카드"
+        >
           <div style={styles.cardTitle}>매출 대비 부자재 매입비중</div>
           <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
           <div style={styles.progressWrap}>
             <div style={{ ...styles.progressBar, width: `${ratio}%` }} />
           </div>
-        </div>
+        </a>
         <Card title="총 오더수(스타일)" value={fmtNum(data.styles, 0)} />
         <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
       </div>
@@ -198,7 +242,7 @@ function ProcurementTopBlock() {
             style={{ ...styles.seg, background: "#111827", width: `${supply.domestic}%` }}
             title={`국내 ${fmtNum(supply.domestic, 1)}%`}
           />
-          <div
+        <div
             style={{ ...styles.seg, background: "#4B5563", width: `${supply.thirdCountry}%` }}
             title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`}
           />
@@ -353,7 +397,7 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 섹션 (클릭 → 원본 데이터)
+   2) 주요지표 (클릭 → 원본 데이터, “기타지표” 제거)
 ========================= */
 function IndicatorsSection() {
   const [state, setState] = useState({ loading: true, data: null, error: "" });
@@ -371,7 +415,6 @@ function IndicatorsSection() {
     })();
   }, []);
 
-  /* 원본 링크 맵 */
   const LINK = {
     wti: "https://fred.stlouisfed.org/series/DCOILWTICO",
     usdkrw: "https://fred.stlouisfed.org/series/DEXKOUS",
@@ -382,7 +425,6 @@ function IndicatorsSection() {
     unemployment: "https://fred.stlouisfed.org/series/UNRATE",
   };
 
-  /* 큐레이티드 핵심 카드 (항상 위에 고정 노출) */
   const curated = [
     { key: "wti", title: "WTI (USD/bbl)" },
     { key: "usdkrw", title: "USD/KRW" },
@@ -400,102 +442,33 @@ function IndicatorsSection() {
       {state.error && <div style={styles.err}>에러: {state.error}</div>}
 
       {!state.loading && !state.error && (
-        <>
-          {/* 2-1. 큐레이티드 핵심 지표 (클릭 → 원본) */}
-          <div style={styles.grid4}>
-            {curated.map((c) => {
-              const v = getInd(state.data, c.key);
-              const href = LINK[c.key];
-              return (
-                <a
-                  key={c.key}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ ...styles.card, ...styles.cardLink }}
-                  title="원본 데이터 열기"
-                >
-                  <div style={styles.cardTitle}>{c.title}</div>
-                  <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
-                  <div style={{ ...styles.cardSub, color: "#6b7280" }}>원본 보기 ↗</div>
-                </a>
-              );
-            })}
-          </div>
-
-          {/* 2-2. 기타 지표 (API 응답 상위 12개, 있으면 노출 / 알려진 키는 링크 제공) */}
-          <div style={{ marginTop: 12 }}>
-            <div style={{ ...styles.blockTitle, marginBottom: 8 }}>기타 지표</div>
-            <div style={styles.grid4}>
-              {Object.entries(state.data || {})
-                .slice(0, 12)
-                .map(([k, obj]) => {
-                  // 값/변화율 안전 추출
-                  let value = "-";
-                  let sub = "";
-                  if (obj && typeof obj === "object") {
-                    const maybeVal = val(obj);
-                    const maybeChg =
-                      obj.changePercent ?? obj.change_percentage ?? obj.percent ?? obj.change ?? obj.delta;
-                    value = maybeVal != null ? fmtNum(maybeVal) : "-";
-                    if (isFinite(Number(maybeChg))) sub = fmtSignPct(Number(maybeChg));
-                  } else if (isFinite(Number(obj))) {
-                    value = fmtNum(obj);
-                  } else if (obj != null) {
-                    value = String(obj);
-                  }
-
-                  // 알려진 키면 원본 링크
-                  const linkKey = Object.keys(IND_ALIASES).find((std) =>
-                    (IND_ALIASES[std] || []).includes(k)
-                  );
-                  const href = linkKey ? LINK[linkKey] : null;
-
-                  const cardInner = (
-                    <>
-                      <div style={styles.cardTitle}>{k}</div>
-                      <div style={styles.cardValue}>{value}</div>
-                      {sub ? (
-                        <div
-                          style={{
-                            ...styles.cardSub,
-                            color: Number(sub.replace(/[+%]/g, "")) >= 0 ? "#065f46" : "#991b1b",
-                            fontWeight: 800,
-                          }}
-                        >
-                          {sub}
-                        </div>
-                      ) : null}
-                    </>
-                  );
-
-                  return href ? (
-                    <a
-                      key={k}
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ ...styles.card, ...styles.cardLink }}
-                      title="원본 데이터 열기"
-                    >
-                      {cardInner}
-                    </a>
-                  ) : (
-                    <div key={k} style={styles.card}>
-                      {cardInner}
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        </>
+        <div style={styles.grid4}>
+          {curated.map((c) => {
+            const v = getInd(state.data, c.key);
+            const href = LINK[c.key];
+            return (
+              <a
+                key={c.key}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                style={{ ...styles.card, ...styles.cardLink }}
+                title="원본 데이터 열기"
+              >
+                <div style={styles.cardTitle}>{c.title}</div>
+                <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
+                <div style={{ ...styles.cardSub, color: "#6b7280" }}>원본 보기 ↗</div>
+              </a>
+            );
+          })}
+        </div>
       )}
     </section>
   );
 }
 
 /* =========================
-   3) 일일 리테일러 주가 등락률 (/api/stocks)
+   3) 일일 리테일러 주가 등락률
 ========================= */
 const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
 const NAME_MAP = {
@@ -593,20 +566,44 @@ function StocksSection() {
 }
 
 /* =========================
-   4) 뉴스 모음 (/api/news)
+   4) 뉴스 모음 — 키워드 기반 수집 + 2차 필터
 ========================= */
+// 리테일러/패션/텍스타일/가먼트 중심 키워드
+const EXTRA_TERMS = ["fashion", "textile", "garment", "apparel", "retailer", "retail"];
+const KEY_TERMS = [
+  ...Object.values(NAME_MAP),
+  ...Object.keys(NAME_MAP), // 심볼 문자열도 포함
+  ...EXTRA_TERMS,
+];
+const keyRegex = new RegExp(
+  KEY_TERMS.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"),
+  "i"
+);
+
 function NewsSection() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
+  // 초기: 카테고리 중심 뉴스(키워드 OR 쿼리 동시 전달)
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/news?cat=retail,fashion,textile", { cache: "no-store" });
+        const q = KEY_TERMS.map((t) => `"${t}"`).join(" OR ");
+        const r = await fetch(
+          `/api/news?cat=${encodeURIComponent("retail,fashion,textile,garment,apparel")}&q=${encodeURIComponent(q)}&limit=30&ts=${Date.now()}`,
+          { cache: "no-store" }
+        );
         const j = await r.json();
         const arr = Array.isArray(j) ? j : j.articles || j.items || [];
-        setArticles(arr.slice(0, 20));
+        // 2차 필터 (제목/설명/소스에 키워드가 들어간 것만)
+        const filtered = arr.filter((a) => {
+          const title = a?.title || "";
+          const source = a?.source?.name || a?.source || "";
+          const desc = a?.description || "";
+          return keyRegex.test(`${title} ${source} ${desc}`);
+        });
+        setArticles(filtered.slice(0, 50));
         setLoading(false);
       } catch (e) {
         setErr(String(e));
@@ -626,7 +623,7 @@ function NewsSection() {
             const title = a.title || a.headline || "(제목 없음)";
             const url = a.url || a.link || "#";
             const source = a.source?.name || a.source || a.publisher || "";
-            const time = a.publishedAt || a.pubDate || a.date || "";
+            const time = a.publishedAt || a.pubDate || a.date || a.datePublished || "";
             return (
               <a key={idx} href={url} target="_blank" rel="noreferrer" style={styles.newsItem}>
                 <div style={{ fontWeight: 900 }}>{title}</div>
