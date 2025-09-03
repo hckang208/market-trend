@@ -6,7 +6,7 @@ function parseRSS(xml) {
   while ((m = itemRegex.exec(xml))) {
     const block = m[1];
     const pick = (tag) => {
-      const r = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, "i");
+      const r = new RegExp(`<${tag}>([\s\S]*?)<\/${tag}>`, "i");
       const mm = r.exec(block);
       if (!mm) return null;
       return mm[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim();
@@ -15,7 +15,7 @@ function parseRSS(xml) {
       title: pick("title"),
       url: pick("link"),
       publishedAt: pick("pubDate"),
-      source: { name: (xml.includes("<title>") ? (xml.match(/<title>(.*?)<\/title>/i)?.[1] || "RSS") : "RSS") },
+      source: { name: "한국섬유신문" },
       description: pick("description"),
     });
   }
@@ -25,7 +25,6 @@ function parseRSS(xml) {
 export default async function handler(req, res) {
   const {
     feeds = "http://www.ktnews.com/rss/allArticle.xml",
-    // when unfiltered, we ignore brand/industry/must/exclude
     limit = "120",
     days = "2",
   } = req.query;
@@ -51,21 +50,18 @@ export default async function handler(req, res) {
     const since = new Date();
     since.setDate(since.getDate() - Math.max(1, Number(days) || 2));
 
-    // Filter by date only
     const filtered = all.filter((a) => {
       const dt = a.publishedAt ? new Date(a.publishedAt) : null;
       if (dt && isFinite(dt.getTime()) && dt < since) return false;
       return true;
     });
 
-    // Sort by publishedAt desc
     filtered.sort((a, b) => {
       const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
       const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
       return tb - ta;
     });
 
-    // Dedup by URL
     const seen = new Set();
     const dedup = filtered.filter((a) => {
       const key = a.url || a.title;
