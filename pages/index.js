@@ -12,19 +12,22 @@ export default function Home() {
   const [aiBusy, setAiBusy] = useState(false);
 
   // 뉴스 모음 + 뉴스 기반 요약
-  const [deck, setDeck] = useState([]);
+  const [deck, setDeck] = useState([]);           // {symbol,name,title,url,source,published}
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsInsight, setNewsInsight] = useState("");
   const [newsAiBusy, setNewsAiBusy] = useState(false);
 
+  // 주요 리테일러 심볼
   const symbols = ['WMT','TGT','KSS','VSCO','ANF','CRI','9983.T','AMZN','BABA'];
 
   useEffect(() => {
     (async () => {
       try {
+        // 거시 지표
         const indRes = await fetch('/api/indicators');
         if (indRes.ok) setInd(await indRes.json());
 
+        // 주가
         const out = [];
         for (const s of symbols) {
           const sRes = await fetch(`/api/stocks?symbol=${s}`);
@@ -40,11 +43,16 @@ export default function Home() {
     })();
   }, []);
 
+  // 전체 데이터(지표+주가) 기반 임원요약
   async function generateInsights() {
     try {
       setAiBusy(true);
       const body = JSON.stringify({ indicators: ind, retailers: list });
-      const r = await fetch('/api/analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const r = await fetch('/api/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      });
       if (!r.ok) {
         const t = await r.text();
         setInsight(`AI 분석 실패: ${t}`);
@@ -59,21 +67,22 @@ export default function Home() {
     }
   }
 
+  // 뉴스 모음 로딩 (순차 호출로 429 완화)
   async function loadNewsDeck() {
     if (newsBusy) return;
     try {
       setNewsBusy(true);
-      setNewsInsight("");
+      setNewsInsight(""); // 새로 로드시 이전 요약 초기화
       const seen = new Set();
       const merged = [];
 
       for (const r of list) {
-        const q = r?.stock?.longName || r.symbol;
+        const q = r?.stock?.longName || r.symbol; // 회사명 우선
         try {
           const res = await fetch(`/api/news?q=${encodeURIComponent(q)}`);
           if (!res.ok) continue;
           const arr = await res.json();
-          for (const n of (arr || []).slice(0, 3)) {
+          for (const n of (arr || []).slice(0, 3)) { // 각 심볼 상위 3개
             const key = n?.url || n?.title;
             if (!key || seen.has(key)) continue;
             seen.add(key);
@@ -86,6 +95,7 @@ export default function Home() {
               published: n?.datePublished || n?.date || ''
             });
           }
+          // 429 방지 딜레이
           await new Promise(res => setTimeout(res, 300));
         } catch (e) {
           console.warn('news error for', q, e);
@@ -99,6 +109,7 @@ export default function Home() {
     }
   }
 
+  // 뉴스 기반 AI 요약
   async function generateNewsInsights() {
     if (!deck.length) {
       setNewsInsight("먼저 ‘뉴스 모아보기’를 눌러 뉴스를 로드하세요.");
@@ -106,12 +117,20 @@ export default function Home() {
     }
     try {
       setNewsAiBusy(true);
+      // deck을 심볼별로 묶어 retailers payload에 뉴스로 주입
       const retailersForSummary = list.map(r => {
-        const news = deck.filter(d => d.symbol === r.symbol).map(d => ({ title: d.title, url: d.url }));
+        const news = deck
+          .filter(d => d.symbol === r.symbol)
+          .map(d => ({ title: d.title, url: d.url }));
         return { ...r, news };
       });
+
       const body = JSON.stringify({ indicators: ind, retailers: retailersForSummary });
-      const r = await fetch('/api/analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const r = await fetch('/api/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      });
       if (!r.ok) {
         const t = await r.text();
         setNewsInsight(`AI 뉴스 요약 실패: ${t}`);
@@ -126,6 +145,7 @@ export default function Home() {
     }
   }
 
+  // 퍼센트 보조 계산기(백업용)
   const pctChange = (price, prev) => {
     if (price == null || prev == null || prev === 0) return null;
     return ((price - prev) / prev) * 100;
@@ -150,22 +170,71 @@ export default function Home() {
         <h1 className="text-2xl font-black mb-4">구매시황 Dashboard</h1>
         <p className="muted mb-6">미국 리테일러 OEM 관점의 핵심지표와 리테일러 주가 동향을 한눈에.</p>
 
-        {/* KPI 1행: 기존 3종 */}
+        {/* KPI 1행: 기존 3종 (클릭 시 FRED 원본 이동) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiProCard title="WTI (USD/bbl)" unit="" data={ind?.wti} decimals={2} hint="원가측면(에너지) 압력" />
-          <KpiProCard title="USD/KRW" unit="" data={ind?.usdkrw} decimals={2} hint="환리스크(결제/정산) 민감" />
-          <KpiProCard title="US CPI (Index)" unit="" data={ind?.cpi} decimals={2} hint="소비자 물가 레벨" />
+          <KpiProCard
+            title="WTI (USD/bbl)"
+            unit=""
+            data={ind?.wti}
+            decimals={2}
+            hint="원가측면(에너지) 압력"
+            href="https://fred.stlouisfed.org/series/DCOILWTICO"
+          />
+          <KpiProCard
+            title="USD/KRW"
+            unit=""
+            data={ind?.usdkrw}
+            decimals={2}
+            hint="환리스크(결제/정산) 민감"
+            href="https://fred.stlouisfed.org/series/DEXKOUS"
+          />
+          <KpiProCard
+            title="US CPI (Index)"
+            unit=""
+            data={ind?.cpi}
+            decimals={2}
+            hint="소비자 물가 레벨"
+            href="https://fred.stlouisfed.org/series/CPIAUCSL"
+          />
         </div>
 
-        {/* KPI 2행: 기준금리/스프레드/재고/고용 */}
+        {/* KPI 2행: 기준금리/스프레드/재고/고용 (클릭 시 FRED 원본 이동) */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
-          <KpiProCard title="미국 기준금리 (Fed Funds, %)" unit="%" data={ind?.fedfunds} decimals={2} hint="금융여건(자금조달·재고) 압력" />
-          <KpiProCard title="금리 스프레드 (10Y–2Y, bp)" unit="bp" data={ind?.t10y2y} decimals={0} hint="경기 사이클 선행 시그널" />
-          <KpiProCard title="재고/판매 비율 (ISRATIO)" unit="" data={ind?.inventory_ratio} decimals={2} hint="리테일러 재고부담" />
-          <KpiProCard title="실업률 (UNRATE, %)" unit="%" data={ind?.unemployment} decimals={2} hint="수요 체력(고용시장)" />
+          <KpiProCard
+            title="미국 기준금리 (Fed Funds, %)"
+            unit="%"
+            data={ind?.fedfunds}
+            decimals={2}
+            hint="금융여건(자금조달·재고) 압력"
+            href="https://fred.stlouisfed.org/series/FEDFUNDS"
+          />
+          <KpiProCard
+            title="금리 스프레드 (10Y–2Y, bp)"
+            unit="bp"
+            data={ind?.t10y2y}
+            decimals={0}
+            hint="경기 사이클 선행 시그널"
+            href="https://fred.stlouisfed.org/series/T10Y2Y"
+          />
+          <KpiProCard
+            title="재고/판매 비율 (ISRATIO)"
+            unit=""
+            data={ind?.inventory_ratio}
+            decimals={2}
+            hint="리테일러 재고부담"
+            href="https://fred.stlouisfed.org/series/ISRATIO"
+          />
+          <KpiProCard
+            title="실업률 (UNRATE, %)"
+            unit="%"
+            data={ind?.unemployment}
+            decimals={2}
+            hint="수요 체력(고용시장)"
+            href="https://fred.stlouisfed.org/series/UNRATE"
+          />
         </div>
 
-        {/* 2. 일일 등락률 (변경 금지 요청 섹션) */}
+        {/* 2. 일일 등락률 (제목만 변경, 로직은 그대로 유지) */}
         <div className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-extrabold">2.일일 주요 Retailer 주가 등락률</h2>
@@ -175,6 +244,10 @@ export default function Home() {
             {list.map((r) => {
               const price = r.stock?.price ?? null;
               const prev = r.stock?.previousClose ?? null;
+
+              // 1순위: API의 changePercent
+              // 2순위: change / (price - change)
+              // 3순위: (price - prev) / prev
               const pct =
                 (r.stock?.changePercent != null)
                   ? Number(r.stock.changePercent)
