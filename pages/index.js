@@ -12,13 +12,26 @@ export default function Home() {
   const [aiBusy, setAiBusy] = useState(false);
 
   // 뉴스 모음 + 뉴스 기반 요약
-  const [deck, setDeck] = useState([]);           // {symbol,name,title,url,source,published}
+  const [deck, setDeck] = useState([]);           // [{symbol,name,title,url,source,published}]
   const [newsBusy, setNewsBusy] = useState(false);
   const [newsInsight, setNewsInsight] = useState("");
   const [newsAiBusy, setNewsAiBusy] = useState(false);
 
   // 주요 리테일러 심볼
   const symbols = ['WMT','TGT','KSS','VSCO','ANF','CRI','9983.T','AMZN','BABA'];
+
+  // 심볼 → 회사명 안전 맵 (표시 안정화용)
+  const NAME_MAP = {
+    WMT: 'Walmart Inc.',
+    TGT: 'Target Corporation',
+    KSS: "Kohl's Corporation",
+    VSCO: "Victoria's Secret & Co.",
+    ANF: 'Abercrombie & Fitch Co.',
+    CRI: "Carter's, Inc.",
+    '9983.T': 'Fast Retailing Co., Ltd.',
+    AMZN: 'Amazon.com, Inc.',
+    BABA: 'Alibaba Group Holding Limited',
+  };
 
   useEffect(() => {
     (async () => {
@@ -67,7 +80,7 @@ export default function Home() {
     }
   }
 
-  // 뉴스 모음 로딩 (순차 호출로 429 완화)
+  // 뉴스 모음 로딩 (종목별, 순차 호출로 429 완화)
   async function loadNewsDeck() {
     if (newsBusy) return;
     try {
@@ -88,13 +101,14 @@ export default function Home() {
             seen.add(key);
             merged.push({
               symbol: r.symbol,
-              name: r?.stock?.longName || r.symbol,
+              name: NAME_MAP[r.symbol] || r?.stock?.longName || r.symbol,
               title: n?.title || n?.url || '(제목 없음)',
               url: n?.url || '#',
-              source: (n?.provider && (n.provider[0]?.name || n.provider?.name)) || n?.source || '',
+              source: n?.source || (n?.provider && (n.provider[0]?.name || n.provider?.name)) || '',
               published: n?.datePublished || n?.date || ''
             });
           }
+          // 429 방지 딜레이
           await new Promise(res => setTimeout(res, 300));
         } catch (e) {
           console.warn('news error for', q, e);
@@ -108,22 +122,41 @@ export default function Home() {
     }
   }
 
+  // 카테고리 뉴스 로딩 (리테일/패션/텍스타일)
+  async function loadCategoryNews(cats = 'retail,fashion,textile') {
+    if (newsBusy) return;
+    try {
+      setNewsBusy(true);
+      setNewsInsight('');
+      const r = await fetch(`/api/news?cat=${encodeURIComponent(cats)}&limit=30`);
+      if (!r.ok) throw new Error(await r.text());
+      const arr = await r.json();
+      setDeck(arr);
+    } catch (e) {
+      console.warn('category news error', e);
+      setDeck([]);
+    } finally {
+      setNewsBusy(false);
+    }
+  }
+
   // 뉴스 기반 AI 요약
   async function generateNewsInsights() {
     if (!deck.length) {
-      setNewsInsight("먼저 ‘뉴스 모아보기’를 눌러 뉴스를 로드하세요.");
+      setNewsInsight("먼저 뉴스 목록을 로드하세요. (뉴스 모아보기 또는 카테고리 뉴스)");
       return;
     }
     try {
       setNewsAiBusy(true);
+      // deck을 심볼별로 묶어 retailers payload에 뉴스로 주입 (없는 심볼은 name만 사용)
       const retailersForSummary = list.map(r => {
         const news = deck
-          .filter(d => d.symbol === r.symbol)
+          .filter(d => d.symbol ? d.symbol === r.symbol : false)
           .map(d => ({ title: d.title, url: d.url }));
         return { ...r, news };
       });
 
-      const body = JSON.stringify({ indicators: ind, retailers: retailersForSummary });
+      const body = JSON.stringify({ indicators: ind, retailers: retailersForSummary, headlines: deck });
       const r = await fetch('/api/analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +200,7 @@ export default function Home() {
         <h1 className="text-2xl font-black mb-4">구매시황 Dashboard</h1>
         <p className="muted mb-6">미국 리테일러 OEM 관점의 핵심지표와 리테일러 주가 동향을 한눈에.</p>
 
-        {/* KPI 1행: 기존 3종 (클릭 시 FRED 원본 이동) */}
+        {/* KPI 1행: WTI / USDKRW / CPI (클릭 시 FRED) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             title="WTI (USD/bbl)"
@@ -195,7 +228,7 @@ export default function Home() {
           />
         </div>
 
-        {/* KPI 2행: 기준금리/스프레드/재고/고용 (클릭 시 FRED 원본 이동) */}
+        {/* KPI 2행: 기준금리 / 스프레드 / 재고/판매 / 실업률 (클릭 시 FRED) */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
           <KpiCard
             title="미국 기준금리 (Fed Funds, %)"
@@ -241,6 +274,7 @@ export default function Home() {
             {list.map((r) => {
               const price = r.stock?.price ?? null;
               const prev = r.stock?.previousClose ?? null;
+
               const pct =
                 (r.stock?.changePercent != null)
                   ? Number(r.stock.changePercent)
@@ -253,6 +287,12 @@ export default function Home() {
               const pctText = pct == null ? '-' : `${sign}${Math.abs(pct).toFixed(2)}%`;
               const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
 
+              const displayName =
+                NAME_MAP[r.symbol] ??
+                (r.stock?.symbol === r.symbol ? r.stock?.longName : null) ??
+                r.stock?.longName ??
+                r.symbol;
+
               return (
                 <a
                   key={`pct-${r.symbol}`}
@@ -262,7 +302,7 @@ export default function Home() {
                   className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
                 >
                   <div className="text-xs text-slate-500">{r.symbol}</div>
-                  <div className="text-sm font-semibold truncate">{r.stock?.longName || r.symbol}</div>
+                  <div className="text-sm font-semibold truncate">{displayName}</div>
                   <div className="mt-2 text-lg font-extrabold">{price ?? '-'}</div>
                   <div className={`text-sm ${color}`}>{pctText}</div>
                 </a>
@@ -297,7 +337,14 @@ export default function Home() {
                 disabled={newsBusy}
                 className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50"
               >
-                {newsBusy ? '뉴스 수집 중…' : '뉴스 모아보기'}
+                {newsBusy ? '뉴스 수집 중…' : '뉴스 모아보기(종목별)'}
+              </button>
+              <button
+                onClick={() => loadCategoryNews()}
+                disabled={newsBusy}
+                className="px-3 py-1.5 rounded-lg border hover:bg-slate-50 disabled:opacity-50"
+              >
+                {newsBusy ? '뉴스 수집 중…' : '카테고리 뉴스(리테일/패션/텍스타일)'}
               </button>
               <button
                 onClick={generateNewsInsights}
@@ -308,11 +355,11 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <p className="text-sm text-slate-500 mt-1">각 종목 상위 뉴스 3개씩을 수집해 최신순으로 정리합니다. (중복 제거)</p>
+          <p className="text-sm text-slate-500 mt-1">종목별 상위 뉴스 or 카테고리 뉴스를 최신순으로 정리합니다. (중복 제거)</p>
 
           <div className="mt-3 space-y-3">
             {deck.length === 0 && !newsBusy && (
-              <div className="text-slate-500 text-sm">아직 뉴스가 없습니다. “뉴스 모아보기”를 눌러 로드하세요.</div>
+              <div className="text-slate-500 text-sm">아직 뉴스가 없습니다. 버튼을 눌러 로드하세요.</div>
             )}
             {deck.map((n, idx) => (
               <a
@@ -323,13 +370,15 @@ export default function Home() {
                 className="block card p-4 hover:shadow-lg transition border border-line rounded-xl"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs px-2 py-0.5 rounded-full border bg-white">{n.symbol}</div>
+                  <div className="text-xs px-2 py-0.5 rounded-full border bg-white">
+                    {n.symbol || 'NEWS'}
+                  </div>
                   <div className="text-xs text-slate-500">
                     {n.source || ''}{n.published ? ` · ${new Date(n.published).toLocaleString()}` : ''}
                   </div>
                 </div>
                 <div className="mt-1 font-semibold">{n.title}</div>
-                <div className="text-xs text-slate-500 mt-0.5 truncate">{n.name}</div>
+                {n.name && <div className="text-xs text-slate-500 mt-0.5 truncate">{n.name}</div>}
               </a>
             ))}
           </div>
