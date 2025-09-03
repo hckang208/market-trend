@@ -1,117 +1,107 @@
 // pages/api/news.js
-// 사용 예:
-//   /api/news?q=Walmart
-//   /api/news?cat=retail,fashion,textile&limit=30
-// 반환: [{ title, url, source, datePublished }]
 export default async function handler(req, res) {
   try {
-    const q = (req.query.q || "").trim();
-    const cat = (req.query.cat || "").trim();
-    const limit = Math.min(Number(req.query.limit || 20), 50);
+    const NEWS_API_KEY = process.env.NEWS_API_KEY || process.env.NEWSAPI || "";
+    const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || "";
 
-    if (!q && !cat) {
-      return res.status(400).json({ error: 'q or cat required' });
-    }
+    const {
+      q = "",                         // 키워드 OR 조합: "Walmart" OR "Target" OR "fashion" ...
+      cat = "",                       // "retail,fashion,textile,garment,apparel"
+      language = "en",
+      limit: rawLimit = "30",
+      sortBy = "publishedAt",
+    } = req.query;
 
-    const NEWS_API_KEY = process.env.NEWS_API_KEY || process.env.NEWSAPI;
-    const RAPID = process.env.RAPIDAPI_KEY;
+    const limit = Math.min(Math.max(parseInt(String(rawLimit), 10) || 30, 1), 100);
 
-    const COMMON_HEADERS = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-      "Accept": "application/json,text/plain,*/*",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      "Referer": "https://www.bing.com/",
-    };
+    // q 가 있으면 q를 우선으로 사용. cat은 보조 키워드로 q에 병합
+    const cats = String(cat || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const catExpr = cats.length ? `(${cats.join(" OR ")})` : "";
+    const queryExpr = q
+      ? catExpr
+        ? `(${q}) AND ${catExpr}`
+        : `${q}`
+      : catExpr || "retail OR fashion OR textile OR garment OR apparel";
 
-    const withTimeout = async (fn, ms = 6000) => {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort("timeout"), ms);
-      try { return await fn(ctrl.signal); } finally { clearTimeout(t); }
-    };
+    // 1) NewsAPI 우선 시도 (everything)
+    if (NEWS_API_KEY) {
+      const url = new URL("https://newsapi.org/v2/everything");
+      url.searchParams.set("q", queryExpr);
+      url.searchParams.set("pageSize", String(limit));
+      url.searchParams.set("language", language);
+      url.searchParams.set("sortBy", sortBy);
 
-    const normItem = (title, url, source, date) => ({
-      title: title || url || '(no title)',
-      url,
-      source: source || '',
-      datePublished: date || ''
-    });
-
-    // Provider 1: NewsAPI
-    async function fromNewsAPI(query, signal) {
-      if (!NEWS_API_KEY) throw new Error('NEWS_API_KEY missing');
-      const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=${limit}`;
-      const r = await fetch(url, { headers: { ...COMMON_HEADERS, 'X-Api-Key': NEWS_API_KEY }, signal });
-      if (!r.ok) throw new Error(`newsapi ${r.status}`);
-      const j = await r.json();
-      return (j?.articles || []).map(a => normItem(a.title, a.url, a.source?.name, a.publishedAt));
-    }
-
-    // Provider 2: Bing News (RapidAPI)
-    async function fromBing(query, signal) {
-      if (!RAPID) throw new Error('RAPIDAPI_KEY missing');
-      const url = `https://bing-news-search1.p.rapidapi.com/news/search?q=${encodeURIComponent(query)}&freshness=Week&count=${limit}&originalImg=true&textFormat=Raw&safeSearch=Off`;
-      const r = await fetch(url, {
-        headers: {
-          ...COMMON_HEADERS,
-          'x-rapidapi-key': RAPID,
-          'x-rapidapi-host': 'bing-news-search1.p.rapidapi.com'
-        },
-        signal
+      const r = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${NEWS_API_KEY}` },
       });
-      if (!r.ok) throw new Error(`bing ${r.status}`);
       const j = await r.json();
-      return (j?.value || []).map(v => normItem(v.name, v.url, v.provider?.[0]?.name, v.datePublished));
-    }
 
-    const CAT_QUERIES = {
-      retail:  '(retail OR "big-box" OR "department store" OR "specialty retail") AND (US OR United States)',
-      fashion: '(fashion OR apparel OR clothing) AND (retailer OR brand)',
-      textile: '(textile OR garment OR fabric OR yarn OR cotton OR polyester) AND (supply chain OR manufacturer OR OEM)'
-    };
-
-    let queries = [];
-    if (q) {
-      queries = [q];
-    } else {
-      const cats = cat.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-      queries = cats.map(c => CAT_QUERIES[c] || c);
-    }
-
-    const merged = [];
-    const seen = new Set();
-
-    async function tryProviders(query) {
-      for (const fn of [
-        (sig) => fromNewsAPI(query, sig),
-        (sig) => fromBing(query, sig),
-      ]) {
-        try {
-          const items = await withTimeout(fn, 6000);
-          if (items?.length) return items;
-        } catch (_) {}
+      // 실패 시 RapidAPI로 폴백
+      if (!r.ok || j?.status === "error") {
+        return await rapidFallback(queryExpr, limit, res, RAPIDAPI_KEY);
       }
-      return [];
+
+      const items = (j.articles || []).map((a) => ({
+        title: a.title,
+        url: a.url,
+        source: a.source?.name || "",
+        description: a.description,
+        image: a.urlToImage || "",
+        publishedAt: a.publishedAt,
+      }));
+      res.status(200).json(items);
+      return;
     }
 
-    for (const query of queries) {
-      const items = await tryProviders(query);
-      for (const it of items) {
-        const key = it.url || it.title;
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        merged.push(it);
-      }
-      await new Promise(r => setTimeout(r, 300)); // rate-limit 완화
-    }
-
-    merged.sort((a, b) => new Date(b.datePublished || 0) - new Date(a.datePublished || 0));
-
-    // 뉴스는 캐시 살짝 허용(쿼리마다 다르니 CDN이 크게 섞지는 않음)
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1200');
-    return res.status(200).json(merged.slice(0, limit));
+    // 2) RapidAPI 폴백
+    return await rapidFallback(queryExpr, limit, res, RAPIDAPI_KEY);
   } catch (e) {
-    return res.status(500).json({ error: e.message || String(e) });
+    res.status(500).send(`news error: ${e.message || e}`);
+  }
+}
+
+async function rapidFallback(queryExpr, limit, res, RAPIDAPI_KEY) {
+  // RapidAPI 키가 없으면 빈 배열
+  if (!RAPIDAPI_KEY) {
+    res.status(200).json([]);
+    return;
+  }
+
+  // 예시: Bing News Search (RapidAPI 마켓플레이스에 다수 호스트 존재)
+  // 실제 사용 중인 RapidAPI 제공자에 맞게 host 를 조정하세요.
+  const host = "bing-news-search1.p.rapidapi.com";
+  const url = new URL("https://bing-news-search1.p.rapidapi.com/news/search");
+  url.searchParams.set("q", queryExpr);
+  url.searchParams.set("count", String(limit));
+  url.searchParams.set("freshness", "Week");
+  url.searchParams.set("textFormat", "Raw");
+  url.searchParams.set("safeSearch", "Off");
+
+  try {
+    const r = await fetch(url.toString(), {
+      headers: {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": host,
+      },
+    });
+    if (!r.ok) {
+      res.status(200).json([]);
+      return;
+    }
+    const j = await r.json();
+    const items = (j.value || []).map((a) => ({
+      title: a.name,
+      url: a.url,
+      source: a.provider?.[0]?.name || "",
+      description: a.description,
+      image: a.image?.thumbnail?.contentUrl || "",
+      publishedAt: a.datePublished,
+    }));
+    res.status(200).json(items);
+  } catch {
+    res.status(200).json([]);
   }
 }
