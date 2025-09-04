@@ -1,4 +1,6 @@
 // pages/api/daily-report.js
+import { geminiComplete } from "../../lib/gemini";
+
 const BRAND_TERMS = [
   "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
   "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
@@ -54,10 +56,7 @@ export default async function handler(req, res) {
     }
     stockRows.sort((a,b) => b.pct - a.pct);
 
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
-
-    const system = `당신은 Hansoll(한솔) 부자재 구매부서 임원에게 보고하는 시니어 컨설턴트입니다.
+    const system = `당신은 한솔섬유의 전략 시니어 컨설턴트입니다.
 - 한국어로 핵심을 간결하게 정리하세요.
 - 아침 브리핑 용으로 1~2분 내 읽히는 분량으로 작성합니다.
 - '오늘의 3가지 핵심' -> '글로벌 vs 한국 요약' -> '리테일러 주가 하이라이트' -> 'Risk/Action' 순서로 Markdown 섹션을 만듭니다.`;
@@ -82,28 +81,13 @@ export default async function handler(req, res) {
 JSON:
 ${JSON.stringify(payload, null, 2)}`;
 
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.4,
-        max_tokens: 700,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
+    const markdown = await geminiComplete({
+      system,
+      user,
+      model: "gemini-1.5-flash",
+      temperature: 0.4,
+      maxOutputTokens: 1000,
     });
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`OpenAI error: ${txt}`);
-    }
-    const j = await r.json();
-    const markdown = j.choices?.[0]?.message?.content?.trim() || "";
 
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
