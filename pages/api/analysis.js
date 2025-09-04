@@ -1,8 +1,8 @@
+// pages/api/analysis.js
+import { geminiComplete } from "../../lib/gemini";
+
 export default async function handler(req, res) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: "환경변수 OPENAI_API_KEY 없음" });
-
     if (req.method !== "POST") {
       res.setHeader("Allow", "POST");
       return res.status(405).json({ error: "Method Not Allowed" });
@@ -41,28 +41,14 @@ export default async function handler(req, res) {
       lines.join("\n")
     ].join("\n");
 
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a sharp retail & macro analyst. Write concise, executive-ready Korean summaries." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.2
-      })
+    const out = await geminiComplete({
+      system: "You are a sharp retail & macro analyst. Write concise, executive-ready Korean summaries.",
+      user: prompt,
+      model: "gemini-1.5-pro",
+      temperature: 0.2,
+      maxOutputTokens: 1200,
     });
 
-    if (!r.ok) {
-      const t = await r.text();
-      return res.status(r.status).json({ error: "OpenAI 호출 실패", detail: t });
-    }
-    const j = await r.json();
-    const out = j?.choices?.[0]?.message?.content || "";
     return res.status(200).json({ summary: out });
   } catch (e) {
     return res.status(500).json({ error: e.message });
