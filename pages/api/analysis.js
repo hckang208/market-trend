@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     ].join("\n");
 
     const out = await geminiComplete({
-      system: "You are a sharp retail & macro analyst. Write concise, executive-ready Korean summaries.",
+      system: "You are a senior strategy consultant writing **BCG-level**, executive-ready Korean briefs for Hansoll Textile's strategy leadership.",
       user: prompt,
       model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       temperature: 0.2,

@@ -1,42 +1,31 @@
 // pages/api/daily-report.js
 import { geminiComplete } from "../../lib/gemini";
 
-const BRAND_TERMS = [
-  "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
-  "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
-];
-const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
 const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
 
 export default async function handler(req, res) {
   const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
   try {
-    const [indR, brandR, industR, krR] = await Promise.all([
+    const [indR, overseasR, krR] = await Promise.all([
       fetch(`${base}/api/indicators`, { cache: "no-store" }),
+      // Overseas: simplified keywords, English
       fetch(`${base}/api/news?` + new URLSearchParams({
-        brand: BRAND_TERMS.join("|"),
-        industry: INDUSTRY_TERMS.join("|"),
-        must: "brand,industry",
+        industry: "fashion|apparel|garment|textile",
         language: "en",
-        limit: "30",
+        limit: "40",
         days: "7",
       }).toString(), { cache: "no-store" }),
-      fetch(`${base}/api/news?` + new URLSearchParams({
-        industry: INDUSTRY_TERMS.join("|"),
-        language: "en",
-        limit: "30",
-        days: "7",
-      }).toString(), { cache: "no-store" }),
+      // Domestic: KR textile news RSS (daily)
       fetch(`${base}/api/news-kr-rss?` + new URLSearchParams({
         feeds: "http://www.ktnews.com/rss/allArticle.xml",
-        days: "2",
-        limit: "120",
+        days: "1",
+        limit: "200",
       }).toString(), { cache: "no-store" }),
     ]);
 
     const indicators = await indR.json();
-    const newsBrand = await brandR.json();
-    const newsIndustry = await industR.json();
+    const newsOverseas = await overseasR.json();
+    // removed industry-only list
     const newsKR = await krR.json();
 
     const stockRows = [];
@@ -56,18 +45,17 @@ export default async function handler(req, res) {
     }
     stockRows.sort((a,b) => b.pct - a.pct);
 
-    const system = `당신은 Hansoll(한솔) 부자재 구매부서 임원에게 보고하는 시니어 컨설턴트입니다.
+    const system = `당신은 한솔섬유 전략기획부 임원이 즉시 의사결정에 활용할 **BCG 컨설팅 수준**의 브리프를 작성하는 시니어 컨설턴트입니다.
 - 한국어로 핵심을 간결하게 정리하세요.
 - 아침 브리핑 용으로 1~2분 내 읽히는 분량으로 작성합니다.
-- '오늘의 3가지 핵심' -> '글로벌 vs 한국 요약' -> '리테일러 주가 하이라이트' -> 'Risk/Action' 순서로 Markdown 섹션을 만듭니다.`;
+- '오늘의 3가지 핵심' -> '해외 vs 국내 요약' -> '리테일러 주가 하이라이트' -> 'Risk/Action' 순서로 Markdown 섹션을 만듭니다.`;
 
     const payload = {
       indicators,
       stocks: stockRows.slice(0, 8),
       news: {
-        brandTop: (Array.isArray(newsBrand) ? newsBrand.slice(0, 8) : []),
-        industryTop: (Array.isArray(newsIndustry) ? newsIndustry.slice(0, 6) : []),
-        koreaTop: (Array.isArray(newsKR) ? newsKR.slice(0, 8) : [])
+        overseasTop: (Array.isArray(newsOverseas) ? newsOverseas.slice(0, 12) : []),
+        koreaTop: (Array.isArray(newsKR) ? newsKR.slice(0, 60) : [])
       }
     };
 

@@ -99,8 +99,6 @@ function ProcurementTopBlock() {
   };
 
   const [data, setData] = useState(defaultData);
-  const [openEdit, setOpenEdit] = useState(false);
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -159,11 +157,7 @@ function ProcurementTopBlock() {
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
         </div>
-        <div style={styles.tools}>
-          <button onClick={() => setOpenEdit(v => !v)} style={styles.btnGray}>✏️ 편집</button>
-          <a href="/daily-report" style={styles.btnBlue}>🤖 AI Daily Report</a>
-        </div>
-      </div>
+</div>
 
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
