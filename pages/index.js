@@ -187,7 +187,7 @@ function ProcurementTopBlock() {
 
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
 
-      {openEdit && (
+      {false && (
         <div style={styles.editBox}>
           <div style={styles.row}>
             <label>기간 표시</label>
@@ -224,7 +224,7 @@ function ProcurementTopBlock() {
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={save} style={styles.btnBlue}>저장</button>
-            <button onClick={() => setOpenEdit(false)} style={styles.btnGray}>닫기</button>
+            <button  style={styles.btnGray}>닫기</button>
             <button onClick={reset} style={styles.btnDanger}>초기화</button>
           </div>
         </div>
