@@ -160,7 +160,7 @@ function ProcurementTopBlock() {
           </div>
         </div>
         <div style={styles.tools}>
-          <button onClick={() => setOpenEdit(v => !v)} style={styles.btnGray}>✏️ 편집</button>
+          <button onClick={() => setOpenEdit(v => !v)} style={styles.btnGray}>✏️ 편집</a>
           <a href="/daily-report" style={styles.btnBlue}>🤖 AI Daily Report</a>
         </div>
       </div>
@@ -229,9 +229,9 @@ function ProcurementTopBlock() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={save} style={styles.btnBlue}>저장</button>
-            <button onClick={() => setOpenEdit(false)} style={styles.btnGray}>닫기</button>
-            <button onClick={reset} style={styles.btnDanger}>초기화</button>
+            <button onClick={save} style={styles.btnBlue}>저장</a>
+            <button onClick={() => setOpenEdit(false)} style={styles.btnGray}>닫기</a>
+            <button onClick={reset} style={styles.btnDanger}>초기화</a>
           </div>
         </div>
       )}
@@ -453,7 +453,7 @@ function StocksSection() {
           <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
                   style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
             {collapsed ? "더보기" : "접기"}
-          </button>
+          </a>
         </div>
       </div>
     );
@@ -541,12 +541,7 @@ useEffect(() => {
                          style={{ ...styles.btnTab }} title="Yahoo Finance 열기">
                         Yahoo
                       </a>
-                      <button onClick={() => loadSummary(r.symbol)}
-                              disabled={sumState[r.symbol]?.loading}
-                              style={{ ...styles.btnTab, ...(sumState[r.symbol]?.open ? styles.btnTabActive : null) }}
-                              title="최근 10개 뉴스 기준 전략 요약">
-                        {sumState[r.symbol]?.loading ? "요약 중..." : "AI뉴스요약"}
-                      </button>
+                      <a href={`/company/${encodeURIComponent(r.symbol)}`} style={{ ...styles.btnTab }} title="AI 요약 화면으로 이동">AI뉴스요약</a>
                     </div>
                   </div>
 
@@ -682,18 +677,18 @@ function NewsTabsSection() {
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => setTab("brand")} style={{ ...styles.btnTab, ...(tab==="brand"?styles.btnTabActive:{}) }}>브랜드</button>
-          <button onClick={() => setTab("industry")} style={{ ...styles.btnTab, ...(tab==="industry"?styles.btnTabActive:{}) }}>산업</button>
-          <button onClick={() => setTab("korea")} style={{ ...styles.btnTab, ...(tab==="korea"?styles.btnTabActive:{}) }}>한국</button>
+          <button onClick={() => setTab("brand")} style={{ ...styles.btnTab, ...(tab==="brand"?styles.btnTabActive:{}) }}>브랜드</a>
+          <button onClick={() => setTab("industry")} style={{ ...styles.btnTab, ...(tab==="industry"?styles.btnTabActive:{}) }}>산업</a>
+          <button onClick={() => setTab("korea")} style={{ ...styles.btnTab, ...(tab==="korea"?styles.btnTabActive:{}) }}>한국</a>
         </div>
         <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
           <input type="checkbox" checked={andStrict} onChange={(e)=>setAndStrict(e.target.checked)} />
           정확도 강화(AND: 고객사 ∩ 업계)
         </label>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={loadBrand} disabled={busy.brand} style={styles.btnGray}>{busy.brand?"브랜드 로딩…":"브랜드 새로고침"}</button>
-          <button onClick={loadIndustry} disabled={busy.industry} style={styles.btnGray}>{busy.industry?"산업 로딩…":"산업 새로고침"}</button>
-          <button onClick={loadKorea} disabled={busy.kr} style={styles.btnBlue}>{busy.kr?"한국 로딩…":"한국 새로고침"}</button>
+          <button onClick={loadBrand} disabled={busy.brand} style={styles.btnGray}>{busy.brand?"브랜드 로딩…":"브랜드 새로고침"}</a>
+          <button onClick={loadIndustry} disabled={busy.industry} style={styles.btnGray}>{busy.industry?"산업 로딩…":"산업 새로고침"}</a>
+          <button onClick={loadKorea} disabled={busy.kr} style={styles.btnBlue}>{busy.kr?"한국 로딩…":"한국 새로고침"}</a>
         </div>
       </div>
       {err && <div style={styles.err}>&middot; 뉴스 오류: {err}</div>}

@@ -105,7 +105,7 @@ export default async function handler(req, res) {
       "### Actions (1~2주) (3개 불릿)",
       "- 실행 가능한 액션을 간결하게",
       "",
-      "### Risks & Assumptions (2줄)",
+      "### Risks & Assumptions (2줄)\n- 각 불릿/문장 끝에 관련 기사 번호를 대괄호로 표기하세요. 예: [1], [2-3]. 관련 기사 없으면 생략",
       "- 리스크와 전제 명시",
       "",
       "뉴스 목록:",
