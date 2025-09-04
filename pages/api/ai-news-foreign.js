@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       title: n.title,
       link: n.url,
       pubDate: n.published_at || n.publishedAt || null,
-      source: n.source || "News API"
+      source: (typeof n.source === 'string' ? n.source : (n.source && n.source.name ? n.source.name : '')) || \"\1\"
     }));
 
     const system = "당신은 한솔섬유 전략기획부 임원이 참조할 **BCG 컨설팅 수준**의 글로벌 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
