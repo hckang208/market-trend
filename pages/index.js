@@ -561,137 +561,84 @@ const BRAND_TERMS = [
 ];
 const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
 
+
 function NewsTabsSection() {
-  const [tab, setTab] = useState("brand"); // brand | industry | korea
-  const [andStrict, setAndStrict] = useState(true); // 정확도 강화(AND)
-  const [brandNews, setBrandNews] = useState([]);
-  const [industryNews, setIndustryNews] = useState([]);
-  const [krNews, setKrNews] = useState([]);
-  const [busy, setBusy] = useState({ brand:false, industry:false, kr:false });
-  const [err, setErr] = useState("");
+  const [activeTab, setActiveTab] = useState('overseas'); // overseas | korea
+  const [newsItems, setNewsItems] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsErr, setNewsErr] = useState('');
+  const [collapsed, setCollapsed] = useState(true);
 
-  const DOMAINS = "reuters.com,fashionunited.com,wwd.com,businesswire.com,forbes.com,apnews.com,bloomberg.com,ft.com,cnbc.com";
-  const EXCLUDE = "celebrity,lookbook,outfit,beauty,gossip,concert,fandom";
-
-  const loadBrand = async () => {
-    if (busy.brand) return;
+  async function load(tab = activeTab) {
     try {
-      setBusy(s => ({ ...s, brand: true }));
-      setErr("");
-      const qs = new URLSearchParams({
-        brand: BRAND_TERMS.join("|"),
-        industry: INDUSTRY_TERMS.join("|"),
-        must: andStrict ? "brand,industry" : "",
-        language: "en",
-        limit: "40",
-        days: "14",
-        domains: DOMAINS,
-        exclude: EXCLUDE,
-      });
-      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
-      const arr = await r.json();
-      setBrandNews(arr || []);
-    } catch (e) { setErr(String(e)); }
-    finally { setBusy(s => ({ ...s, brand: false })); }
-  };
+      setNewsLoading(true); setNewsErr(''); setNewsItems([]);
+      let url = '';
+      if (tab === 'overseas') {
+        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" }).toString();
+      } else {
+        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
+      }
+      const r = await fetch(url, { cache: 'no-store' });
+      const arr = r.ok ? await r.json() : [];
+      const items = (arr || []).map(n => ({
+        title: n.title,
+        url: n.url || n.link,
+        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
+        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
+      }));
+      setNewsItems(items);
+      setCollapsed(true);
+    } catch (e) {
+      setNewsErr(String(e));
+    } finally {
+      setNewsLoading(false);
+    }
+  }
 
-  const loadIndustry = async () => {
-    if (busy.industry) return;
-    try {
-      setBusy(s => ({ ...s, industry: true }));
-      setErr("");
-      const qs = new URLSearchParams({
-        industry: INDUSTRY_TERMS.join("|"),
-        language: "en",
-        limit: "40",
-        days: "14",
-        domains: DOMAINS,
-        exclude: EXCLUDE,
-      });
-      const r = await fetch(`/api/news?${qs.toString()}`, { cache: "no-store" });
-      const arr = await r.json();
-      setIndustryNews(arr || []);
-    } catch (e) { setErr(String(e)); }
-    finally { setBusy(s => ({ ...s, industry: false })); }
-  };
+  useEffect(() => { load('overseas'); }, []);
 
-  const loadKorea = async () => {
-    if (busy.kr) return;
-    try {
-      setBusy(s => ({ ...s, kr: true }));
-      setErr("");
-      const qs = new URLSearchParams({
-        feeds: "http://www.ktnews.com/rss/allArticle.xml",
-        days: "2",
-        limit: "120"
-      });
-      const r = await fetch(`/api/news-kr-rss?${qs.toString()}`, { cache: "no-store" });
-      const arr = await r.json();
-      setKrNews(arr || []);
-    } catch (e) { setErr(String(e)); }
-    finally { setBusy(s => ({ ...s, kr: false })); }
-  };
-
-  useEffect(() => {
-    loadBrand();
-    loadIndustry();
-    loadKorea();
-  }, []);
-
-  const Section = ({ title, items }) => (
-    <div style={{ marginTop: 12 }}>
-      <div style={styles.blockTitle}>{title}</div>
-      {items.length === 0 ? <div style={{ color:"#6b7280" }}>관련 기사가 아직 없어요.</div> : (
-        <div style={{ display:"grid", gap:12 }}>
-          {items.map((a, idx) => (
-            <a key={idx} href={a.url} target="_blank" rel="noreferrer" style={styles.newsItem}>
-              <div style={{ fontWeight: 900 }}>{a.title || "(제목 없음)"}</div>
-              <div style={{ fontSize: 12, color: "#6b7280" }}>
-                {(a.source?.name || (a.url ? new URL(a.url).hostname : ""))}
-                {a.publishedAt ? ` · ${new Date(a.publishedAt).toLocaleString()}` : ""}
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const aiPayload = useMemo(() => ({
-    brandCount: brandNews.length,
-    industryCount: industryNews.length,
-    koreaCount: krNews.length,
-    brandTop: brandNews.slice(0, 5),
-    industryTop: industryNews.slice(0, 5),
-    koreaTop: krNews.slice(0, 5),
-    andStrict,
-  }), [JSON.stringify(brandNews), JSON.stringify(industryNews), JSON.stringify(krNews), andStrict]);
+  const rendered = (collapsed ? newsItems.slice(0,5) : newsItems);
 
   return (
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => setTab("brand")} style={{ ...styles.btnTab, ...(tab==="brand"?styles.btnTabActive:{}) }}>브랜드</button>
-          <button onClick={() => setTab("industry")} style={{ ...styles.btnTab, ...(tab==="industry"?styles.btnTabActive:{}) }}>산업</button>
-          <button onClick={() => setTab("korea")} style={{ ...styles.btnTab, ...(tab==="korea"?styles.btnTabActive:{}) }}>한국</button>
+          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
+          <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
-        <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
-          <input type="checkbox" checked={andStrict} onChange={(e)=>setAndStrict(e.target.checked)} />
-          정확도 강화(AND: 고객사 ∩ 업계)
-        </label>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={loadBrand} disabled={busy.brand} style={styles.btnGray}>{busy.brand?"브랜드 로딩…":"브랜드 새로고침"}</button>
-          <button onClick={loadIndustry} disabled={busy.industry} style={styles.btnGray}>{busy.industry?"산업 로딩…":"산업 새로고침"}</button>
-          <button onClick={loadKorea} disabled={busy.kr} style={styles.btnBlue}>{busy.kr?"한국 로딩…":"한국 새로고침"}</button>
+          <a href="/daily-report" style={{ ...styles.btnGhost }}>AI 데일리 리포트</a>
         </div>
       </div>
-      {err && <div style={styles.err}>&middot; 뉴스 오류: {err}</div>}
 
-      {tab==="brand" && <Section title="브랜드 뉴스" items={brandNews} />}
-      {tab==="industry" && <Section title="산업 동향 뉴스" items={industryNews} />}
-      {tab==="korea" && <Section title="한국 뉴스" items={krNews} />}
-
-      <AIBox block="news" payload={aiPayload} />
+      <div style={{ marginTop: 12, border:"1px solid #e5e7eb", borderRadius:12, background:"#fff" }}>
+        {newsLoading && <div style={{ padding:12, color:"#6b7280" }}>불러오는 중…</div>}
+        {newsErr && <div style={{ padding:12, color:"#b91c1c" }}>에러: {newsErr}</div>}
+        {!newsLoading && !newsErr && (
+          <div style={{ padding:12 }}>
+            {rendered.length === 0 ? (
+              <div style={{ color:"#6b7280" }}>관련 기사가 아직 없어요.</div>
+            ) : (
+              <ol style={{ margin:0, paddingLeft:18 }}>
+                {rendered.map((it, i) => (
+                  <li key={i} style={{ margin:"8px 0" }}>
+                    <a href={it.url} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
+                    {it.publishedAt ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.publishedAt}</div> : null}
+                    <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {newsItems.length > 5 && (
+              <div style={{ marginTop: 8 }}>
+                <button onClick={() => setCollapsed(v => !v)} style={{ ...styles.btnGhost }}>
+                  {collapsed ? "더보기" : "접기"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
