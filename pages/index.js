@@ -562,7 +562,7 @@ const BRAND_TERMS = [
 const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
 
 function NewsTabsSection() {
-  const [tab, setTab] = useState('overseas'); // brand | industry | korea
+  const [tab, setTab] = useState("brand"); // brand | industry | korea
   const [andStrict, setAndStrict] = useState(true); // 정확도 강화(AND)
   const [brandNews, setBrandNews] = useState([]);
   const [industryNews, setIndustryNews] = useState([]);
@@ -671,8 +671,8 @@ function NewsTabsSection() {
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => setTab('overseas')} style={{ ...styles.btnTab, ...(tab==='overseas'?styles.btnTabActive:{}) }}>브랜드</button>
-          <button onClick={() => setTab('korea')} style={{ ...styles.btnTab, ...(tab==='korea'?styles.btnTabActive:{}) }}>산업</button>
+          <button onClick={() => setTab("brand")} style={{ ...styles.btnTab, ...(tab==="brand"?styles.btnTabActive:{}) }}>브랜드</button>
+          <button onClick={() => setTab("industry")} style={{ ...styles.btnTab, ...(tab==="industry"?styles.btnTabActive:{}) }}>산업</button>
           <button onClick={() => setTab("korea")} style={{ ...styles.btnTab, ...(tab==="korea"?styles.btnTabActive:{}) }}>한국</button>
         </div>
         <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13 }}>
@@ -687,9 +687,9 @@ function NewsTabsSection() {
       </div>
       {err && <div style={styles.err}>&middot; 뉴스 오류: {err}</div>}
 
-      {tab==='overseas' && <Section title="해외뉴스" items={brandNews} />}
-      {tab==='korea' && <Section title="산업 동향 뉴스" items={industryNews} />}
-      {tab==="korea" && <Section title="국내뉴스" items={krNews} />}
+      {tab==="brand" && <Section title="브랜드 뉴스" items={brandNews} />}
+      {tab==="industry" && <Section title="산업 동향 뉴스" items={industryNews} />}
+      {tab==="korea" && <Section title="한국 뉴스" items={krNews} />}
 
       <AIBox block="news" payload={aiPayload} />
     </section>
@@ -794,6 +794,31 @@ function NewsAISummarySection() {
 }
 
 export default function Home() {
+  async function loadNews(tab='overseas') {
+    try {
+      setNewsLoading(true); setNewsErr(""); setNewsItems([]);
+      let url = "";
+      if (tab === 'overseas') {
+        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" }).toString();
+      } else {
+        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
+      }
+      const r = await fetch(url, { cache: "no-store" });
+      const arr = r.ok ? await r.json() : [];
+      const items = (arr || []).map(n => ({
+        title: n.title,
+        url: n.url || n.link,
+        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
+        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
+      }));
+      setNewsItems(items);
+      setNewsCollapsed(true);
+    } catch (e) {
+      setNewsErr(String(e));
+    } finally {
+      setNewsLoading(false);
+    }
+  }
   return (
     <>
       <Head>
@@ -808,7 +833,7 @@ export default function Home() {
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
-        <NewsAISummarySection />
+        
     </main>
 
       <footer style={styles.footer}>
