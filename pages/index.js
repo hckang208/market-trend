@@ -389,7 +389,26 @@ function StocksSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  useEffect(() => {
+  
+  // Inline AI summary state per symbol
+  const [sumState, setSumState] = useState({}); // { [symbol]: { open, loading, summary, error } }
+
+  async function loadSummary(symbol) {
+    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" } }));
+    try {
+      const r = await fetch(`/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
+      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: j.summary || "(요약 없음)", error: "" } }));
+    } catch (e) {
+      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) } }));
+    }
+  }
+
+  function closeSummary(symbol) {
+    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }));
+  }
+useEffect(() => {
     (async () => {
       try {
         const out = await Promise.all(
@@ -436,16 +455,48 @@ function StocksSection() {
             {sorted.map((r) => {
               const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
               return (
-                <a key={r.symbol} href={link} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터(야후 파이낸스) 열기">
-                  <div style={styles.cardTitle}>
-                    {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+                
+                <div key={r.symbol} style={{ ...styles.card }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ ...styles.cardTitle }}>
+                        {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+                      </div>
+                      <div style={{ ...styles.cardValue }}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
+                      <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
+                        {fmtSignPct(r.pct)}
+                      </div>
+                      <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
+                         target="_blank" rel="noreferrer"
+                         style={{ ...styles.btnTab }} title="Yahoo Finance 열기">
+                        Yahoo
+                      </a>
+                      <button onClick={() => loadSummary(r.symbol)}
+                              disabled={sumState[r.symbol]?.loading}
+                              style={{ ...styles.btnTab, ...(sumState[r.symbol]?.open ? styles.btnTabActive : null) }}
+                              title="최근 10개 뉴스 기준 전략 요약">
+                        {sumState[r.symbol]?.loading ? "요약 중..." : "AI뉴스요약"}
+                      </button>
+                    </div>
                   </div>
-                  <div style={styles.cardValue}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                  <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
-                    {fmtSignPct(r.pct)}
-                  </div>
-                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
-                </a>
+
+                  {sumState[r.symbol]?.open && (
+                    <div style={{ ...styles.aiBox }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 6 }}>
+                        <b>AI 뉴스 요약</b>
+                        <button onClick={() => closeSummary(r.symbol)} style={{ ...styles.btnTab }}>닫기</button>
+                      </div>
+                      {sumState[r.symbol]?.error
+                        ? <div style={{ color:"crimson" }}>에러: {sumState[r.symbol]?.error}</div>
+                        : <pre style={{ whiteSpace:"pre-wrap", margin:0, fontFamily:"inherit", lineHeight:1.6 }}>{sumState[r.symbol]?.summary || "(요약 없음)"}</pre>
+                      }
+                    </div>
+                  )}
+                </div>
+
               );
             })}
           </div>
