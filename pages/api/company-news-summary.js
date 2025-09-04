@@ -72,7 +72,7 @@ export default async function handler(req, res) {
           link: n.url,
           pubDate: n.published_at || n.publishedAt || null,
           description: n.description || n.summary || "",
-          source: (typeof n.source === 'string' ? n.source : (n.source && n.source.name ? n.source.name : '')) || \"\1\"
+          source: (typeof n.source === 'string' ? n.source : (n.source && n.source.name ? n.source.name : '')) || ""
         }));
       }
     }
