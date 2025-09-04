@@ -99,7 +99,7 @@ export default async function handler(req, res) {
       "### 전략 요약 (5개 불릿)",
       "- 시장/수요/가격/고객 변화 중심으로 숫자·트렌드 포함",
       "",
-      "### Implications for Hansoll (3줄)",
+      "### 한솔섬유 전략에 미치는 시사점 (3줄)",
       "- 공급망/원가/고객사 영향 등",
       "",
       "### Actions (1~2주) (3개 불릿)",

@@ -391,7 +391,74 @@ function StocksSection() {
 
   
   // Inline AI summary state per symbol
-  const [sumState, setSumState] = useState({}); // { [symbol]: { open, loading, summary, error } }
+  const [sumState, setSumState] = useState({}); 
+  // --- Markdown-lite helpers for clear, scannable layout ---
+  function parseSections(text="") {
+    const lines = String(text).split(/\r?\n/);
+    const sections = [];
+    let title = null, buf = [];
+    const push = () => { if (title || buf.length) { sections.push({ title: title || "", lines: buf.slice() }); } };
+    for (const ln of lines) {
+      if (/^###\s+/.test(ln)) {
+        push(); title = ln.replace(/^###\s+/, "").trim(); buf = [];
+      } else {
+        buf.push(ln);
+      }
+    }
+    push();
+    return sections;
+  }
+  function renderSection(sec, idx) {
+    const items = [];
+    let inList = false, list = [];
+    const flushList = () => { if (list.length) { items.push(<ul key={"ul"+items.length} style={{ margin: "6px 0 10px 18px" }}>{list.map((t,i)=><li key={i} style={{ lineHeight: 1.5 }}>{t}</li>)}</ul>); list = []; } };
+    for (const raw of sec.lines) {
+      const ln = raw.trim();
+      if (!ln) { flushList(); continue; }
+      if (/^[-•]\s+/.test(ln)) { inList = true; list.push(ln.replace(/^[-•]\s+/, "")); continue; }
+      if (inList) { flushList(); inList = false; }
+      items.push(<p key={"p"+items.length} style={{ margin: "6px 0", lineHeight: 1.6 }}>{ln}</p>);
+    }
+    flushList();
+    const titleMap = {
+      "Implications for Hansoll": "한솔섬유 전략에 미치는 시사점"
+    };
+    const title = titleMap[sec.title] || sec.title;
+    return (
+      <section key={idx} style={{ marginTop: idx===0?0:10 }}>
+        {title ? <h3 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0 4px 0" }}>{title}</h3> : null}
+        {items}
+      </section>
+    );
+  }
+  function renderSummaryBox(sym) {
+    const st = sumState[sym] || {};
+    const sections = parseSections(st.summary || "");
+    const collapsed = st.expanded ? false : true;
+    return (
+      <div style={{
+        border: "1px solid #e5e7eb",
+        background: "#f8fafc",
+        padding: 12,
+        borderRadius: 10,
+        marginTop: 10,
+        position: "relative",
+        maxHeight: collapsed ? 240 : "none",
+        overflow: "hidden"
+      }}>
+        {sections.map(renderSection)}
+        {collapsed && <div style={{ position: "absolute", left:0, right:0, bottom:0, height: 48,
+          background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"}} />}
+        <div style={{ display:"flex", justifyContent:"flex-end", marginTop: 6 }}>
+          <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
+                  style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
+            {collapsed ? "더보기" : "접기"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+// { [symbol]: { open, loading, summary, error } }
 
   async function loadSummary(symbol) {
     setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" } }));
@@ -483,18 +550,7 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {sumState[r.symbol]?.open && (
-                    <div style={{ ...styles.aiBox }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 6 }}>
-                        <b>AI 뉴스 요약</b>
-                        <button onClick={() => closeSummary(r.symbol)} style={{ ...styles.btnTab }}>닫기</button>
-                      </div>
-                      {sumState[r.symbol]?.error
-                        ? <div style={{ color:"crimson" }}>에러: {sumState[r.symbol]?.error}</div>
-                        : <pre style={{ whiteSpace:"pre-wrap", margin:0, fontFamily:"inherit", lineHeight:1.6 }}>{sumState[r.symbol]?.summary || "(요약 없음)"}</pre>
-                      }
-                    </div>
-                  )}
+                  {sumState[r.symbol]?.open && (<div style={{ marginTop: 8 }}>{renderSummaryBox(r.symbol)}</div>)}
                 </div>
 
               );
