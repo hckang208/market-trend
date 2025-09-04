@@ -699,6 +699,100 @@ function NewsTabsSection() {
 /* =========================
    페이지
 ========================= */
+
+function LinkifyCitations(text="") {
+  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
+    const id = String(grp).split('-')[0];
+    return `<a href="#ref-${id}" style="text-decoration: underline;">[${grp}]</a>`;
+  });
+}
+function splitSections(md="") {
+  const lines = String(md).split(/\r?\n/);
+  const out=[]; let title=null, buf=[];
+  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\n")}); };
+  for(const ln of lines){
+    if(/^###\s+/.test(ln)){ push(); title=ln.replace(/^###\s+/,"").trim(); buf=[]; }
+    else buf.push(ln);
+  } push(); return out;
+}
+
+function NewsAISummaryPanel({ title, endpoint }) {
+  const [loading, setLoading] = React.useState(false);
+  const [data, setData] = React.useState(null);
+  const [err, setErr] = React.useState("");
+
+  async function load() {
+    try {
+      setLoading(true); setErr(""); setData(null);
+      const r = await fetch(endpoint);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Failed");
+      setData(j);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  React.useEffect(() => { load(); }, []);
+
+  const sections = React.useMemo(() => splitSections(data?.summary||""), [data?.summary]);
+
+  return (
+    <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:14, background:"#fff" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={load} disabled={loading} style={{ ...styles.btnTab }}>{loading ? "요약 중..." : "다시 요약"}</button>
+        </div>
+      </div>
+
+      {err && <div style={{ color:"crimson" }}>에러: {err}</div>}
+      {!data && !loading && <div>요약을 불러오는 중…</div>}
+      {data && (
+        <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:12 }}>
+          <div style={{ background:"#f8fafc", border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
+            {sections.map((sec, idx) => (
+              <section key={idx} style={{ marginTop: idx===0?0:12 }}>
+                {sec.title ? <h4 style={{ margin:"4px 0", fontSize:14, fontWeight:800 }}>{sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}</h4> : null}
+                <div
+                  style={{ fontSize: 14, lineHeight:1.7 }}
+                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\s+/gm, "• ").replace(/\n/g, "<br/>") }}
+                />
+              </section>
+            ))}
+          </div>
+          <aside style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
+            <h4 style={{ margin:"0 0 6px 0", fontSize:14, fontWeight:800 }}>참조 뉴스</h4>
+            <ol style={{ paddingLeft:18, margin:0 }}>
+              {(data.items || []).slice(0, 20).map((it, i) => (
+                <li id={`ref-${i+1}`} key={i} style={{ margin:"6px 0" }}>
+                  <a href={it.link} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
+                  {it.pubDate ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.pubDate}</div> : null}
+                  <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source || ""}</div>
+                </li>
+              ))}
+            </ol>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewsAISummarySection() {
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ ...styles.blockTitle }}>뉴스 AI 분석</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <NewsAISummaryPanel title="해외뉴스분석(AI)" endpoint="/api/ai-news-foreign" />
+        <NewsAISummaryPanel title="국내뉴스분석(AI)" endpoint="/api/ai-news-korea" />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <>
@@ -714,7 +808,8 @@ export default function Home() {
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
-      </main>
+        <NewsAISummarySection />
+    </main>
 
       <footer style={styles.footer}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", color: "#6b7280", fontSize: 12 }}>
