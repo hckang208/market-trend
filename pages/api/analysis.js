@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     const out = await geminiComplete({
       system: "You are a sharp retail & macro analyst. Write concise, executive-ready Korean summaries.",
       user: prompt,
-      model: "gemini-1.5-pro",
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       temperature: 0.2,
       maxOutputTokens: 1200,
     });

@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     }
     stockRows.sort((a,b) => b.pct - a.pct);
 
-    const system = `당신은 한솔섬유의 전략 시니어 컨설턴트입니다.
+    const system = `당신은 Hansoll(한솔) 부자재 구매부서 임원에게 보고하는 시니어 컨설턴트입니다.
 - 한국어로 핵심을 간결하게 정리하세요.
 - 아침 브리핑 용으로 1~2분 내 읽히는 분량으로 작성합니다.
 - '오늘의 3가지 핵심' -> '글로벌 vs 한국 요약' -> '리테일러 주가 하이라이트' -> 'Risk/Action' 순서로 Markdown 섹션을 만듭니다.`;
@@ -79,12 +79,12 @@ export default async function handler(req, res) {
 4) Risk / Action (각 1~2줄)
 
 JSON:
-${JSON.stringify(payload, null, 2)}`;
+${"${"}JSON.stringify(payload, null, 2)${"}"}`;
 
     const markdown = await geminiComplete({
       system,
       user,
-      model: "gemini-1.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       temperature: 0.4,
       maxOutputTokens: 1000,
     });

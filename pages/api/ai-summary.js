@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
   const { block = "generic", data = {}, language = "ko", mode = "brief" } = req.body || {};
 
-  const system = `당신은 한솔섬유의 시니어 전략 애널리스트입니다.
+  const system = `당신은 Hansoll(한솔) 부자재 구매부서의 시니어 전략 애널리스트입니다.
 - 출력 언어: ${language === "ko" ? "한국어" : "English"}
 - 데이터는 JSON으로 주어지며, 핵심 변화와 리스크/기회 관점을 짧고 명확하게 제시합니다.
 - 과장 없이, 의사결정에 도움이 되도록 구체적인 수치(%, 추세)를 포함하세요.
@@ -27,7 +27,7 @@ ${JSON.stringify(data, null, 2)}`;
     const summary = await geminiComplete({
       system,
       user,
-      model: "gemini-1.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       temperature: 0.35,
       maxOutputTokens: 350,
     });
