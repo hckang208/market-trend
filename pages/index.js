@@ -45,7 +45,11 @@ function AIBox({ block, payload }) {
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
-        setText(j.summary || "");
+        let s = j.summary || "";
+        if (block === "indicators") {
+          s = s.replace(/^##\s*한솔섬유.*임원보고.*$/gmi, "").trim();
+        }
+        setText(s);
       } catch (e) {
         setErr(String(e));
       } finally {
@@ -56,7 +60,11 @@ function AIBox({ block, payload }) {
 
   return (
     <div style={styles.aiBox}>
-      <div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>
+      {block==="procurement" ? (
+        <div style={{ fontWeight: 800, marginBottom: 4 }}>현황분석</div>
+      ) : (
+        <div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>
+      )}
       {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
       {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
       {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
@@ -167,13 +175,14 @@ function ProcurementTopBlock() {
     <section style={styles.blockWrap}>
       <div style={styles.headerRow}>
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD</h2>
+          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
         </div>
 </div>
 
+      <div style={styles.stickyTop}>
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
         <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
@@ -200,6 +209,7 @@ function ProcurementTopBlock() {
         </div>
       </div>
 
+      </div>
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
 
       {false && (
@@ -514,7 +524,7 @@ useEffect(() => {
   }, []);
 
   const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
-  const aiPayload = useMemo(() => ({ rows: sorted }), [JSON.stringify(sorted)]);
+  const aiPayload = useMemo(() => ({ rows: sorted.filter(r => Math.abs(r.pct) >= 4) }), [JSON.stringify(sorted)]);
 
   return (
     <section style={{ marginTop: 24 }}>
@@ -811,7 +821,7 @@ export default function Home() {
 const styles = {
   aiBox: { whiteSpace:"pre-wrap", lineHeight:1.6, background:"#fafafa", border:"1px solid #eee", borderRadius:10, padding:12 },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { position:"sticky", top:16, zIndex:30, position:"sticky", top:16, zIndex:30, background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
+  blockWrap: { position:"sticky", top:16, zIndex:30, background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
   brand: { fontWeight:800 },
   btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
   btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
@@ -838,6 +848,7 @@ const styles = {
   h3: { margin:"20px 0 8px", fontWeight:800, fontSize:18 },
   headerInner: { display:"flex", gap:8, alignItems:"center" },
   headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 },
+  stickyTop: { position:"sticky", top:16, zIndex:30, background:"#fff" },
   badgeRow: { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" },
   badge: { fontSize:12, color:"#6b7280", border:"1px solid #e5e7eb", padding:"4px 8px", borderRadius:999 },
   headerWrap: { display:"flex", justifyContent:"space-between", alignItems:"center" },
