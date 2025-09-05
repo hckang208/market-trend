@@ -826,7 +826,7 @@ export default function Home() {
    스타일
 ========================= */
 const styles = {
-  aiBox: { whiteSpace:"pre-wrap", lineHeight:1.65, background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:12, padding:14, fontFamily: "Inter, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji"" },
+  aiBox: { whiteSpace:"pre-wrap", lineHeight:1.65, background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:12, padding:14, fontFamily: 'Inter, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji"' },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
   blockWrap: { background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
   brand: { fontWeight:800 },
