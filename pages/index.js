@@ -192,8 +192,7 @@ function ProcurementTopBlock() {
           </div>
           <div>
             <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnTiny}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
-            <a href="/ai-summary" style={{ ...styles.btnTab }}>AI 요약</a>
-          </div>
+</div>
         </div>
 </div>
 

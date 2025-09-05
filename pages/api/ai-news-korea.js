@@ -38,15 +38,13 @@ export default async function handler(req, res) {
       ...items.map((it, i) => `${i+1}. ${it.title}\n   - ${it.link}`)
     ].join("\n");
 
-    const summary = await geminiComplete({
+    let summary = await geminiComplete({
       system,
       user,
       model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       temperature: 0.25,
       maxOutputTokens: 900,
     });
-
-    return 
     if (!summary || summary.trim().length < 5) {
       summary = (items || []).slice(0, 8).map((n, i) => `• ${n.title || n.source || "뉴스"} (${n.source || ""})`).join("\n");
     }
