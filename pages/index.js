@@ -221,6 +221,7 @@ function ProcurementTopBlock() {
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
         </div>
+        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
       </div>
 
       </div>
@@ -864,17 +865,17 @@ export default function Home() {
    스타일
 ========================= */
 const styles = {
-  aiBox: { whiteSpace:"pre-wrap", lineHeight:1.65, background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:12, padding:14, fontFamily: 'Inter, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji"' },
+  aiBox: { border:"1px dashed var(--line)", borderRadius:12, background:"#fff", padding:12, whiteSpace:"pre-wrap", lineHeight:1.7 },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
+  blockWrap: { border:"1px solid var(--line)", borderRadius:14, background:"#fff", boxShadow:"0 12px 30px -20px rgba(2,6,23,.25)" },
   brand: { fontWeight:800 },
   btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
   btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
   btnGhost: { padding:"8px 12px", borderRadius:10, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 },
   btnGray: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f3f4f6", color:"#1f2937", fontWeight:700, fontSize:14 },
   btnTiny: { padding:"6px 8px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:12 }, 
-  btnTab: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14 },
-  btnTabActive: { padding:"8px 12px", borderRadius:8, border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:700, fontSize:14 },
+  btnTab: { padding:"8px 12px", border:"1px solid var(--line)", borderRadius:999, background:"#fff", cursor:"pointer", fontWeight:700, fontSize:13, boxShadow:"0 1px 0 rgba(0,0,0,.02)", transition:"all .2s ease", display:"inline-block" },
+  btnTabActive: { background:"linear-gradient(90deg, var(--accent), var(--accent2))", color:"#fff", border:"1px solid transparent", boxShadow:"0 8px 22px -12px rgba(99,102,241,.6)" },
   card: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:12 },
   cardLink: { textDecoration:"none", color:"#111827" },
   cardSub: { color:"#6b7280", fontSize:12 },
