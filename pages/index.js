@@ -22,6 +22,7 @@ const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 /* =========================
    공통: AI 분석 박스
 ========================= */
+function redactForbidden(s){ try { return String(s ?? ""); } catch { return ""; } }
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);;
