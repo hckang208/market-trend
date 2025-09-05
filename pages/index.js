@@ -27,6 +27,7 @@ function AIBox({ block, payload }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);;
   const [loading, setLoading] = useState(false);
+  const [ts, setTs] = useState(null);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -52,6 +53,7 @@ function AIBox({ block, payload }) {
           s = s.replace(/^##\s*한솔섬유.*임원보고.*$/gmi, "").trim();
         }
         setText(s);
+        setTs(new Date().toISOString());
       } catch (e) {
         setErr(String(e));
       } finally {
@@ -63,7 +65,7 @@ function AIBox({ block, payload }) {
   return (
     <div style={styles.aiBox}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
-        <div style={{ fontWeight: 800 }}>{block==="procurement" ? "현황분석" : "🤖 AI 분석"}</div>
+        <div style={{ fontWeight: 800 }}>{block==="procurement" ? "AI 현황분석" : "🤖 AI 분석"}</div>
         <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "AI 요약"}</button>
       </div>
       {open && (

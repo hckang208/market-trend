@@ -46,7 +46,11 @@ export default async function handler(req, res) {
       maxOutputTokens: 900,
     });
 
-    return res.status(200).json({
+    return 
+    if (!summary || summary.trim().length < 5) {
+      summary = (items || []).slice(0, 8).map((n, i) => `• ${n.title || n.source || "뉴스"} (${n.source || ""})`).join("\n");
+    }
+    res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
       items,

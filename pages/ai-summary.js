@@ -37,9 +37,12 @@ export default function AISummaryPage() {
           <h1 style={{ margin:0, fontSize:18 }}>AI 뉴스 요약</h1>
         </div>
         <div style={{ color:"#6b7280", fontSize:12 }}>출처: 해외(Just-Style, Business of Fashion), 국내(한국섬유신문)</div>
+        <div style={{ fontSize:12, color:"#6b7280" }}>GEMINI 2.5 사용중</div>
       </header>
 
       {err && <div style={{ ...styles.box, borderColor:"#fecaca", background:"#fef2f2", color:"#7f1d1d" }}>에러: {err}</div>}
+
+      <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>분석 시각: {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</div>
 
       <div style={styles.layout}>
         <main style={styles.main}>
@@ -81,10 +84,10 @@ const styles = {
   layout: { display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:16, alignItems:"start" },
   main: { display:"grid", gap:16 },
   aside: { display:"grid", gap:16 },
-  box: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:12 },
-  h2: { margin:"0 0 8px 0", fontSize:16, fontWeight:800 },
-  h3: { margin:"0 0 8px 0", fontSize:14, fontWeight:800 },
-  summary: { whiteSpace:"pre-wrap", lineHeight:1.65 },
+  box: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:14 },
+  h2: { margin:"0 0 10px 0", fontSize:17, fontWeight:900 },
+  h3: { margin:"0 0 8px 0", fontSize:14, fontWeight:800, color:"#111827" },
+  summary: { whiteSpace:"pre-wrap", lineHeight:1.8, fontSize:15, letterSpacing:"0.1px" },
   list: { listStyle:"disc", paddingLeft:18, margin:"0 0 0 0", display:"grid", gap:8 },
   meta: { color:"#6b7280", fontSize:12 },
   link: { color:"#111827", textDecoration:"underline" },
