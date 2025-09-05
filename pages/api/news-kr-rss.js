@@ -1,77 +1,98 @@
-// pages/api/news-kr-rss.js
+export default async function handler(req, res) {
+  try {
+    const { feeds = "", days = "2", limit = "50" } = req.query;
+    const feedList = String(feeds).split(",").map(s => s.trim()).filter(Boolean);
+    if (!feedList.length) {
+      return res.status(400).json({ error: "missing feeds" });
+    }
+
+    const sinceMs = Date.now() - (Number(days) || 2) * 24 * 60 * 60 * 1000;
+    const max = Math.min(Number(limit) || 50, 500);
+
+    const items = [];
+    for (const raw of feedList) {
+      const url = normalizeFeedUrl(raw);
+      const xml = await fetchWithRetry(url, {
+        headers: { "User-Agent": "MarketTrend-Dashboard/1.0 (+news-kr)" }
+      }, 2, 8000);
+      if (!xml) continue;
+      const parsed = parseRSS(xml);
+      for (const it of parsed) {
+        if (it.pubDate && it.pubDate.getTime() >= sinceMs) items.push({ ...it, source: hostOf(url) });
+      }
+    }
+
+    items.sort((a, b) => (b.pubDate?.getTime() || 0) - (a.pubDate?.getTime() || 0));
+    const out = items.slice(0, max).map(({ title, link, pubDate, description, source }) => ({
+      title, link, date: pubDate?.toISOString() || null, source, description
+    }));
+
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+    return res.status(200).json(out);
+  } catch (e) {
+    return res.status(500).json({ error: String(e) });
+  }
+}
+
+function normalizeFeedUrl(u) {
+  try {
+    const url = new URL(u);
+    if (url.protocol === "http:") url.protocol = "https:";
+    return url.toString();
+  } catch {
+    return u.startsWith("http://") ? u.replace("http://", "https://") : u;
+  }
+}
+function hostOf(u) { try { return new URL(u).host; } catch { return null; } }
+
+async function fetchWithRetry(url, opts = {}, retries = 1, timeoutMs = 7000) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      const r = await fetch(url, { ...opts, signal: controller.signal });
+      clearTimeout(id);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.text();
+    } catch (e) {
+      if (i === retries) return null;
+      await wait(400 + i * 400);
+    }
+  }
+  return null;
+}
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
 function parseRSS(xml) {
   const items = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-  let m;
-  while ((m = itemRegex.exec(xml))) {
-    const block = m[1];
-    const pick = (tag) => {
-      const r = new RegExp(`<${tag}>([\s\S]*?)<\/${tag}>`, "i");
-      const mm = r.exec(block);
-      if (!mm) return null;
-      return mm[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim();
-    };
+  const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
+  for (const b of blocks) {
+    const title = pick(b, "title");
+    const link = pick(b, "link");
+    const pub = pick(b, "pubDate") || pick(b, "dc:date");
+    const desc = pick(b, "description");
     items.push({
-      title: pick("title"),
-      url: pick("link"),
-      publishedAt: pick("pubDate"),
-      source: { name: "한국섬유신문" },
-      description: pick("description"),
+      title: unescapeXml(title),
+      link: unescapeXml(link),
+      pubDate: pub ? new Date(pub) : null,
+      description: cleanDesc(unescapeXml(desc))
     });
   }
   return items;
 }
 
-export default async function handler(req, res) {
-  const {
-    feeds = "http://www.ktnews.com/rss/allArticle.xml",
-    limit = "120",
-    days = "2",
-  } = req.query;
-
-  const feedList = String(feeds)
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  try {
-    const all = [];
-    await Promise.all(
-      feedList.map(async (url) => {
-        try {
-          const r = await fetch(url);
-          const xml = await r.text();
-          const items = parseRSS(xml);
-          all.push(...items);
-        } catch {}
-      })
-    );
-
-    const since = new Date();
-    since.setDate(since.getDate() - Math.max(1, Number(days) || 2));
-
-    const filtered = all.filter((a) => {
-      const dt = a.publishedAt ? new Date(a.publishedAt) : null;
-      if (dt && isFinite(dt.getTime()) && dt < since) return false;
-      return true;
-    });
-
-    filtered.sort((a, b) => {
-      const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-      const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-      return tb - ta;
-    });
-
-    const seen = new Set();
-    const dedup = filtered.filter((a) => {
-      const key = a.url || a.title;
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, Math.min(200, Number(limit) || 120));
-
-    res.status(200).json(dedup);
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
-  }
+function pick(block, tag) {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  return m ? m[1].trim() : null;
+}
+function unescapeXml(s) {
+  if (!s) return s;
+  return s
+    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"").replace(/&#039;/g, "'");
+}
+function cleanDesc(s) {
+  if (!s) return s;
+  return s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
