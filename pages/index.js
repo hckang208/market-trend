@@ -61,10 +61,17 @@ function AIBox({ block, payload }) {
 
   return (
     <div style={styles.aiBox}>
-      <div style={{ fontWeight: 800, marginBottom: 4 }}>{block==="procurement" ? "현황분석" : "🤖 AI 분석"}</div>
-      {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
-      {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
-      {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
+        <div style={{ fontWeight: 800 }}>{block==="procurement" ? "현황분석" : "🤖 AI 분석"}</div>
+        <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "분석보기"}</button>
+      </div>
+      {open && (
+        <>
+          {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
+          {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
+          {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
+        </>
+      )}
     </div>
   );
 }
@@ -172,7 +179,7 @@ function ProcurementTopBlock() {
     <section style={styles.blockWrap}>
       <div style={styles.headerRow}>
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다) (sample data입니다)</h2>
+          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
@@ -625,7 +632,6 @@ function NewsTabsSection() {
           <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <a href="/daily-report" style={{ ...styles.btn }}>AI 요약</a>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
           
         </div>
