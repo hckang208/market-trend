@@ -61,11 +61,7 @@ function AIBox({ block, payload }) {
 
   return (
     <div style={styles.aiBox}>
-      {block==="procurement" ? (
-        <div style={{ fontWeight: 800, marginBottom: 4 }}>현황분석</div>
-      ) : (
-        {block==="procurement" ? (<div style={{ fontWeight: 800, marginBottom: 4 }}>현황분석</div>) : (<div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>)}
-      )}
+      <div style={{ fontWeight: 800, marginBottom: 4 }}>{block==="procurement" ? "현황분석" : "🤖 AI 분석"}</div>
       {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
       {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
       {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
