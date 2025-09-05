@@ -814,57 +814,74 @@ export default function Home() {
    스타일
 ========================= */
 const styles = {
-  headerWrap: { position:"sticky", top:0, zIndex:50, backdropFilter:"blur(6px)", background:"rgba(255,255,255,0.75)", borderBottom:"1px solid #e5e7eb" },
-  headerInner: { maxWidth:1200, margin:"0 auto", padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" },
-  brand: { display:"flex", alignItems:"center", gap:8, fontWeight:900, fontSize:18 },
-  nav: { display:"flex", gap:16, fontSize:14, color:"#6b7280" },
-  navLink: { color:"inherit", textDecoration:"none" },
-
-  h2: { margin:"6px 0 2px", fontSize:20, fontWeight:900 },
-  h3: { margin:"12px 0 10px", fontSize:18, fontWeight:900 },
-  meta: { color:"#6b7280", fontSize:13 },
-  err: { color:"#b91c1c", fontWeight:700 },
-
-  blockWrap: { background:"#fff", border:"1px solid #e5e7eb", borderRadius:16, padding:16, marginTop:10 },
-  headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap" },
-  tools: { display:"flex", gap:8, alignItems:"center" },
-
-  grid5: { display:"grid", gridTemplateColumns:"repeat(5, minmax(0,1fr))", gap:12, marginTop:12 },
-  grid4: { display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:12 },
-  grid3: { display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:12 },
-  grid2: { display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:12 },
-
-  card: { border:"1px solid #e5e7eb", borderRadius:12, padding:"12px 12px" },
-  cardLink: { textDecoration:"none", color:"#111" },
-  cardTitle: { fontSize:12, color:"#6b7280", fontWeight:800, marginBottom:6 },
-  cardValue: { fontSize:20, fontWeight:900 },
-  cardSub: { fontSize:12, color:"#6b7280" },
-
-  progressWrap: { background:"#f3f4f6", borderRadius:999, height:8, marginTop:8, overflow:"hidden" },
-  progressBar: { background:"#111827", height:8 },
-
-  innerBlock: { border:"1px dashed #e5e7eb", borderRadius:12, padding:12, marginTop:12 },
-  blockTitle: { fontWeight:900, fontSize:13, marginBottom:8 },
-  stackBar: { display:"flex", width:"100%", height:12, borderRadius:999, overflow:"hidden", background:"#f3f4f6" },
-  seg: { height:"100%" },
-  legend: { display:"flex", gap:16, marginTop:8, fontSize:12, color:"#374151" },
-
-  editBox: { border:"1px solid #e5e7eb", borderRadius:12, padding:12, marginTop:12, background:"#fafafa" },
-  row: { display:"grid", gap:6 },
-
-  ctaRow: { display:"flex", gap:8, marginTop:12, flexWrap:"wrap" },
-  ctaDark: { background:"#111827", color:"#fff", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13 },
-  ctaLight: { border:"1px solid #111827", color:"#111827", textDecoration:"none", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, background:"#fff" },
-
-  btnGray: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"8px 10px", borderRadius:10, fontWeight:700, fontSize:13, color:"#111" },
-  btnBlue: { background:"#2563eb", border:"1px solid #1d4ed8", padding:"8px 12px", borderRadius:10, fontWeight:800, fontSize:13, color:"#fff", textDecoration:"none" },
-  btnDanger: { background:"#fee2e2", border:"1px solid #fecaca", padding:"8px 10px", borderRadius:10, fontWeight:700, fontSize:13, color:"#991b1b" },
-
-  newsItem: { display:"block", padding:12, border:"1px solid #e5e7eb", borderRadius:12, textDecoration:"none", color:"#111" },
-  btnTab: { background:"#f3f4f6", border:"1px solid #e5e7eb", padding:"6px 10px", borderRadius:8, fontWeight:700, fontSize:13, color:"#111" },
-  btnTabActive: { background:"#111827", color:"#fff", border:"1px solid #111827" },
-
-  aiBox: { marginTop:10, padding:10, background:"#f9fafb", border:"1px dashed #d1d5db", borderRadius:8, fontSize:13, color:"#111" },
-
-  footer: { borderTop:"1px solid #e5e7eb", marginTop:10, background:"#fff" },
+  page: {
+    background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)",
+    minHeight: "100vh",
+  },
+  container: {
+    maxWidth: 1280,
+    margin: "0 auto",
+    padding: "24px 20px",
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "1.6fr 1fr",
+    gap: 16,
+    alignItems: "start",
+  },
+  card: {
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+  },
+  section: {
+    padding: 16,
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    background: "#fff",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: 18,
+    fontWeight: 800,
+    letterSpacing: "-0.01em",
+    color: "#111827",
+  },
+  smallMuted: { fontSize: 12, color: "#6b7280" },
+  btn: {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #111827",
+    background: "#111827",
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 14,
+    textDecoration: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    transition: "transform .05s ease",
+  },
+  btnGhost: {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#111827",
+    fontWeight: 700,
+    fontSize: 14,
+    textDecoration: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  stat: {
+    border: "1px solid #eef2f7",
+    borderRadius: 10,
+    padding: 12,
+  },
+  statLabel: { color: "#6b7280", fontSize: 12 },
+  statValue: { fontWeight: 800, fontSize: 18, color: "#0f172a" },
 };
