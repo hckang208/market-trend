@@ -47,3 +47,10 @@
 - Then trigger "Clear cache and deploy site".
 - Check build logs: should see "Detected Next.js" and "@netlify/plugin-nextjs".
 - Test at /api/ok for API health.
+
+
+### Overseas News Domain Whitelist
+Set `.env.local` or deployment env:
+```
+FOREIGN_NEWS_DOMAINS=businessoffashion.com,just-style.com
+```

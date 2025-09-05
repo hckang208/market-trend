@@ -2,10 +2,14 @@
 import { geminiComplete } from "../../lib/gemini";
 
 export default async function handler(req, res) {
+  const DOMAINS = process.env.FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
   try {
     const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
     const r = await fetch(`${base}/api/news?` + new URLSearchParams({
-      industry: "fashion|apparel|garment|textile",
+      domains: DOMAINS,
+      industry: "apparel|textile|garment",
+      must: "industry",
+      exclude: "football,soccer,celebrity,cosmetics,beauty,automotive,film,movie",
       language: "en",
       days: String(req.query.days || 7),
       limit: String(req.query.limit || 40),

@@ -99,12 +99,26 @@ function ProcurementTopBlock() {
   };
 
   const [data, setData] = useState(defaultData);
+  
+  // Load from Google Sheet via API (fallback to localStorage if fails)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) setData({ ...defaultData, ...JSON.parse(raw) });
-    } catch {}
+    (async () => {
+      try {
+        const r = await fetch("/api/procure-sheet", { cache: "no-store" });
+        const j = await r.json();
+        if (j?.ok && j.data) {
+          setData((prev) => ({ ...prev, ...j.data }));
+          return;
+        }
+      } catch {}
+      // fallback to localStorage
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) setData((prev) => ({ ...prev, ...JSON.parse(raw) }));
+      } catch {}
+    })();
   }, []);
+
 
   const ratio = useMemo(() => {
     const r = Number(data.revenue || 0);

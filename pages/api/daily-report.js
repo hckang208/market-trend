@@ -6,10 +6,12 @@ const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
 export default async function handler(req, res) {
   const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
   try {
+    const DOMAINS = process.env.FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
     const [indR, overseasR, krR] = await Promise.all([
       fetch(`${base}/api/indicators`, { cache: "no-store" }),
       // Overseas: simplified keywords, English
       fetch(`${base}/api/news?` + new URLSearchParams({
+        domains: DOMAINS,
         industry: "fashion|apparel|garment|textile",
         language: "en",
         limit: "40",
@@ -31,6 +33,7 @@ export default async function handler(req, res) {
     const stockRows = [];
     for (const s of SYMBOLS) {
       try {
+    const DOMAINS = process.env.FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
         const r = await fetch(`${base}/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
         const j = await r.json();
         const price = j.regularMarketPrice ?? null;
