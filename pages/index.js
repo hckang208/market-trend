@@ -246,9 +246,9 @@ function ProcurementTopBlock() {
       )}
 
       <div style={styles.ctaRow}>
-        <a href="#incidents" style={styles.ctaDark}>부자재 관련사고</a>
-        <a href="#materials" style={styles.ctaDark}>부자재 관련 자료</a>
-        <a href="/chatbot" style={styles.ctaLight}>AI Chatbot (한솔부자재)</a>
+        <a href="#incidents" style={styles.ctaDark}>부자재 관련사고 (개발중)</a>
+        <a href="#materials" style={styles.ctaDark}>부자재 관련 자료 (개발중)</a>
+        <a href="/chatbot" style={styles.ctaLight}>AI Chatbot (개발중)</a>
       </div>
     </section>
   );
@@ -625,7 +625,7 @@ function NewsTabsSection() {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
-          <a href="/daily-report" style={{ ...styles.btnGhost }}>AI 데일리 리포트</a>
+          
         </div>
       </div>
 

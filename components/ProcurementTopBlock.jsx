@@ -131,7 +131,7 @@ export default function ProcurementTopBlock() {
   return (
     <section style={{ position:"sticky", top: 12, zIndex: 50, border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h3 style={{ margin: 0, fontWeight: 800 }}>부자재 구매 현황</h3>
+        <h3 style={{ margin: 0, fontWeight: 800 }}>부자재 구매 현황 (sample data입니다)</h3>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={analyze} disabled={busy} style={btn()}>
             {busy ? "분석 중…" : "분석(베타)"}
