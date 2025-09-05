@@ -44,7 +44,13 @@ export default async function handler(req, res) {
     const meta = j?.chart?.result?.[0]?.meta || {};
     const ts = meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString().slice(0,10) : null;
     const price = meta?.regularMarketPrice ?? null;
-    return { value: price, history: [], changePercent: null, lastDate: ts, yoyPercent: null, source: "yahoo" };
+    const result = j?.chart?.result?.[0];
+    const closes = (result?.indicators?.quote?.[0]?.close || []).filter(v => v != null && isFinite(v));
+    const history = closes.slice(-30); // last ~30 days
+    const last = history.length ? history[history.length-1] : price;
+    const prev = history.length >= 2 ? history[history.length-2] : null;
+    const changePercent = (last!=null && prev!=null && prev!==0) ? ((last-prev)/prev)*100 : null;
+    return { value: last ?? price ?? null, history, changePercent, lastDate: ts, yoyPercent: null, source: "yahoo" };
   }
 
   // EIA WTI daily (needs API key). If missing, fallback to FRED
