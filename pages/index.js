@@ -244,12 +244,6 @@ function ProcurementTopBlock() {
           </div>
         </div>
       )}
-
-      <div style={styles.ctaRow}>
-        <a href="#incidents" style={styles.ctaDark}>부자재 관련사고 (개발중)</a>
-        <a href="#materials" style={styles.ctaDark}>부자재 관련 자료 (개발중)</a>
-        <a href="/chatbot" style={styles.ctaLight}>AI Chatbot (개발중)</a>
-      </div>
     </section>
   );
 }
@@ -624,6 +618,7 @@ function NewsTabsSection() {
           <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <a href="/daily-report" style={{ ...styles.btn }}>AI 요약</a>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
           
         </div>
@@ -816,7 +811,7 @@ export default function Home() {
 const styles = {
   aiBox: { whiteSpace:"pre-wrap", lineHeight:1.6, background:"#fafafa", border:"1px solid #eee", borderRadius:10, padding:12 },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { position:"sticky", top:16, zIndex:30, background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
+  blockWrap: { position:"sticky", top:16, zIndex:30, position:"sticky", top:16, zIndex:30, background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
   brand: { fontWeight:800 },
   btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
   btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
@@ -836,13 +831,15 @@ const styles = {
   err: { },
   footer: { },
   grid2: { display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:16, alignItems:"start" },
-  grid3: { },
-  grid4: { },
+  grid3: { display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:12 },
+  grid4: { display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:12 },
   grid5: { display:"grid", gridTemplateColumns:"repeat(5, minmax(0,1fr))", gap:12 },
   h2: { margin:0, fontWeight:800, fontSize:20 },
   h3: { margin:"20px 0 8px", fontWeight:800, fontSize:18 },
   headerInner: { display:"flex", gap:8, alignItems:"center" },
   headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 },
+  badgeRow: { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" },
+  badge: { fontSize:12, color:"#6b7280", border:"1px solid #e5e7eb", padding:"4px 8px", borderRadius:999 },
   headerWrap: { display:"flex", justifyContent:"space-between", alignItems:"center" },
   innerBlock: { border:"1px solid #eef2f7", borderRadius:12, padding:12, background:"#fff" },
   legend: { display:"flex", gap:8, color:"#6b7280", fontSize:12 },
