@@ -112,7 +112,9 @@ function ProcurementTopBlock() {
 
   const [data, setData] = useState(defaultData);
   
-  // Load from Google Sheet via API (fallback to localStorage if fails)
+  
+  const [openEdit, setOpenEdit] = useState(false);
+// Load from Google Sheet via API (fallback to localStorage if fails)
   useEffect(() => {
     (async () => {
       try {
@@ -182,6 +184,9 @@ function ProcurementTopBlock() {
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
+          <div style={{ marginTop: 6 }}>
+            <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnGray}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
+          </div>
         </div>
 </div>
 
@@ -215,7 +220,7 @@ function ProcurementTopBlock() {
       </div>
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
 
-      {false && (
+      {openEdit && (
         <div style={styles.editBox}>
           <div style={styles.row}>
             <label>기간 표시</label>
@@ -234,6 +239,8 @@ function ProcurementTopBlock() {
           <div style={styles.grid2}>
             <div style={styles.row}><label>총 매출액</label><input type="number" value={data.revenue} onChange={(e) => setData(d => ({ ...d, revenue: Number(e.target.value) }))} /></div>
             <div style={styles.row}><label>총 부자재매입액</label><input type="number" value={data.materialSpend} onChange={(e) => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))} /></div>
+          <div style={styles.row}><label>총 Cost Save</label><input type="number" value={data.costSave}
+            onChange={(e) => setData(d => ({ ...d, costSave: Number(e.target.value) }))} /></div>
           </div>
           <div style={styles.grid2}>
             <div style={styles.row}><label>총 오더수(스타일)</label><input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} /></div>
@@ -593,7 +600,33 @@ function NewsTabsSection() {
   const [newsErr, setNewsErr] = useState('');
   const [collapsed, setCollapsed] = useState(true);
 
-  async function load(tab = activeTab) {
+  
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiErr, setAiErr] = useState("");
+  const [aiForeign, setAiForeign] = useState(null);
+  const [aiKorea, setAiKorea] = useState(null);
+
+  async function loadAISummary() {
+    try {
+      setAiLoading(true); setAiErr(""); setAiForeign(null); setAiKorea(null); setAiOpen(true);
+      const [rf, rk] = await Promise.all([
+        fetch("/api/ai-news-foreign"),
+        fetch("/api/ai-news-korea")
+      ]);
+      const jf = await rf.json();
+      const jk = await rk.json();
+      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
+      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
+      setAiForeign(jf);
+      setAiKorea(jk);
+    } catch (e) {
+      setAiErr(String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+async function load(tab = activeTab) {
     try {
       setNewsLoading(true); setNewsErr(''); setNewsItems([]);
       let url = '';
@@ -632,7 +665,7 @@ function NewsTabsSection() {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
-          
+          <button onClick={loadAISummary} disabled={aiLoading} style={{ ...styles.btnTab }}>{aiLoading ? "요약 중..." : "AI 요약"}</button>
         </div>
       </div>
 
@@ -809,7 +842,7 @@ export default function Home() {
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
-        <NewsAISummarySection />
+        
     </main>
 
       <footer style={styles.footer}>
