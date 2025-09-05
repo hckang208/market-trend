@@ -77,6 +77,43 @@ function AIBox({ block, payload }) {
   );
 }
 
+
+function Modal({ open, onClose, title, children }) {
+  const backdrop = {
+    position: "fixed", inset: 0, background: "rgba(0,0,0,.3)",
+    display: open ? "flex" : "none", alignItems: "center", justifyContent: "center", zIndex: 2000
+  };
+  const dialog = {
+    width: "min(980px, 92vw)", maxHeight: "80vh", overflow: "hidden",
+    background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 10px 30px rgba(0,0,0,.15)",
+    padding: 12
+  };
+
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return (
+    <div style={backdrop} onClick={onClose} aria-modal="true" role="dialog">
+      <div style={dialog} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
+          <button onClick={onClose} style={styles.btnGray} aria-label="닫기">닫기</button>
+        </div>
+        <div style={{ maxHeight:"68vh", overflow:"auto" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* =========================
    헤더
 ========================= */
@@ -697,6 +734,33 @@ async function load(tab = activeTab) {
           </div>
         )}
       </div>
+      {/* AI 요약 모달 */}
+      <Modal open={aiOpen} onClose={() => setAiOpen(false)} title="AI 뉴스 요약">
+        {aiErr && <div style={{ color:"#b91c1c" }}>에러: {aiErr}</div>}
+        {!aiErr && (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <section style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
+              <h4 style={{ margin:"0 0 8px 0", fontSize:14, fontWeight:800 }}>해외뉴스 요약 from Just-Style & Business of Fashion</h4>
+              <div style={{ whiteSpace:"pre-wrap", lineHeight:1.6, fontSize:14 }}>
+                {aiForeign?.summary || (aiLoading ? "요약 중…" : "—")}
+              </div>
+            </section>
+            <section style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
+              <h4 style={{ margin:"0 0 8px 0", fontSize:14, fontWeight:800 }}>국내뉴스 요약 from 한국섬유신문</h4>
+              <div style={{ whiteSpace:"pre-wrap", lineHeight:1.6, fontSize:14 }}>
+                {aiKorea?.summary || (aiLoading ? "요약 중…" : "—")}
+              </div>
+            </section>
+          </div>
+        )}
+        <div style={{ display:"flex", gap:8, marginTop:12 }}>
+          <button onClick={loadAISummary} disabled={aiLoading} style={{ ...styles.btnTab }}>
+            {aiLoading ? "다시 요약 중..." : "다시 요약"}
+          </button>
+          <button onClick={() => setAiOpen(false)} style={styles.btnGray}>닫기</button>
+        </div>
+      </Modal>
+
     </section>
   );
 }
