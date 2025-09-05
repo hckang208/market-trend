@@ -63,7 +63,7 @@ function AIBox({ block, payload }) {
     <div style={styles.aiBox}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
         <div style={{ fontWeight: 800 }}>{block==="procurement" ? "현황분석" : "🤖 AI 분석"}</div>
-        <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "분석보기"}</button>
+        <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "AI 요약"}</button>
       </div>
       {open && (
         <>
@@ -86,10 +86,7 @@ function HeaderBar() {
         <div style={styles.brand}>
           <span>Hansoll Market Trend</span>
         </div>
-        <nav style={styles.nav}>
-          <a href="/" style={styles.navLink}>Dashboard</a>
-          <a href="/daily-report" style={styles.navLink}>AI Daily Report</a>
-        </nav>
+        <nav style={styles.nav}></nav>
       </div>
     </header>
   );
@@ -108,6 +105,7 @@ function ProcurementTopBlock() {
     materialSpend: 0,
     styles: 0,
     poCount: 0,
+    costSave: 0,
     supplyBreakdown: { domestic: 0, thirdCountry: 0, local: 0 },
   };
 
@@ -195,7 +193,7 @@ function ProcurementTopBlock() {
           <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
           <div style={styles.progressWrap}><div style={{ ...styles.progressBar, width: `${ratio}%` }} /></div>
         </div>
-        <Card title="총 오더수(스타일)" value={fmtNum(data.styles, 0)} />
+        <Card title="총 Cost Save" value={fmtCurrency(data.costSave || 0, data.currency)} />
         <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
       </div>
 
@@ -810,7 +808,7 @@ export default function Home() {
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
-        
+        <NewsAISummarySection />
     </main>
 
       <footer style={styles.footer}>

@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       materialSpend: num(row.materialSpend),
       styles: num(row.styles),
       poCount: num(row.poCount),
+      costSave: num(row.costSave),
       supplyBreakdown: {
         domestic: num(row.domestic),
         thirdCountry: num(row.thirdCountry),
