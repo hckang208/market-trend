@@ -24,6 +24,7 @@ const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 ========================= */
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);;
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -63,7 +64,7 @@ function AIBox({ block, payload }) {
       {block==="procurement" ? (
         <div style={{ fontWeight: 800, marginBottom: 4 }}>현황분석</div>
       ) : (
-        <div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>
+        {block==="procurement" ? (<div style={{ fontWeight: 800, marginBottom: 4 }}>현황분석</div>) : (<div style={{ fontWeight: 800, marginBottom: 4 }}>🤖 AI 분석</div>)}
       )}
       {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
       {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
@@ -175,7 +176,7 @@ function ProcurementTopBlock() {
     <section style={styles.blockWrap}>
       <div style={styles.headerRow}>
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
+          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다) (sample data입니다)</h2>
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
