@@ -69,7 +69,7 @@ function AIBox({ block, payload }) {
         <>
           {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
           {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
-          {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{text || "분석 결과가 없습니다."}</div>}
+          {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
         </>
       )}
     </div>
