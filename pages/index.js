@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
+const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
 /* =========================
    숫자/시계열 유틸
 ========================= */
@@ -297,10 +298,11 @@ function IndicatorsSection() {
     wti: "https://fred.stlouisfed.org/series/DCOILWTICO",
     usdkrw: "https://fred.stlouisfed.org/series/DEXKOUS",
     cpi: "https://fred.stlouisfed.org/series/CPIAUCSL",
-    fedfunds: "https://fred.stlouisfed.org/series/FEDFUNDS",
+    fedfunds: "https://fred.stlouisfed.org/series/DFEDTARU",
     t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
     inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
     unemployment: "https://fred.stlouisfed.org/series/UNRATE",
+    ism_retail: "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
   };
   const curated = [
     { key: "wti", title: "WTI (USD/bbl)" },
@@ -309,6 +311,7 @@ function IndicatorsSection() {
     { key: "fedfunds", title: "미국 기준금리(%)" },
     { key: "t10y2y", title: "금리 스프레드(10Y–2Y, bp)" },
     { key: "inventory_ratio", title: "재고/판매 비율" },
+    { key: "ism_retail", title: "ISM Retail(%)" },
     { key: "unemployment", title: "실업률(%)" },
   ];
 
@@ -588,7 +591,7 @@ function NewsTabsSection() {
       setNewsLoading(true); setNewsErr(''); setNewsItems([]);
       let url = '';
       if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" }).toString();
+        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
       } else {
         url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
       }
@@ -620,7 +623,8 @@ function NewsTabsSection() {
           <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
           <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
-        <div style={{ display:"flex", gap:8 }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
           <a href="/daily-report" style={{ ...styles.btnGhost }}>AI 데일리 리포트</a>
         </div>
       </div>
@@ -760,7 +764,7 @@ export default function Home() {
       setNewsLoading(true); setNewsErr(""); setNewsItems([]);
       let url = "";
       if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" }).toString();
+        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
       } else {
         url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
       }

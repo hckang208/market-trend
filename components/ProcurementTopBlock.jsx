@@ -129,7 +129,7 @@ export default function ProcurementTopBlock() {
   };
 
   return (
-    <section style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
+    <section style={{ position:"sticky", top: 12, zIndex: 50, border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontWeight: 800 }}>부자재 구매 현황</h3>
         <div style={{ display: "flex", gap: 8 }}>
