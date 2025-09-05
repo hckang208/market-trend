@@ -186,7 +186,7 @@ function ProcurementTopBlock() {
         </div>
 </div>
 
-      <div style={styles.stickyTop}>
+      <div >
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
         <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
@@ -795,6 +795,10 @@ export default function Home() {
   return (
     <>
       <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
         <title>Hansol Purchasing — Market & Materials</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -822,9 +826,9 @@ export default function Home() {
    스타일
 ========================= */
 const styles = {
-  aiBox: { whiteSpace:"pre-wrap", lineHeight:1.6, background:"#fafafa", border:"1px solid #eee", borderRadius:10, padding:12 },
+  aiBox: { whiteSpace:"pre-wrap", lineHeight:1.65, background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:12, padding:14, fontFamily: "Inter, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji"" },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { position:"sticky", top:16, zIndex:30, background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
+  blockWrap: { background:"#fff", border:"1px solid #e5e7eb", borderRadius:12, padding:16 },
   brand: { fontWeight:800 },
   btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
   btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
@@ -851,7 +855,7 @@ const styles = {
   h3: { margin:"20px 0 8px", fontWeight:800, fontSize:18 },
   headerInner: { display:"flex", gap:8, alignItems:"center" },
   headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 },
-  stickyTop: { position:"sticky", top:16, zIndex:30, background:"#fff" },
+  stickyTop: { position:"static" },
   badgeRow: { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" },
   badge: { fontSize:12, color:"#6b7280", border:"1px solid #e5e7eb", padding:"4px 8px", borderRadius:999 },
   headerWrap: { display:"flex", justifyContent:"space-between", alignItems:"center" },
