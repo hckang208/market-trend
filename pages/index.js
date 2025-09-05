@@ -25,6 +25,8 @@ const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 function redactForbidden(s){ try { return String(s ?? ""); } catch { return ""; } }
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
+  const [compact, setCompact] = useState(true);
+  const [fsize, setFsize] = useState(14);
   const [open, setOpen] = useState(false);;
   const [loading, setLoading] = useState(false);
   const [ts, setTs] = useState(null);
