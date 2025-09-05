@@ -86,20 +86,20 @@ export default async function handler(req, res) {
       }));
 
     const system = lang === "ko"
-      ? `당신은 한솔섬유 전략기획부 임원이 참조할 **BCG 컨설팅 수준**의 요약을 작성하는 시니어 전략가입니다.
+      ? `당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 요약을 작성하는 시니어 전략가입니다.
 - 사실 기반으로만 작성하고, 과장/추정/할루시네이션을 금지합니다.
 - 한국어로 명확하게 보고서 톤으로 작성합니다.
-- 목적: 최근 뉴스 ${items.length}건을 바탕으로 '한솔섬유 전략수립에 참조할만한 내용'만 골라 정리.`
+- 목적: 최근 뉴스 ${items.length}건을 바탕으로 '당사 전략수립에 참조할만한 내용'만 골라 정리.`
       : `You are a senior strategist at Hansoll Textile. Provide concise, factual strategy-focused summary in English using the latest ${items.length} news items.`;
 
     const user = [
-      `${companyName} (${symbol}) 관련 최근 ${items.length}건 뉴스입니다. 각 제목/스니펫/링크를 참고해, 한솔섬유의 전략 수립 관점에서 핵심만 요약해 주세요.`,
+      `${companyName} (${symbol}) 관련 최근 ${items.length}건 뉴스입니다. 각 제목/스니펫/링크를 참고해, 당사의 전략 수립 관점에서 핵심만 요약해 주세요.`,
       "",
       "출력 형식(마크다운):",
       "### 전략 요약 (5개 불릿)",
       "- 시장/수요/가격/고객 변화 중심으로 숫자·트렌드 포함",
       "",
-      "### 한솔섬유 전략에 미치는 시사점 (3줄)",
+      "### 당사 전략에 미치는 시사점 (3줄)",
       "- 공급망/원가/고객사 영향 등",
       "",
       "### Actions (1~2주) (3개 불릿)",

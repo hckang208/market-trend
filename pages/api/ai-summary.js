@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
   const { block = "generic", data = {}, language = "ko", mode = "brief" } = req.body || {};
 
-  const system = `당신은 한솔섬유 전략기획부 임원이 참조할 **BCG 컨설팅 수준**의 인사이트를 작성하는 시니어 전략 애널리스트입니다.
+  const system = `당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 인사이트를 작성하는 시니어 전략 애널리스트입니다.
 - 출력 언어: ${language === "ko" ? "한국어" : "English"}
 - 데이터는 JSON으로 주어지며, 과장 없이 의사결정에 도움이 되도록 핵심 변화와 리스크/기회를 간결하게 제시합니다.
 - 가능하면 구체 수치(%, 추세)를 포함하세요.
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   const user = `다음 JSON 데이터를 요약하세요.
 요구사항:
-1) 불필요한 수식어 제거, 임원 보고용 핵심 bullet.
+1) 불필요한 수식어 제거, 실무진 보고용 핵심 bullet.
 2) ${block === "daily" ? "‘오늘의 3가지 핵심’ → ‘해외 vs 국내 요약’ → ‘리테일러 주가’ → ‘Risk/Action’" : "핵심 요점 → 수치 변화 → 영향/리스크 → 액션 제안"} 순서.
 3) 너무 길지 않게(1~2분 내 읽기).
 

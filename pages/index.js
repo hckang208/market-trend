@@ -78,41 +78,6 @@ function AIBox({ block, payload }) {
 }
 
 
-function Modal({ open, onClose, title, children }) {
-  const backdrop = {
-    position: "fixed", inset: 0, background: "rgba(0,0,0,.3)",
-    display: open ? "flex" : "none", alignItems: "center", justifyContent: "center", zIndex: 2000
-  };
-  const dialog = {
-    width: "min(980px, 92vw)", maxHeight: "80vh", overflow: "hidden",
-    background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 10px 30px rgba(0,0,0,.15)",
-    padding: 12
-  };
-
-  React.useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
-    window.addEventListener("keydown", onKey);
-    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
-  }, [open, onClose]);
-
-  if (!open) return null;
-  return (
-    <div style={backdrop} onClick={onClose} aria-modal="true" role="dialog">
-      <div style={dialog} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
-          <button onClick={onClose} style={styles.btnGray} aria-label="닫기">닫기</button>
-        </div>
-        <div style={{ maxHeight:"68vh", overflow:"auto" }}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* =========================
    헤더
@@ -221,8 +186,9 @@ function ProcurementTopBlock() {
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
-          <div style={{ marginTop: 6 }}>
-            <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnGray}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
+          <div>
+            <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnTiny}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
+            <a href="/ai-summary" style={{ ...styles.btnTab }}>AI 요약</a>
           </div>
         </div>
 </div>
@@ -702,8 +668,7 @@ async function load(tab = activeTab) {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
-          <button onClick={loadAISummary} disabled={aiLoading} style={{ ...styles.btnTab }}>{aiLoading ? "요약 중..." : "AI 요약"}</button>
-        </div>
+</div>
       </div>
 
       <div style={{ marginTop: 12, border:"1px solid #e5e7eb", borderRadius:12, background:"#fff" }}>
@@ -735,33 +700,7 @@ async function load(tab = activeTab) {
         )}
       </div>
       {/* AI 요약 모달 */}
-      <Modal open={aiOpen} onClose={() => setAiOpen(false)} title="AI 뉴스 요약">
-        {aiErr && <div style={{ color:"#b91c1c" }}>에러: {aiErr}</div>}
-        {!aiErr && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            <section style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
-              <h4 style={{ margin:"0 0 8px 0", fontSize:14, fontWeight:800 }}>해외뉴스 요약 from Just-Style & Business of Fashion</h4>
-              <div style={{ whiteSpace:"pre-wrap", lineHeight:1.6, fontSize:14 }}>
-                {aiForeign?.summary || (aiLoading ? "요약 중…" : "—")}
-              </div>
-            </section>
-            <section style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
-              <h4 style={{ margin:"0 0 8px 0", fontSize:14, fontWeight:800 }}>국내뉴스 요약 from 한국섬유신문</h4>
-              <div style={{ whiteSpace:"pre-wrap", lineHeight:1.6, fontSize:14 }}>
-                {aiKorea?.summary || (aiLoading ? "요약 중…" : "—")}
-              </div>
-            </section>
-          </div>
-        )}
-        <div style={{ display:"flex", gap:8, marginTop:12 }}>
-          <button onClick={loadAISummary} disabled={aiLoading} style={{ ...styles.btnTab }}>
-            {aiLoading ? "다시 요약 중..." : "다시 요약"}
-          </button>
-          <button onClick={() => setAiOpen(false)} style={styles.btnGray}>닫기</button>
-        </div>
-      </Modal>
-
-    </section>
+</section>
   );
 }
 
@@ -930,6 +869,7 @@ const styles = {
   btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
   btnGhost: { padding:"8px 12px", borderRadius:10, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 },
   btnGray: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f3f4f6", color:"#1f2937", fontWeight:700, fontSize:14 },
+  btnTiny: { padding:"6px 8px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:12 }, 
   btnTab: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14 },
   btnTabActive: { padding:"8px 12px", borderRadius:8, border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:700, fontSize:14 },
   card: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:12 },

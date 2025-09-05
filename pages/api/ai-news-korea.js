@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       source: (typeof n.source === 'string' ? n.source : (n.source && n.source.name ? n.source.name : '')) || ""
     }));
 
-    const system = "당신은 한솔섬유 전략기획부 임원이 참조할 **BCG 컨설팅 수준**의 국내 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
+    const system = "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 국내 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
     const user = [
       `아래는 한국섬유신문 RSS 기반 국내 뉴스 최근 ${items.length}건입니다 (일간).`,
       "",
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       "### 전략 요약 (5개 불릿)",
       "- 내수/수출/원가/정책 변화 중심, 숫자·추세 포함",
       "",
-      "### 한솔섬유 전략에 미치는 시사점 (3줄)",
+      "### 당사 전략에 미치는 시사점 (3줄)",
       "",
       "### Actions (1~2주) (3개 불릿)",
       "- 구체적 실행",

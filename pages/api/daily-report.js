@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     }
     stockRows.sort((a,b) => b.pct - a.pct);
 
-    const system = `당신은 한솔섬유 전략기획부 임원이 즉시 의사결정에 활용할 **BCG 컨설팅 수준**의 브리프를 작성하는 시니어 컨설턴트입니다.
+    const system = `당신은 당사 내부 실무진이 즉시 의사결정에 활용할 **컨설팅 수준**의 브리프를 작성하는 시니어 컨설턴트입니다.
 - 한국어로 핵심을 간결하게 정리하세요.
 - 아침 브리핑 용으로 1~2분 내 읽히는 분량으로 작성합니다.
 - '오늘의 3가지 핵심' -> '해외 vs 국내 요약' -> '리테일러 주가 하이라이트' -> 'Risk/Action' 순서로 Markdown 섹션을 만듭니다.`;
