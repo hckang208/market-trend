@@ -1,6 +1,7 @@
 //  // pages/index.js 
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
+import ProcurementForm from "../components/procurement/ProcurementForm";
 
 const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
 //  ============================== 
@@ -223,10 +224,14 @@ function ProcurementTopBlock() {
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
 
       {openEdit && (
-        <div style={styles.editBox}>
-          <div style={styles.row}>
-            <label>기간 표시</label>
-            <input value={data.periodLabel || ""} onChange={(e) => setData(d => ({ ...d, periodLabel: e.target.value }))} placeholder="예: 2025-09" />
+        <ProcurementForm
+          data={data}
+          setData={setData}
+          onSave={save}
+          onClose={() => setOpenEdit(false)}
+          onReset={reset}
+        />
+      )} placeholder="예: 2025-09" />
           </div>
           <div style={styles.row}>
             <label>방식</label>
