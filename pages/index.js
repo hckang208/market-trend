@@ -3,9 +3,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
 const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
-/* =========================
+ =========================
    숫자/시계열 유틸
-========================= */
+========================= 
 const fmtNum = (n, d = 2) => {
   const v = Number(n);
   if (!isFinite(v)) return "-";
@@ -19,9 +19,9 @@ const fmtSignPct = (n, d = 2) => {
 };
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
-/* =========================
+ =========================
    공통: AI 분석 박스
-========================= */
+========================= 
 function redactForbidden(s){ try { return String(s ?? ""); } catch { return ""; } }
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
@@ -83,9 +83,9 @@ function AIBox({ block, payload }) {
 
 
 
-/* =========================
+ =========================
    헤더
-========================= */
+========================= 
 function HeaderBar() {
   return (
     <header style={styles.headerWrap}>
@@ -99,9 +99,9 @@ function HeaderBar() {
   );
 }
 
-/* =========================
+ =========================
    1) 부자재구매현황 (수기입력)
-========================= */
+========================= 
 function ProcurementTopBlock() {
   const LS_KEY = "procure.dashboard.v1";
   const defaultData = {
@@ -221,7 +221,7 @@ function ProcurementTopBlock() {
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
         </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중*/}
+        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>}
       
 
       </div>
@@ -275,9 +275,9 @@ function ProcurementTopBlock() {
   );
 }
 
-/* =========================
+ =========================
    2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
-========================= */
+========================= 
 function Sparkline({ series = [], width = 110, height = 32 }) {
   if (!series || series.length < 2) return null;
   const min = Math.min(...series);
@@ -401,9 +401,9 @@ function IndicatorsSection() {
   );
 }
 
-/* =========================
+ =========================
    3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
-========================= */
+========================= 
 const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
 const NAME_MAP = {
   WMT: "Walmart",
@@ -590,9 +590,9 @@ useEffect(() => {
   );
 }
 
-/* =========================
+ =========================
    4) 뉴스 탭 — 브랜드 / 산업 / 한국 (한국: 필터 없이 최근 2일)
-========================= */
+========================= 
 const BRAND_TERMS = [
   "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
   "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
@@ -666,7 +666,7 @@ async function load(tab = activeTab) {
   return (
     <section style={{ marginTop: 24 }}>
       <NewsHeader active={activeTab} onChangeTab={(t)=>{ setActiveTab(t); load(t); }} />
-        {/*d('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
+        d('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
           <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -702,14 +702,14 @@ async function load(tab = activeTab) {
           </div>
         )}
       </div>
-      {/* AI 요약 모달 */}
+       AI 요약 모달 
 </section>
   );
 }
 
-/* =========================
+ =========================
    페이지
-========================= */
+========================= 
 
 function LinkifyCitations(text="") {
   return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
@@ -860,9 +860,9 @@ export default function Home() {
   );
 }
 
-/* =========================
+ =========================
    스타일
-========================= */
+========================= 
 const styles = {
   aiBox: { border:"1px dashed var(--line)", borderRadius:12, background:"#fff", padding:12, whiteSpace:"pre-wrap", lineHeight:1.7 },
   blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
