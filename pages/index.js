@@ -290,6 +290,11 @@ function ProcurementTopBlock() {
             <button onClick={reset} style={styles.btnDanger}>초기화</button>
           </div>
         </div>
+      </div>
+      </div>
+      </div>
+      </div>
+      </div>
       )}
     </section>
   );
