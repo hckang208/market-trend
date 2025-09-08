@@ -221,8 +221,8 @@ function ProcurementTopBlock() {
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
         </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
-      </div>
+        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중*/}
+      
 
       </div>
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
@@ -665,9 +665,8 @@ async function load(tab = activeTab) {
 
   return (
     <section style={{ marginTop: 24 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
+      <NewsHeader active={activeTab} onChangeTab={(t)=>{ setActiveTab(t); load(t); }} />
+        {/*d('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
           <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
