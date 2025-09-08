@@ -108,9 +108,9 @@ export default function Home() {
 
         {/* 2) AI 현황분석 */}
         <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-          <AICard title="AI 현황분석 — 지표" text={"• 매출/매입/Cost Save 추세 요약...
+          <AICard title="AI 현황분석 — 지표" text={`• 매출/매입/Cost Save 추세 요약...
 • YoY/전월대비 포인트...
-• 리스크/기회..."} />
+• 리스크/기회…`} />
           <AICard title="AI 현황분석 — 공급현황" text={`• 국내 ${fmtNum(data.supplyBreakdown.domestic)}% · 3국 ${fmtNum(data.supplyBreakdown.thirdCountry)}% · 현지 ${fmtNum(data.supplyBreakdown.local)}%`} />
         </section>
 
