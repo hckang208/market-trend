@@ -216,7 +216,7 @@ function ProcurementTopBlock() {
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
         </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>}
+        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
       
 
       </div>
