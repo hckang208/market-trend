@@ -235,41 +235,61 @@ function ProcurementTopBlock() {
           <div style={styles.row}>
             <label>통화</label>
             <select value={data.currency} onChange={(e) => setData(d => ({ ...d, currency: e.target.value }))}>
-              <option value="USD">USD</option><option value="KRW">KRW</option>
+              <option value="USD">USD</option>
+              <option value="KRW">KRW</option>
             </select>
           </div>
+
           <div style={styles.grid2}>
-            <div style={styles.row}><label>총 매출액</label><input type="number" value={data.revenue} onChange={(e) => setData(d => ({ ...d, revenue: Number(e.target.value) }))} /></div>
-            <div style={styles.row}><label>총 부자재매입액</label><input type="number" value={data.materialSpend} onChange={(e) => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))} /></div>
-          <div style={styles.row}><label>총 Cost Save</label><input type="number" value={data.costSave}
-            onChange={(e) => setData(d => ({ ...d, costSave: Number(e.target.value) }))} /></div>
+            <div style={styles.row}>
+              <label>총 매출액</label>
+              <input type="number" value={data.revenue} onChange={(e) => setData(d => ({ ...d, revenue: Number(e.target.value) }))} />
+            </div>
+            <div style={styles.row}>
+              <label>총 부자재매입액</label>
+              <input type="number" value={data.materialSpend} onChange={(e) => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))} />
+            </div>
+            <div style={styles.row}>
+              <label>총 Cost Save</label>
+              <input type="number" value={data.costSave} onChange={(e) => setData(d => ({ ...d, costSave: Number(e.target.value) }))} />
+            </div>
           </div>
+
           <div style={styles.grid2}>
-            <div style={styles.row}><label>총 오더수(스타일)</label><input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} /></div>
-            <div style={styles.row}><label>총 발행 PO수</label><input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} /></div>
+            <div style={styles.row}>
+              <label>총 오더수(스타일)</label>
+              <input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} />
+            </div>
+            <div style={styles.row}>
+              <label>총 발행 PO수</label>
+              <input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} />
+            </div>
           </div>
+
           <div style={{ marginTop: 8, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
             <div style={styles.blockTitle}>공급현황(%) — 합계 100 기준</div>
             <div style={styles.grid3}>
-              <div style={styles.row}><label>국내(%)</label><input type="number" value={data.supplyBreakdown.domestic}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} /></div>
-              <div style={styles.row}><label>3국(%)</label><input type="number" value={data.supplyBreakdown.thirdCountry}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, thirdCountry: Number(e.target.value) } }))} /></div>
-              <div style={styles.row}><label>현지(%)</label><input type="number" value={data.supplyBreakdown.local}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) } }))} /></div>
+              <div style={styles.row}>
+                <label>국내(%)</label>
+                <input type="number" value={data.supplyBreakdown.domestic} onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} />
+              </div>
+              <div style={styles.row}>
+                <label>3국(%)</label>
+                <input type="number" value={data.supplyBreakdown.thirdCountry} onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, thirdCountry: Number(e.target.value) } }))} />
+              </div>
+              <div style={styles.row}>
+                <label>현지(%)</label>
+                <input type="number" value={data.supplyBreakdown.local} onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) } }))} />
+              </div>
             </div>
           </div>
+
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={save} style={styles.btnBlue}>저장</button>
-            <button  style={styles.btnGray}>닫기</button>
+            <button onClick={() => setOpenEdit(false)} style={styles.btnGray}>닫기</button>
             <button onClick={reset} style={styles.btnDanger}>초기화</button>
           </div>
         </div>
-      </div>
-      </div>
-      </div>
-      </div>
-      </div>
       )}
     </section>
   );
