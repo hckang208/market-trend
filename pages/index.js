@@ -20,30 +20,34 @@ const fmtSignPct = (n, d = 2) => {
 
 // 공통: AI 분석 카드
 function AICard({ title, text }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => { setNow(new Date()); }, []);
-  const ts = useMemo(() => {
-    const z = new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(now);
-    return z;
-  }, [now]);
+  const [ts, setTs] = React.useState("");
+  React.useEffect(() => {
+    try {
+      const now = new Date();
+      const z = new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Seoul",
+      }).format(now);
+      setTs(z);
+    } catch {}
+  }, []);
 
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, background: "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <div style={{ fontWeight: 700 }}>{title}</div>
-        <div style={{ fontSize: 12, color: "#6b7280" }}>GEMINI 2.5 사용중 · {ts}</div>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>
+          <span suppressHydrationWarning>GEMINI 2.5 사용중{ts ? " · " + ts : ""}</span>
+        </div>
       </div>
       <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{text || "데이터 수집 중..."}</div>
     </div>
   );
 }
-
 // 상단 KPI 카드
 function KPI({ label, value, sub }) {
   return (
