@@ -379,20 +379,20 @@ function IndicatorsSection() {
               const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
 
               return (
-                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card" style={ ...styles.cardLink }} title="원본 데이터 열기">
+                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card" style={{ ...styles.cardLink }} title="원본 데이터 열기">
                   <div className="card-title">{c.title}</div>
                   <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
-                  <div className="subtle" style={ fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
+                  <div className="subtle" style={{ fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
                     {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                   </div>
                   {yoyPct != null && (
-                    <div className="subtle" style={ fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
+                    <div className="subtle" style={{ fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
                       YoY: {fmtSignPct(yoyPct)}
                     </div>
                   )}
                   <Sparkline series={s || []} />
-                  {lastDateStr && <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                  <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                  {lastDateStr && <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
+                  <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
                 </a>
               );
             })}
@@ -565,10 +565,10 @@ useEffect(() => {
                         {r.name} <span className="muted">({r.symbol})</span>
                       </div>
                       <div style={{ ...styles.cardValue }}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                      <div className="subtle" style={ fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
+                      <div className="subtle" style={{ fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
                         {fmtSignPct(r.pct)}
                       </div>
-                      <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
+                      <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
                       <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
@@ -670,8 +670,8 @@ async function load(tab = activeTab) {
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} className="btn btn-ghost" style={ ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
-          <button onClick={() => { setActiveTab('korea'); load('korea'); }} className="btn btn-ghost" style={ ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
+          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} className="btn btn-ghost" style={{ ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
+          <button onClick={() => { setActiveTab('korea'); load('korea'); }} className="btn btn-ghost" style={{ ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
           <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="btn btn-ghost">AI 요약</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
