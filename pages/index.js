@@ -63,10 +63,10 @@ function AIBox({ block, payload }) {
   }, [block, JSON.stringify(payload || {})]);
 
   return (
-    <div style={styles.aiBox}>
+    <div className="ai-block">
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
         <div style={{ fontWeight: 800 }}>AI 현황분석</div>
-        <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "AI 요약"}</button>
+        <button onClick={() => setOpen(o=>!o)} className="btn">{open ? "접기" : "AI 요약"}</button>
       </div>
       {open ? (
         <div style={{ fontSize:12, color:"#6b7280", marginBottom:6 }}>
@@ -75,8 +75,8 @@ function AIBox({ block, payload }) {
       ) : null}
       {open && (
         <>
-          {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
-          {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
+          {loading && <div className="muted">분석 중…</div>}
+          {err && <div className="text-danger">오류: {err}</div>}
           {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
         </>
       )}
@@ -178,19 +178,19 @@ function ProcurementTopBlock() {
   };
 
   const Card = ({ title, value, sub }) => (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>{title}</div>
+    <div className="card">
+      <div className="card-title">{title}</div>
       <div style={styles.cardValue}>{value}</div>
-      {sub ? <div style={styles.cardSub}>{sub}</div> : null}
+      {sub ? <div className="subtle">{sub}</div> : null}
     </div>
   );
 
   return (
-    <section style={styles.blockWrap}>
+    <section className="card">
       <div style={styles.headerRow}>
         <div>
           <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
-          <div style={styles.meta}>
+          <div className="muted">
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
           <div>
@@ -203,8 +203,8 @@ function ProcurementTopBlock() {
       <div style={styles.grid5}>
         <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
         <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>매출 대비 부자재 매입비중</div>
+        <div className="card">
+          <div className="card-title">매출 대비 부자재 매입비중</div>
           <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
           <div style={styles.progressWrap}><div style={{ ...styles.progressBar, width: `${ratio}%` }} /></div>
         </div>
@@ -212,14 +212,14 @@ function ProcurementTopBlock() {
         <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
       </div>
 
-      <div style={styles.innerBlock}>
-        <div style={styles.blockTitle}>공급현황 (국내 / 3국 / 현지)</div>
+      <div className="card">
+        <div className="card-title">공급현황 (국내 / 3국 / 현지)</div>
         <div style={styles.stackBar}>
           <div style={{ ...styles.seg, background: "#111827", width: `${supply.domestic}%` }} title={`국내 ${fmtNum(supply.domestic, 1)}%`} />
           <div style={{ ...styles.seg, background: "#4B5563", width: `${supply.thirdCountry}%` }} title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`} />
           <div style={{ ...styles.seg, background: "#9CA3AF", width: `${supply.local}%` }} title={`현지 ${fmtNum(supply.local, 1)}%`} />
         </div>
-        <div style={styles.legend}>
+        <div className="muted">
           <span>국내 {fmtNum(supply.domestic, 1)}%</span>
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
@@ -257,7 +257,7 @@ function ProcurementTopBlock() {
             <div style={styles.row}><label>총 발행 PO수</label><input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} /></div>
           </div>
           <div style={{ marginTop: 8, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
-            <div style={styles.blockTitle}>공급현황(%) — 합계 100 기준</div>
+            <div className="card-title">공급현황(%) — 합계 100 기준</div>
             <div style={styles.grid3}>
               <div style={styles.row}><label>국내(%)</label><input type="number" value={data.supplyBreakdown.domestic}
                 onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} /></div>
@@ -268,9 +268,9 @@ function ProcurementTopBlock() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={save} style={styles.btnBlue}>저장</button>
-            <button  style={styles.btnGray}>닫기</button>
-            <button onClick={reset} style={styles.btnDanger}>초기화</button>
+            <button onClick={save} className="btn btn-primary">저장</button>
+            <button  className="btn">닫기</button>
+            <button onClick={reset} className="btn">초기화</button>
           </div>
         </div>
       )}
@@ -379,20 +379,20 @@ function IndicatorsSection() {
               const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
 
               return (
-                <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
-                  <div style={styles.cardTitle}>{c.title}</div>
+                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card" style={ ...styles.cardLink }} title="원본 데이터 열기">
+                  <div className="card-title">{c.title}</div>
                   <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
-                  <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
+                  <div className="subtle" style={ fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
                     {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                   </div>
                   {yoyPct != null && (
-                    <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
+                    <div className="subtle" style={ fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
                       YoY: {fmtSignPct(yoyPct)}
                     </div>
                   )}
                   <Sparkline series={s || []} />
-                  {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                  {lastDateStr && <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
+                  <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
                 </a>
               );
             })}
@@ -558,25 +558,25 @@ useEffect(() => {
               const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
               return (
                 
-                <div key={r.symbol} style={{ ...styles.card }}>
+                <div key={r.symbol} className="card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ ...styles.cardTitle }}>
-                        {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
+                      <div className="card-title">
+                        {r.name} <span className="muted">({r.symbol})</span>
                       </div>
                       <div style={{ ...styles.cardValue }}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                      <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
+                      <div className="subtle" style={ fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
                         {fmtSignPct(r.pct)}
                       </div>
-                      <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
+                      <div className="subtle" style={ color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
                       <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
                          target="_blank" rel="noreferrer"
-                         style={{ ...styles.btnTab }} title="Yahoo Finance 열기">
+                         className="btn btn-ghost" title="Yahoo Finance 열기">
                         Yahoo
                       </a>
-                      <a href={`/company/${encodeURIComponent(r.symbol)}`} style={{ ...styles.btnTab }} title="AI 요약 화면으로 이동">AI뉴스요약</a>
+                      <a href={`/company/${encodeURIComponent(r.symbol)}`} className="btn btn-ghost" title="AI 요약 화면으로 이동">AI뉴스요약</a>
                     </div>
                   </div>
 
@@ -670,9 +670,9 @@ async function load(tab = activeTab) {
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
-          <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
-          <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} style={{ ...styles.btnTab }}>AI 요약</button>
+          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} className="btn btn-ghost" style={ ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
+          <button onClick={() => { setActiveTab('korea'); load('korea'); }} className="btn btn-ghost" style={ ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
+          <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="btn btn-ghost">AI 요약</button>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
@@ -685,7 +685,7 @@ async function load(tab = activeTab) {
         {!newsLoading && !newsErr && (
           <div style={{ padding:12 }}>
             {rendered.length === 0 ? (
-              <div style={{ color:"#6b7280" }}>관련 기사가 아직 없어요.</div>
+              <div className="muted">관련 기사가 아직 없어요.</div>
             ) : (
               <ol style={{ margin:0, paddingLeft:18 }}>
                 {rendered.map((it, i) => (
@@ -761,7 +761,7 @@ function NewsAISummaryPanel({ title, endpoint }) {
         <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <div style={{ fontSize:12, color:"#6b7280" }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
-          <button onClick={load} disabled={loading} style={{ ...styles.btnTab }}>{loading ? "요약 중..." : "다시 요약"}</button>
+          <button onClick={load} disabled={loading} className="btn btn-ghost">{loading ? "요약 중..." : "다시 요약"}</button>
         </div>
       </div>
 
@@ -801,7 +801,7 @@ function NewsAISummaryPanel({ title, endpoint }) {
 function NewsAISummarySection() {
   return (
     <div id="aiNewsSection" style={{ marginTop: 24 }}>
-      <div style={{ ...styles.blockTitle }}>뉴스 AI 분석</div>
+      <div className="card-title">뉴스 AI 분석</div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
         <NewsAISummaryPanel title="해외뉴스분석(AI)" endpoint="/api/ai-news-foreign" />
         <NewsAISummaryPanel title="국내뉴스분석(AI)" endpoint="/api/ai-news-korea" />
