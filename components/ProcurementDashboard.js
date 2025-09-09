@@ -82,10 +82,10 @@ export default function ProcurementDashboard() {
 
   return (
     <section className="border border-slate-200 rounded-2xl bg-white shadow-sm p-4">
+      {/* 내부 타이틀 제거 (중복 방지). 페이지 섹션 타이틀에서만 표시 */}
       <div className="flex items-start justify-between mb-2">
         <div>
-          <h2 className="text-lg md:text-xl font-extrabold text-slate-900">부자재구매현황 DASHBOARD (sample data입니다)</h2>
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-slate-500">
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
           <div className="mt-1">
@@ -127,6 +127,7 @@ export default function ProcurementDashboard() {
 
       {openEdit && (
         <div className="mt-3 border-t border-slate-200 pt-3 space-y-3">
+          {/* 입력 폼 동일 */}
           <div className="flex items-center gap-2">
             <label className="w-24 text-sm">기간 표시</label>
             <input className="flex-1 border border-slate-300 rounded-md px-2 py-1 text-sm" value={data.periodLabel || ""} onChange={(e) => setData(d => ({ ...d, periodLabel: e.target.value }))} placeholder="예: 2025-09" />

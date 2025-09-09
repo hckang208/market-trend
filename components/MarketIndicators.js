@@ -78,7 +78,7 @@ export default function MarketIndicators() {
 
   return (
     <section>
-      <h3 className="text-xl font-extrabold mb-2 text-slate-900">주요 지표</h3>
+      {/* 상단 "주요 지표" 문구 제거 */}
       {lastUpdated && <div className="text-xs text-slate-500 mb-2">전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}</div>}
       {state.loading && <div>불러오는 중...</div>}
       {state.error && <div className="text-red-600">에러: {state.error}</div>}
