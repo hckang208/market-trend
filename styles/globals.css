@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next { height: 100%; }
+body { @apply bg-bg text-ink; }
+.card { @apply bg-panel rounded-2xl shadow-soft border border-white/5; }
+.btn { @apply rounded-xl border border-white/10 px-3 py-2 text-sm; }
+.btn-primary { @apply bg-brand/10 text-brand border-brand/30 hover:bg-brand/20 transition; }
+.btn-ghost { @apply bg-white/5 hover:bg-white/10 transition; }
+.tag { @apply px-2 py-0.5 rounded-lg text-xs bg-white/5 border border-white/10 text-sub; }
+.hdr { @apply text-lg font-extrabold; }
+.kpi { @apply text-2xl font-black; }
+.mono { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
