@@ -841,7 +841,7 @@ export default function Home() {
           /* Metrics Grid */
           .metrics-grid {
             display: grid;
-/*             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); */
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
           }
@@ -1088,7 +1088,7 @@ export default function Home() {
           /* Indicators Grid */
           .indicators-grid {
             display: grid;
-/*             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); */
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
           }
@@ -1174,7 +1174,7 @@ export default function Home() {
           /* Equity Grid */
           .equity-grid {
             display: grid;
-/*             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); */
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
           }
@@ -1271,7 +1271,7 @@ export default function Home() {
 
           .news-grid {
             display: grid;
-/*             grid-template-columns: 1.5fr 1fr; */
+            grid-template-columns: 1.5fr 1fr;
             gap: 1.5rem;
           }
 
@@ -1375,7 +1375,7 @@ export default function Home() {
 
           .edit-grid {
             display: grid;
-/*             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); */
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 1rem;
           }
@@ -1425,19 +1425,19 @@ export default function Home() {
           /* Responsive Design */
           @media (max-width: 1024px) {
             .metrics-grid {
-/*               grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); */
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             }
             
             .indicators-grid {
-/*               grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); */
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             }
             
             .equity-grid {
-/*               grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); */
+              grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             }
             
             .news-grid {
-/*               grid-template-columns: 1fr; */
+              grid-template-columns: 1fr;
             }
           }
 
@@ -1460,7 +1460,6 @@ export default function Home() {
             }
             
             .metrics-grid {
-/*               grid-template-columns: 1fr; */
+              grid-template-columns: 1fr;
             }
           }
-  `}</style>
