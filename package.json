@@ -1,22 +1,21 @@
 {
-  "name": "market-trend",
+  "name": "market-trend-revamp",
   "private": true,
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
-  },
-  "engines": {
-    "node": "20.x"
+    "start": "next start",
+    "lint": "echo 'lint disabled'"
   },
   "dependencies": {
+    "clsx": "2.1.1",
+    "date-fns": "3.6.0",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "@google/generative-ai": "^0.21.0",
-    "sanitize-html": "^2.13.0",
-    "clsx": "^2.1.1"
+    "sanitize-html": "2.13.0",
+    "google-generative-ai": "0.21.0"
   },
   "devDependencies": {
     "autoprefixer": "10.4.19",

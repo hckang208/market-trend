@@ -1,102 +1,194 @@
 import React from "react";
+import Head from "next/head";
 import KPI from "@/components/KPI";
 import AICard from "@/components/AICard";
 import NewsHeader from "@/components/NewsHeader";
 import ProcurementForm from "@/components/ProcurementForm";
 
-export default function Home() {
-  const [tab, setTab] = React.useState("korea");
+const fmt = (n, d=0) => {
+  const v = Number(n); if (!isFinite(v)) return "-";
+  return v.toLocaleString(undefined, { maximumFractionDigits: d });
+};
+
+export default function Home(){
+  // Procurement state
+  const [openEdit, setOpenEdit] = React.useState(false);
+  const [data, setData] = React.useState({
+    periodLabel: "2025-09", period: "월간", currency: "KRW",
+    revenue: 0, materialSpend: 0, costSave: 0, styles: 0, poCount: 0,
+    supplyBreakdown: { domestic: 0, thirdCountry: 0, local: 0 }
+  });
+
+  // Indicators & stocks
+  const [ind, setInd] = React.useState({ items: [], generatedAt: null });
+  const [stocks, setStocks] = React.useState({ items: [], generatedAt: null });
+
+  React.useEffect(()=>{
+    (async ()=>{
+      try { const r = await fetch("/api/indicators"); setInd(await r.json()); } catch {}
+      try { const r2 = await fetch("/api/retail-stocks"); setStocks(await r2.json()); } catch {}
+    })();
+  }, []);
+
+  // News tabs
+  const [newsTab, setNewsTab] = React.useState("korea");
   const [newsKo, setNewsKo] = React.useState({ items: [] });
-  const [newsGl, setNewsGl] = React.useState({ items: [] });
-  const [aiKo, setAiKo] = React.useState(null);
-  const [aiGl, setAiGl] = React.useState(null);
-  const [loadingAI, setLoadingAI] = React.useState(false);
+  const [newsEn, setNewsEn] = React.useState({ items: [] });
+  const [aiKo, setAiKo] = React.useState({ summary: "", generatedAt: null });
+  const [aiEn, setAiEn] = React.useState({ summary: "", generatedAt: null });
 
-  React.useEffect(()=>{ loadNews("korea"); loadNews("global"); }, []);
-
-  async function loadNews(which) {
+  const loadNews = async (tab) => {
     try {
-      const r = await fetch(`/api/news?src=${which}`);
-      const j = await r.json();
-      if (which === "korea") setNewsKo(j);
-      else setNewsGl(j);
-    } catch (e) {
-      if (which === "korea") setNewsKo({ items: [] });
-      else setNewsGl({ items: [] });
-    }
-  }
+      if (tab === "korea") {
+        const r = await fetch("/api/news-korea"); setNewsKo(await r.json());
+      } else {
+        const r = await fetch("/api/news-foreign"); setNewsEn(await r.json());
+      }
+    } catch {}
+  };
+  React.useEffect(()=>{ loadNews("korea"); loadNews("foreign"); }, []);
 
-  async function summarize() {
+  const summarize = async () => {
     try {
-      setLoadingAI(true);
-      const [rko, rgl] = await Promise.all([
-        fetch("/api/ai-summary", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ items: newsKo.items })}),
-        fetch("/api/ai-summary", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ items: newsGl.items })})
-      ]);
-      setAiKo(await rko.json());
-      setAiGl(await rgl.json());
-      document.getElementById("aiSection")?.scrollIntoView({ behavior:"smooth", block:"start" });
-    } finally {
-      setLoadingAI(false);
-    }
-  }
+      const payloadKo = { items: newsKo.items };
+      const rko = await fetch("/api/ai-summary", { method:"POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payloadKo) });
+      const jko = await rko.json(); setAiKo(jko);
+
+      const payloadEn = { items: newsEn.items };
+      const ren = await fetch("/api/ai-summary", { method:"POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payloadEn) });
+      const jen = await ren.json(); setAiEn(jen);
+
+      const anchor = document.getElementById("aiNewsSection");
+      if (anchor) anchor.scrollIntoView({ behavior:"smooth", block:"start" });
+    } catch (e) {}
+  };
+
+  const save = () => {/* TODO: persist to storage */};
+  const reset = () => setData({
+    periodLabel: "", period: "", currency: "KRW",
+    revenue: 0, materialSpend: 0, costSave: 0, styles: 0, poCount: 0,
+    supplyBreakdown: { domestic: 0, thirdCountry: 0, local: 0 }
+  });
 
   return (
-    <main className="max-w-6xl mx-auto p-5 md:p-8">
-      {/* header */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-black">Hansol Market Trend</h1>
-          <div className="text-sm text-sub">⚡ Beta</div>
-        </div>
-      </section>
+    <>
+      <Head>
+        <title>Market Trend Dashboard</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
 
-      {/* KPI */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KPI label="USD/KRW" value="-" sub="환율" />
-        <KPI label="WTI" value="-" sub="유가" />
-        <KPI label="Cotton" value="-" sub="면화" />
-        <KPI label="SCFI" value="-" sub="해상운임" />
-      </section>
+      <main className="max-w-6xl mx-auto p-4 space-y-4">
+        {/* Header */}
+        <header className="flex items-center justify-between">
+          <h1 className="hdr">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <span className="tag">{data.periodLabel} · {data.period}</span>
+            <button className="btn btn-ghost text-xs" onClick={()=>setOpenEdit(true)}>수기입력</button>
+          </div>
+        </header>
 
-      {/* Controls */}
-      <section className="mb-6">
-        <ProcurementForm onSubmit={()=>{/* no-op placeholder */}} />
-      </section>
+        {/* KPI */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <KPI label="총 매출액" value={`${fmt(data.revenue)} ${data.currency}`} />
+          <KPI label="총 부자재매입액" value={`${fmt(data.materialSpend)} ${data.currency}`} />
+          <KPI label="총 Cost Save" value={`${fmt(data.costSave)} ${data.currency}`} />
+          <KPI label="총 오더수(스타일)" value={fmt(data.styles)} />
+        </section>
 
-      {/* News */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="hdr">뉴스</div>
-          <NewsHeader active={tab} onTab={setTab} onAISummary={summarize} loading={loadingAI} />
-        </div>
+        {/* AI 현황분석 */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <AICard title="AI 현황분석 — 지표" text={`• 매출/매입/Cost Save 추세 요약...
+• YoY/전월대비 포인트...
+• 리스크/기회…`} />
+          <AICard title="AI 현황분석 — 공급현황" text={`• 국내 ${fmt(data.supplyBreakdown.domestic)}% · 3국 ${fmt(data.supplyBreakdown.thirdCountry)}% · 현지 ${fmt(data.supplyBreakdown.local)}%`} />
+        </section>
 
-        {tab === "korea" ? <NewsList data={newsKo} /> : <NewsList data={newsGl} />}
-      </section>
+        {/* 주요지표 */}
+        <section className="card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="hdr">주요지표</div>
+            <div className="text-xs text-sub" suppressHydrationWarning>업데이트: {ind.generatedAt ? new Date(ind.generatedAt).toLocaleString("ko-KR", { timeZone:"Asia/Seoul" }) : "-"}</div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {ind.items.map((it, i)=>(
+              <div key={i} className="card p-3">
+                <div className="text-xs text-sub">{it.label}</div>
+                <div className="kpi mono mt-1">{fmt(it.value, typeof it.value==="number" && it.value<10 ? 2 : 0)}</div>
+                <div className="text-xs text-sub mt-1">MoM {it.mom>0?"+":""}{it.mom}% · YoY {it.yoy>0?"+":""}{it.yoy}%</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* AI Summary */}
-      <section id="aiSection" className="grid md:grid-cols-2 gap-4">
-        <AICard title="국내 뉴스 — AI 요약" html={aiKo?.summary} />
-        <AICard title="해외 뉴스 — AI 요약" html={aiGl?.summary} />
-      </section>
+        {/* 리테일러 주가 등락률 */}
+        <section className="card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="hdr">일일 리테일러 주가 등락률</div>
+            <div className="text-xs text-sub" suppressHydrationWarning>업데이트: {stocks.generatedAt ? new Date(stocks.generatedAt).toLocaleString("ko-KR", { timeZone:"Asia/Seoul" }) : "-"}</div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {stocks.items.map((s, i)=>(
+              <div key={i} className="card p-3 flex items-center justify-between">
+                <div className="text-sm">{s.name} <span className="text-sub">({s.ticker})</span></div>
+                <div className={"mono "+(s.chg>=0?"text-emerald-300":"text-rose-300")}>{s.chg>=0?"+":""}{s.chg}%</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <footer className="text-center text-xs text-sub mt-10">© {new Date().getFullYear()} Hansol Textile (Internal Beta)</footer>
-    </main>
-  );
-}
+        {/* 뉴스 */}
+        <section className="card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="hdr">뉴스</div>
+          </div>
+          <NewsHeader
+            active={newsTab}
+            onTab={(t)=>{ setNewsTab(t); loadNews(t); }}
+            onAISummary={summarize}
+          />
+          <div className="mt-2 grid gap-2">
+            {(newsTab==="korea"?newsKo.items:newsEn.items).map((n,i)=>(
+              <a key={i} className="card p-3 hover:bg-white/10 transition" href={n.link} target="_blank" rel="noreferrer">
+                <div className="text-sm font-semibold">{n.title}</div>
+                <div className="text-xs text-sub mt-0.5">{n.source}</div>
+              </a>
+            ))}
+          </div>
+        </section>
 
-function NewsList({ data }) {
-  const items = data?.items || [];
-  if (!items.length) return <div className="card p-5 text-sub">관련 기사가 아직 없습니다.</div>;
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      {items.slice(0,10).map((n, i)=> (
-        <article key={i} className="card p-4">
-          <div className="text-sm text-sub">{n.source || "-"}</div>
-          <a className="font-semibold block mt-1 hover:underline" href={n.url} target="_blank" rel="noreferrer">{n.title}</a>
-          <div className="text-xs text-sub mt-1">{n.publishedAt ? new Date(n.publishedAt).toLocaleString() : ""}</div>
-        </article>
-      ))}
-    </div>
+        {/* 뉴스 AI 요약 */}
+        <section id="aiNewsSection" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="hdr">해외뉴스 요약 · Just-Style & BoF</div>
+              <div className="text-xs text-sub" suppressHydrationWarning>{aiEn.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(aiEn.generatedAt).toLocaleString("ko-KR", { timeZone:"Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
+            </div>
+            <div className="prose prose-invert max-w-none text-sm leading-7" dangerouslySetInnerHTML={{ __html: aiEn.summary }}/>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="hdr">국내뉴스 요약 · 한국섬유신문</div>
+              <div className="text-xs text-sub" suppressHydrationWarning>{aiKo.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(aiKo.generatedAt).toLocaleString("ko-KR", { timeZone:"Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
+            </div>
+            <div className="prose prose-invert max-w-none text-sm leading-7" dangerouslySetInnerHTML={{ __html: aiKo.summary }}/>
+          </div>
+        </section>
+
+        {/* 수기입력 패널 */}
+        {openEdit && (
+          <section className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="max-w-3xl w-full p-3">
+              <ProcurementForm
+                data={data}
+                setData={setData}
+                onSave={save}
+                onClose={()=>setOpenEdit(false)}
+                onReset={reset}
+              />
+            </div>
+          </section>
+        )}
+      </main>
+    </>
   );
 }
