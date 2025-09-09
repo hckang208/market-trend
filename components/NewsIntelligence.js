@@ -1,103 +1,104 @@
 import { useEffect, useState } from "react";
 
+const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
+
 export default function NewsIntelligence() {
-  const [foreign, setForeign] = useState([]);
-  const [korean, setKorean] = useState([]);
+  const [activeTab, setActiveTab] = useState("overseas");
+  const [newsItems, setNewsItems] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsErr, setNewsErr] = useState("");
+  const [collapsed, setCollapsed] = useState(true);
   const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [sumLoading, setSumLoading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [n1, n2] = await Promise.all([
-          fetch("/api/news"),
-          fetch("/api/news-kr-rss"),
-        ]);
-        const f = n1.ok ? await n1.json() : { articles: [] };
-        const k = n2.ok ? await n2.json() : { items: [] };
-        setForeign(Array.isArray(f?.articles) ? f.articles : []);
-        setKorean(Array.isArray(k?.items) ? k.items : []);
-      } catch (e) {
-        setError(String(e.message || e));
-      }
-    })();
-  }, []);
-
-  async function handleSummarize() {
+  async function load(tab = activeTab) {
     try {
-      setLoading(true);
-      const items = [
-        ...foreign.map(a => ({ title: a?.title, url: a?.url })) .slice(0, 8),
-        ...korean.map(a => ({ title: a?.title, url: a?.link })) .slice(0, 8),
-      ].slice(0, 12);
-      const res = await fetch("/api/ai-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items })
-      });
-      if (res.ok) {
-        const j = await res.json();
-        setSummary(j?.summary || "");
+      setNewsLoading(true); setNewsErr(""); setNewsItems([]);
+      let url = "";
+      if (tab === "overseas") {
+        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40", domains: FOREIGN_DOMAINS }).toString();
       } else {
-        setSummary("요약 생성에 실패했습니다.");
+        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
       }
+      const r = await fetch(url, { cache: "no-store" });
+      const arr = r.ok ? await r.json() : [];
+      const items = (arr || []).map(n => ({
+        title: n.title,
+        url: n.url || n.link,
+        source: (typeof n.source === "string" ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : "")) || "",
+        publishedAt: n.published_at || n.publishedAt || n.pubDate || ""
+      }));
+      setNewsItems(items);
+      setCollapsed(true);
     } catch (e) {
-      setSummary("요약 오류: " + String(e.message || e));
+      setNewsErr(String(e.message || e));
     } finally {
-      setLoading(false);
+      setNewsLoading(false);
     }
   }
 
+  async function summarize() {
+    try {
+      setSumLoading(true); setSummary("");
+      const items = newsItems.slice(0, 12).map(n => ({ title: n.title, url: n.url }));
+      const r = await fetch("/api/ai-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ block: "news", language: "ko", mode: "brief", data: { items } }) });
+      const j = await r.json();
+      if (r.ok) setSummary(j.summary || "");
+      else setSummary("요약 실패");
+    } catch (e) {
+      setSummary("요약 오류: " + String(e.message || e));
+    } finally {
+      setSumLoading(false);
+    }
+  }
+
+  useEffect(() => { load("overseas"); }, []);
+
+  const rendered = (collapsed ? newsItems.slice(0,5) : newsItems);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="text-lg font-bold text-slate-900">해외 뉴스 / 국내 뉴스</div>
-        <button
-          onClick={handleSummarize}
-          disabled={loading}
-          className="px-3 py-2 rounded-lg border border-slate-300 bg-blue-600 text-white text-sm disabled:opacity-60"
-        >
-          {loading ? "요약 중..." : "AI 요약"}
-        </button>
+    <section>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-2">
+          <button onClick={() => { setActiveTab("overseas"); load("overseas"); }} className={"px-3 py-2 rounded-full border " + (activeTab==="overseas" ? "bg-indigo-600 text-white border-transparent" : "bg-white border-slate-300")}>해외뉴스</button>
+          <button onClick={() => { setActiveTab("korea"); load("korea"); }} className={"px-3 py-2 rounded-full border " + (activeTab==="korea" ? "bg-indigo-600 text-white border-transparent" : "bg-white border-slate-300")}>국내뉴스</button>
+          <button onClick={summarize} disabled={sumLoading} className="px-3 py-2 rounded-full border border-slate-300 bg-white">{sumLoading ? "요약 중..." : "AI 요약"}</button>
+        </div>
+        <div className="text-xs text-slate-500">뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</div>
       </div>
 
-      {/* Foreign */}
-      <div>
-        <div className="text-sm font-semibold text-slate-700 mb-2">해외</div>
-        <ul className="space-y-2">
-          {foreign.slice(0, 8).map((a, i) => (
-            <li key={i} className="text-sm">
-              <a href={a?.url} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                {a?.title || "-"}
-              </a>
-            </li>
-          ))}
-          {foreign.length === 0 && <li className="text-sm text-slate-500">해외 뉴스가 없습니다.</li>}
-        </ul>
-      </div>
-
-      {/* Korean */}
-      <div>
-        <div className="text-sm font-semibold text-slate-700 mb-2">국내</div>
-        <ul className="space-y-2">
-          {korean.slice(0, 8).map((a, i) => (
-            <li key={i} className="text-sm">
-              <a href={a?.link} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                {a?.title || "-"}
-              </a>
-            </li>
-          ))}
-          {korean.length === 0 && <li className="text-sm text-slate-500">국내 뉴스가 없습니다.</li>}
-        </ul>
+      <div className="mt-3 border border-slate-200 rounded-xl bg-white">
+        {newsLoading && <div className="p-3 text-slate-600">불러오는 중…</div>}
+        {newsErr && <div className="p-3 text-red-600">에러: {newsErr}</div>}
+        {!newsLoading && !newsErr && (
+          <div className="p-3">
+            {rendered.length === 0 ? (
+              <div className="text-slate-600">관련 기사가 아직 없어요.</div>
+            ) : (
+              <ol className="pl-5">
+                {rendered.map((it, i) => (
+                  <li key={i} className="my-2">
+                    <a href={it.url} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">{it.title}</a>
+                    {it.publishedAt ? <div className="text-xs text-slate-500">{it.publishedAt}</div> : null}
+                    <div className="text-[11px] text-slate-400">{it.source}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {newsItems.length > 5 && (
+              <div className="mt-2">
+                <button onClick={() => setCollapsed(v => !v)} className="px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                  {collapsed ? "더보기" : "접기"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {summary && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800"
-             dangerouslySetInnerHTML={{ __html: summary }} />
+        <div className="mt-3 border border-slate-200 rounded-xl bg-slate-50 p-3 text-sm text-slate-800 whitespace-pre-line">{summary}</div>
       )}
-
-      {error && <div className="text-sm text-red-600">{error}</div>}
-    </div>
+    </section>
   );
 }
