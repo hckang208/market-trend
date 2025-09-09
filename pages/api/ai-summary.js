@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     if (key) {
       try {
-        const { GoogleGenerativeAI } = await import("google-generative-ai");
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(key);
         const model = genAI.getGenerativeModel({ model: modelName });
 
