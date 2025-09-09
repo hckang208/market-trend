@@ -1,34 +1,34 @@
 // pages/index.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Head from "next/head";
 
 const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
+
 /* =========================
-   숫자/시계열 유틸
+   Utilities
 ========================= */
 const fmtNum = (n, d = 2) => {
   const v = Number(n);
-  if (!isFinite(v)) return "-";
+  if (!isFinite(v)) return "—";
   return v.toLocaleString(undefined, { maximumFractionDigits: d });
 };
+
 const fmtSignPct = (n, d = 2) => {
   const v = Number(n);
   if (!isFinite(v)) return "0.00%";
   const s = v >= 0 ? "+" : "";
   return `${s}${v.toFixed(d)}%`;
 };
+
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 /* =========================
-   공통: AI 분석 박스
+   AI Analysis Component
 ========================= */
-function redactForbidden(s){ try { return String(s ?? ""); } catch { return ""; } }
-function AIBox({ block, payload }) {
+function AIAnalysisPanel({ block, payload, title = "AI Intelligence Brief" }) {
   const [text, setText] = useState("");
-  const [compact, setCompact] = useState(true);
-  const [fsize, setFsize] = useState(14);
-  const [open, setOpen] = useState(false);;
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [ts, setTs] = useState(null);
   const [err, setErr] = useState("");
 
@@ -49,10 +49,8 @@ function AIBox({ block, payload }) {
           }),
         });
         const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
-        let s = j.summary || "";
-        s = s.replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gmi, "").replace(/(전략기획부|임원)[^\n]*\n?/g, "");
-        setText(s);
+        if (!r.ok) throw new Error(j?.error || "Analysis failed");
+        setText(j.summary || "");
         setTs(new Date().toISOString());
       } catch (e) {
         setErr(String(e));
@@ -63,85 +61,127 @@ function AIBox({ block, payload }) {
   }, [block, JSON.stringify(payload || {})]);
 
   return (
-    <div style={styles.aiBox}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
-        <div style={{ fontWeight: 800 }}>AI 현황분석</div>
-        <button onClick={() => setOpen(o=>!o)} style={styles.btnGray}>{open ? "접기" : "AI 요약"}</button>
-      </div>
-      {open ? (
-        <div style={{ fontSize:12, color:"#6b7280", marginBottom:6 }}>
-          <span suppressHydrationWarning>GEMINI 2.5 사용중{ts ? ` · ${new Date(ts).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : ""}</span>
+    <div className="ai-panel">
+      <div className="ai-header">
+        <div className="ai-title">
+          <span className="ai-icon">✨</span>
+          {title}
         </div>
-      ) : null}
-      {open && (
-        <>
-          {loading && <div style={{ color: "#6b7280" }}>분석 중…</div>}
-          {err && <div style={{ color: "#b91c1c" }}>오류: {err}</div>}
-          {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
-        </>
+        <button 
+          onClick={() => setExpanded(!expanded)} 
+          className="ai-toggle"
+          aria-label={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          )}
+        </button>
+      </div>
+      
+      {expanded && (
+        <div className="ai-content">
+          {loading ? (
+            <div className="ai-loading">
+              <div className="pulse-dot"></div>
+              <span>Analyzing with Gemini 2.5...</span>
+            </div>
+          ) : err ? (
+            <div className="ai-error">Analysis unavailable</div>
+          ) : (
+            <>
+              <div className="ai-text">{text || "No insights available"}</div>
+              {ts && (
+                <div className="ai-meta">
+                  Generated {new Date(ts).toLocaleTimeString("ko-KR", { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    timeZone: "Asia/Seoul" 
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-
-
 /* =========================
-   헤더
+   Header Component
 ========================= */
 function HeaderBar() {
+  const [time, setTime] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <header style={styles.headerWrap}>
-      <div style={styles.headerInner}>
-        <div style={styles.brand}>
-          <span>Hansoll Market Trend</span>
+    <header className="header">
+      <div className="header-inner">
+        <div className="brand">
+          <div className="brand-logo">H</div>
+          <div>
+            <div className="brand-name">Hansol Intelligence</div>
+            <div className="brand-sub">Market Trend Analysis</div>
+          </div>
         </div>
-        <nav style={styles.nav}></nav>
+        <div className="header-meta">
+          <div className="header-time">
+            {time.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+            <span className="time-divider">·</span>
+            {time.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </div>
+        </div>
       </div>
     </header>
   );
 }
 
 /* =========================
-   1) 부자재구매현황 (수기입력)
+   Procurement Dashboard
 ========================= */
-function ProcurementTopBlock() {
+function ProcurementDashboard() {
   const LS_KEY = "procure.dashboard.v1";
   const defaultData = {
     currency: "USD",
-    period: "월간",
-    periodLabel: "",
+    period: "Monthly",
+    periodLabel: new Date().toISOString().slice(0,7),
     revenue: 0,
     materialSpend: 0,
     styles: 0,
     poCount: 0,
     costSave: 0,
-    supplyBreakdown: { domestic: 0, thirdCountry: 0, local: 0 },
+    supplyBreakdown: { domestic: 40, thirdCountry: 35, local: 25 },
   };
 
   const [data, setData] = useState(defaultData);
-  
-  
-  const [openEdit, setOpenEdit] = useState(false);
-// Load from Google Sheet via API (fallback to localStorage if fails)
+  const [editMode, setEditMode] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch("/api/procure-sheet", { cache: "no-store" });
         const j = await r.json();
         if (j?.ok && j.data) {
-          setData((prev) => ({ ...prev, ...j.data }));
+          setData(prev => ({ ...prev, ...j.data }));
           return;
         }
       } catch {}
-      // fallback to localStorage
       try {
         const raw = localStorage.getItem(LS_KEY);
-        if (raw) setData((prev) => ({ ...prev, ...JSON.parse(raw) }));
+        if (raw) setData(prev => ({ ...prev, ...JSON.parse(raw) }));
       } catch {}
     })();
   }, []);
-
 
   const ratio = useMemo(() => {
     const r = Number(data.revenue || 0);
@@ -162,116 +202,158 @@ function ProcurementTopBlock() {
     };
   }, [data]);
 
-  const save = () => { localStorage.setItem(LS_KEY, JSON.stringify(data)); setOpenEdit(false); };
-  const reset = () => { localStorage.removeItem(LS_KEY); setData(defaultData); };
-
   const fmtCurrency = (value, currency = "USD") => {
     const num = Number(value || 0);
-    try {
-      if (currency === "KRW") {
-        return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(num);
-      }
-      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(num);
-    } catch {
-      return (currency === "KRW" ? "₩" : "$") + num.toLocaleString();
+    if (currency === "KRW") {
+      return new Intl.NumberFormat("ko-KR", { 
+        style: "currency", 
+        currency: "KRW", 
+        maximumFractionDigits: 0 
+      }).format(num);
     }
+    return new Intl.NumberFormat("en-US", { 
+      style: "currency", 
+      currency: "USD", 
+      maximumFractionDigits: 0 
+    }).format(num);
   };
 
-  const Card = ({ title, value, sub }) => (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>{title}</div>
-      <div style={styles.cardValue}>{value}</div>
-      {sub ? <div style={styles.cardSub}>{sub}</div> : null}
+  const MetricCard = ({ label, value, change, trend, accent }) => (
+    <div className={`metric-card ${accent ? 'metric-accent' : ''}`}>
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">{value}</div>
+      {change && (
+        <div className={`metric-change ${trend === 'up' ? 'trend-up' : trend === 'down' ? 'trend-down' : ''}`}>
+          {trend === 'up' && '↑'} {trend === 'down' && '↓'} {change}
+        </div>
+      )}
     </div>
   );
 
   return (
-    <section style={styles.blockWrap}>
-      <div style={styles.headerRow}>
+    <section className="dashboard-section">
+      <div className="section-header">
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
-          <div style={styles.meta}>
-            기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
+          <h2 className="section-title">Procurement Intelligence</h2>
+          <div className="section-meta">
+            {data.periodLabel} · {data.period} · {data.currency}
           </div>
-          <div>
-            <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnTiny}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
-</div>
         </div>
-</div>
-
-      <div >
-      <div style={styles.grid5}>
-        <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
-        <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>매출 대비 부자재 매입비중</div>
-          <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
-          <div style={styles.progressWrap}><div style={{ ...styles.progressBar, width: `${ratio}%` }} /></div>
-        </div>
-        <Card title="총 Cost Save" value={fmtCurrency(data.costSave || 0, data.currency)} />
-        <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
+        <button 
+          onClick={() => setEditMode(!editMode)} 
+          className="btn-icon"
+          title="Configure"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3"/>
+          </svg>
+        </button>
       </div>
 
-      <div style={styles.innerBlock}>
-        <div style={styles.blockTitle}>공급현황 (국내 / 3국 / 현지)</div>
-        <div style={styles.stackBar}>
-          <div style={{ ...styles.seg, background: "#111827", width: `${supply.domestic}%` }} title={`국내 ${fmtNum(supply.domestic, 1)}%`} />
-          <div style={{ ...styles.seg, background: "#4B5563", width: `${supply.thirdCountry}%` }} title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`} />
-          <div style={{ ...styles.seg, background: "#9CA3AF", width: `${supply.local}%` }} title={`현지 ${fmtNum(supply.local, 1)}%`} />
-        </div>
-        <div style={styles.legend}>
-          <span>국내 {fmtNum(supply.domestic, 1)}%</span>
-          <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
-          <span>현지 {fmtNum(supply.local, 1)}%</span>
-        </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
+      <div className="metrics-grid">
+        <MetricCard 
+          label="Total Revenue" 
+          value={fmtCurrency(data.revenue, data.currency)}
+        />
+        <MetricCard 
+          label="Material Spend" 
+          value={fmtCurrency(data.materialSpend, data.currency)}
+        />
+        <MetricCard 
+          label="Spend Ratio" 
+          value={`${ratio.toFixed(1)}%`}
+          accent
+        />
+        <MetricCard 
+          label="Cost Savings" 
+          value={fmtCurrency(data.costSave, data.currency)}
+          trend="up"
+        />
+        <MetricCard 
+          label="Active POs" 
+          value={fmtNum(data.poCount, 0)}
+        />
       </div>
 
-      </div>
-      <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
-
-      {openEdit && (
-        <div style={styles.editBox}>
-          <div style={styles.row}>
-            <label>기간 표시</label>
-            <input value={data.periodLabel || ""} onChange={(e) => setData(d => ({ ...d, periodLabel: e.target.value }))} placeholder="예: 2025-09" />
-          </div>
-          <div style={styles.row}>
-            <label>방식</label>
-            <input value={data.period || ""} onChange={(e) => setData(d => ({ ...d, period: e.target.value }))} placeholder="월간 / 주간 / 일간 등" />
-          </div>
-          <div style={styles.row}>
-            <label>통화</label>
-            <select value={data.currency} onChange={(e) => setData(d => ({ ...d, currency: e.target.value }))}>
-              <option value="USD">USD</option><option value="KRW">KRW</option>
-            </select>
-          </div>
-          <div style={styles.grid2}>
-            <div style={styles.row}><label>총 매출액</label><input type="number" value={data.revenue} onChange={(e) => setData(d => ({ ...d, revenue: Number(e.target.value) }))} /></div>
-            <div style={styles.row}><label>총 부자재매입액</label><input type="number" value={data.materialSpend} onChange={(e) => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))} /></div>
-          <div style={styles.row}><label>총 Cost Save</label><input type="number" value={data.costSave}
-            onChange={(e) => setData(d => ({ ...d, costSave: Number(e.target.value) }))} /></div>
-          </div>
-          <div style={styles.grid2}>
-            <div style={styles.row}><label>총 오더수(스타일)</label><input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} /></div>
-            <div style={styles.row}><label>총 발행 PO수</label><input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} /></div>
-          </div>
-          <div style={{ marginTop: 8, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
-            <div style={styles.blockTitle}>공급현황(%) — 합계 100 기준</div>
-            <div style={styles.grid3}>
-              <div style={styles.row}><label>국내(%)</label><input type="number" value={data.supplyBreakdown.domestic}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} /></div>
-              <div style={styles.row}><label>3국(%)</label><input type="number" value={data.supplyBreakdown.thirdCountry}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, thirdCountry: Number(e.target.value) } }))} /></div>
-              <div style={styles.row}><label>현지(%)</label><input type="number" value={data.supplyBreakdown.local}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) } }))} /></div>
+      <div className="supply-viz">
+        <div className="viz-header">
+          <h3 className="viz-title">Supply Chain Distribution</h3>
+        </div>
+        <div className="supply-bars">
+          <div className="supply-bar">
+            <div className="bar-label">
+              <span>Domestic</span>
+              <span className="bar-value">{supply.domestic.toFixed(1)}%</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-fill bar-domestic" style={{ width: `${supply.domestic}%` }}></div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={save} style={styles.btnBlue}>저장</button>
-            <button  style={styles.btnGray}>닫기</button>
-            <button onClick={reset} style={styles.btnDanger}>초기화</button>
+          <div className="supply-bar">
+            <div className="bar-label">
+              <span>Third Country</span>
+              <span className="bar-value">{supply.thirdCountry.toFixed(1)}%</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-fill bar-third" style={{ width: `${supply.thirdCountry}%` }}></div>
+            </div>
           </div>
+          <div className="supply-bar">
+            <div className="bar-label">
+              <span>Local</span>
+              <span className="bar-value">{supply.local.toFixed(1)}%</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-fill bar-local" style={{ width: `${supply.local}%` }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AIAnalysisPanel 
+        block="procurement" 
+        payload={{ ...data, ratio, supply }}
+        title="Procurement Analysis"
+      />
+
+      {editMode && (
+        <div className="edit-panel">
+          <div className="edit-grid">
+            <input 
+              type="number" 
+              value={data.revenue} 
+              onChange={e => setData(d => ({ ...d, revenue: Number(e.target.value) }))}
+              placeholder="Revenue"
+            />
+            <input 
+              type="number" 
+              value={data.materialSpend} 
+              onChange={e => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))}
+              placeholder="Material Spend"
+            />
+            <input 
+              type="number" 
+              value={data.costSave} 
+              onChange={e => setData(d => ({ ...d, costSave: Number(e.target.value) }))}
+              placeholder="Cost Save"
+            />
+            <input 
+              type="number" 
+              value={data.poCount} 
+              onChange={e => setData(d => ({ ...d, poCount: Number(e.target.value) }))}
+              placeholder="PO Count"
+            />
+          </div>
+          <button 
+            onClick={() => {
+              localStorage.setItem(LS_KEY, JSON.stringify(data));
+              setEditMode(false);
+            }} 
+            className="btn-primary"
+          >
+            Save Configuration
+          </button>
         </div>
       )}
     </section>
@@ -279,639 +361,1105 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
+   Market Indicators
 ========================= */
-function Sparkline({ series = [], width = 110, height = 32 }) {
-  if (!series || series.length < 2) return null;
-  const min = Math.min(...series);
-  const max = Math.max(...series);
-  const span = max - min || 1;
-  const step = width / (series.length - 1);
-  const pts = series.map((v, i) => {
-    const x = i * step;
-    const y = height - ((v - min) / span) * height;
-    return `${x},${y}`;
-  }).join(" ");
-  const up = series[series.length - 1] >= series[0];
-  return (
-    <svg width={width} height={height} style={{ display: "block", marginTop: 6 }}>
-      <polyline fill="none" stroke={up ? "#065f46" : "#991b1b"} strokeWidth="2" points={pts} />
-    </svg>
-  );
-}
-
-function IndicatorsSection() {
+function MarketIndicators() {
   const [state, setState] = useState({ loading: true, data: null, error: "" });
-  const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch("/api/indicators", { cache: "no-store" });
         const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || "지표 API 오류");
+        if (!r.ok) throw new Error(j?.error || "Failed to load indicators");
         setState({ loading: false, data: j, error: "" });
-        setLastUpdated(j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString());
       } catch (e) {
         setState({ loading: false, data: null, error: String(e) });
       }
     })();
   }, []);
 
-  const LINK = {
-    wti: "https://fred.stlouisfed.org/series/DCOILWTICO",
-    usdkrw: "https://fred.stlouisfed.org/series/DEXKOUS",
-    cpi: "https://fred.stlouisfed.org/series/CPIAUCSL",
-    fedfunds: "https://fred.stlouisfed.org/series/DFEDTARU",
-    t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
-    inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
-    unemployment: "https://fred.stlouisfed.org/series/UNRATE",
-    ism_retail: "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
-  };
-  const curated = [
-    { key: "wti", title: "WTI (USD/bbl)" },
-    { key: "usdkrw", title: "USD/KRW" },
-    { key: "cpi", title: "US CPI (Index)" },
-    { key: "fedfunds", title: "미국 기준금리(%)" },
-    { key: "t10y2y", title: "금리 스프레드(10Y–2Y, bp)" },
-    { key: "inventory_ratio", title: "재고/판매 비율" },
-    { key: "ism_retail", title: "ISM Retail(%)" },
-    { key: "unemployment", title: "실업률(%)" },
+  const indicators = [
+    { key: "wti", title: "WTI Crude", unit: "$/bbl", critical: true },
+    { key: "usdkrw", title: "USD/KRW", unit: "", critical: true },
+    { key: "cpi", title: "US CPI", unit: "Index" },
+    { key: "fedfunds", title: "Fed Rate", unit: "%" },
+    { key: "t10y2y", title: "Yield Spread", unit: "bp" },
+    { key: "inventory_ratio", title: "Inventory/Sales", unit: "" },
+    { key: "ism_retail", title: "ISM Retail", unit: "%" },
+    { key: "unemployment", title: "Unemployment", unit: "%" },
   ];
 
-  const payloadForAI = useMemo(() => {
-    const d = state.data || {};
-    const out = {};
-    curated.forEach((c) => {
-      out[c.key] = {
-        value: d?.[c.key]?.value ?? null,
-        changePercent: d?.[c.key]?.changePercent ?? null,
-        yoyPercent: d?.[c.key]?.yoyPercent ?? null,
-        lastDate: d?.[c.key]?.lastDate ?? null,
-      };
-    });
-    return { indicators: out, lastUpdated };
-  }, [state.data, lastUpdated]);
+  const Sparkline = ({ series = [], trend }) => {
+    if (!series || series.length < 2) return null;
+    const width = 80, height = 30;
+    const min = Math.min(...series);
+    const max = Math.max(...series);
+    const span = max - min || 1;
+    const step = width / (series.length - 1);
+    const pts = series.map((v, i) => {
+      const x = i * step;
+      const y = height - ((v - min) / span) * height;
+      return `${x},${y}`;
+    }).join(" ");
+    
+    return (
+      <svg width={width} height={height} className="sparkline">
+        <polyline 
+          fill="none" 
+          stroke={trend >= 0 ? "#10b981" : "#ef4444"} 
+          strokeWidth="2" 
+          points={pts} 
+        />
+      </svg>
+    );
+  };
+
+  if (state.loading) {
+    return (
+      <section className="dashboard-section">
+        <h2 className="section-title">Market Indicators</h2>
+        <div className="loading-skeleton">
+          <div className="skeleton-pulse"></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section style={{ marginTop: 24 }}>
-      <h3 style={styles.h3}>주요 지표</h3>
-      {lastUpdated && (
-        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-          전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+    <section className="dashboard-section">
+      <div className="section-header">
+        <h2 className="section-title">Market Indicators</h2>
+        <div className="section-meta">
+          Live from FRED · Updated hourly
         </div>
-      )}
-      {state.loading && <div>불러오는 중...</div>}
-      {state.error && <div style={styles.err}>에러: {state.error}</div>}
+      </div>
 
-      {!state.loading && !state.error && (
-        <>
-          <div style={styles.grid4}>
-            {curated.map((c) => {
-              const node = state.data?.[c.key] || null;
-              const v = node?.value ?? null;
-              const s = node?.history || [];
-              const deltaPct = node?.changePercent ?? null;
-              const yoyPct = node?.yoyPercent ?? null;
-              const href = LINK[c.key];
-              const up = deltaPct != null ? deltaPct >= 0 : (s.length >= 2 ? s[s.length - 1] >= s[0] : true);
-              const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
-              const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
+      <div className="indicators-grid">
+        {indicators.map(ind => {
+          const node = state.data?.[ind.key] || {};
+          const value = node.value ?? null;
+          const change = node.changePercent ?? null;
+          const yoy = node.yoyPercent ?? null;
+          const series = node.history || [];
+          
+          return (
+            <div key={ind.key} className={`indicator-card ${ind.critical ? 'indicator-critical' : ''}`}>
+              <div className="indicator-header">
+                <div className="indicator-title">{ind.title}</div>
+                {ind.critical && <span className="indicator-badge">KEY</span>}
+              </div>
+              <div className="indicator-value">
+                {value !== null ? fmtNum(value) : "—"}
+                {ind.unit && <span className="indicator-unit">{ind.unit}</span>}
+              </div>
+              <div className="indicator-changes">
+                {change !== null && (
+                  <span className={`indicator-change ${change >= 0 ? 'positive' : 'negative'}`}>
+                    {fmtSignPct(change)}
+                  </span>
+                )}
+                {yoy !== null && (
+                  <span className="indicator-yoy">
+                    YoY {fmtSignPct(yoy)}
+                  </span>
+                )}
+              </div>
+              <Sparkline series={series} trend={change} />
+            </div>
+          );
+        })}
+      </div>
 
-              return (
-                <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
-                  <div style={styles.cardTitle}>{c.title}</div>
-                  <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
-                  <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
-                    {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
-                  </div>
-                  {yoyPct != null && (
-                    <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
-                      YoY: {fmtSignPct(yoyPct)}
-                    </div>
-                  )}
-                  <Sparkline series={s || []} />
-                  {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
-                </a>
-              );
-            })}
-          </div>
-          <AIBox block="indicators" payload={payloadForAI} />
-        </>
-      )}
+      <AIAnalysisPanel 
+        block="indicators" 
+        payload={state.data}
+        title="Market Analysis"
+      />
     </section>
   );
 }
 
 /* =========================
-   3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
+   Equity Monitor
 ========================= */
-const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
-const NAME_MAP = {
-  WMT: "Walmart",
-  TGT: "Target",
-  ANF: "Abercrombie & Fitch",
-  VSCO: "Victoria's Secret",
-  KSS: "Kohl's",
-  AMZN: "Amazon",
-  BABA: "Alibaba",
-  "9983.T": "Fast Retailing (Uniqlo)",
-};
-
-function StocksSection() {
-  const [rows, setRows] = useState([]);
+function EquityMonitor() {
+  const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
 
-  
-  // Inline AI summary state per symbol
-  const [sumState, setSumState] = useState({}); 
-  // --- Markdown-lite helpers for clear, scannable layout ---
-  function parseSections(text="") {
-    const lines = String(text).split(/\r?\n/);
-    const sections = [];
-    let title = null, buf = [];
-    const push = () => { if (title || buf.length) { sections.push({ title: title || "", lines: buf.slice() }); } };
-    for (const ln of lines) {
-      if (/^###\s+/.test(ln)) {
-        push(); title = ln.replace(/^###\s+/, "").trim(); buf = [];
-      } else {
-        buf.push(ln);
-      }
-    }
-    push();
-    return sections;
-  }
-  function renderSection(sec, idx) {
-    const items = [];
-    let inList = false, list = [];
-    const flushList = () => { if (list.length) { items.push(<ul key={"ul"+items.length} style={{ margin: "6px 0 10px 18px" }}>{list.map((t,i)=><li key={i} style={{ lineHeight: 1.5 }}>{t}</li>)}</ul>); list = []; } };
-    for (const raw of sec.lines) {
-      const ln = raw.trim();
-      if (!ln) { flushList(); continue; }
-      if (/^[-•]\s+/.test(ln)) { inList = true; list.push(ln.replace(/^[-•]\s+/, "")); continue; }
-      if (inList) { flushList(); inList = false; }
-      items.push(<p key={"p"+items.length} style={{ margin: "6px 0", lineHeight: 1.6 }}>{ln}</p>);
-    }
-    flushList();
-    const titleMap = {
-      "Implications for Hansoll": "한솔섬유 전략에 미치는 시사점"
-    };
-    const title = titleMap[sec.title] || sec.title;
-    return (
-      <section key={idx} style={{ marginTop: idx===0?0:10 }}>
-        {title ? <h3 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0 4px 0" }}>{title}</h3> : null}
-        {items}
-      </section>
-    );
-  }
-  function renderSummaryBox(sym) {
-    const st = sumState[sym] || {};
-    const sections = parseSections(st.summary || "");
-    const collapsed = st.expanded ? false : true;
-    return (
-      <div style={{
-        border: "1px solid #e5e7eb",
-        background: "#f8fafc",
-        padding: 12,
-        borderRadius: 10,
-        marginTop: 10,
-        position: "relative",
-        maxHeight: collapsed ? 240 : "none",
-        overflow: "hidden"
-      }}>
-        {sections.map(renderSection)}
-        {collapsed && <div style={{ position: "absolute", left:0, right:0, bottom:0, height: 48,
-          background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"}} />}
-        <div style={{ display:"flex", justifyContent:"flex-end", marginTop: 6 }}>
-          <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
-                  style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
-            {collapsed ? "더보기" : "접기"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-// { [symbol]: { open, loading, summary, error } }
+  const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
+  const NAMES = {
+    WMT: "Walmart",
+    TGT: "Target",
+    ANF: "Abercrombie & Fitch",
+    VSCO: "Victoria's Secret",
+    KSS: "Kohl's",
+    AMZN: "Amazon",
+    BABA: "Alibaba",
+    "9983.T": "Fast Retailing",
+  };
 
-  async function loadSummary(symbol) {
-    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" } }));
-    try {
-      const r = await fetch(`/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: j.summary || "(요약 없음)", error: "" } }));
-    } catch (e) {
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) } }));
-    }
-  }
-
-  function closeSummary(symbol) {
-    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }));
-  }
-useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
-        const out = await Promise.all(
-          SYMBOLS.map(async (s) => {
+        const data = await Promise.all(
+          SYMBOLS.map(async s => {
             try {
-              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`);
               const j = await r.json();
-              if (!r.ok) throw new Error(j?.error || "stocks api error");
-              const name = j.longName || j.name || NAME_MAP[s] || s;
-              const price = j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const price = j.regularMarketPrice ?? j.price ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
               let pct = 0;
-              if (isFinite(Number(price)) && isFinite(Number(prevClose)) && Number(prevClose) !== 0) {
-                pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
-              } else if (isFinite(Number(j.changePercent))) {
-                pct = Number(j.changePercent);
+              if (price && prevClose && prevClose !== 0) {
+                pct = ((price - prevClose) / prevClose) * 100;
               }
-              return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct };
-            } catch (e) {
-              return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
+              return { 
+                symbol: s, 
+                name: NAMES[s], 
+                price, 
+                pct,
+                volume: j.regularMarketVolume ?? null
+              };
+            } catch {
+              return { symbol: s, name: NAMES[s], price: null, pct: 0 };
             }
           })
         );
-        setRows(out);
+        setStocks(data.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)));
       } catch (e) {
-        setErr(String(e));
+        console.error(e);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
-  const aiPayload = useMemo(() => ({ rows: sorted.filter(r => Math.abs(r.pct) >= 4) }), [JSON.stringify(sorted)]);
+  if (loading) {
+    return (
+      <section className="dashboard-section">
+        <h2 className="section-title">Equity Monitor</h2>
+        <div className="loading-skeleton">
+          <div className="skeleton-pulse"></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section style={{ marginTop: 24 }}>
-      <h3 style={styles.h3}>일일 리테일러 주가 등락률 (전일 종가 대비)</h3>
-      {loading && <div>불러오는 중...</div>}
-      {err && <div style={styles.err}>에러: {err}</div>}
-      {!loading && !err && (
-        <>
-          <div style={styles.grid4}>
-            {sorted.map((r) => {
-              const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
-              return (
-                
-                <div key={r.symbol} style={{ ...styles.card }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ ...styles.cardTitle }}>
-                        {r.name} <span style={{ color: "#6b7280" }}>({r.symbol})</span>
-                      </div>
-                      <div style={{ ...styles.cardValue }}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                      <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
-                        {fmtSignPct(r.pct)}
-                      </div>
-                      <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
-                    </div>
-                    <div style={{ display:"flex", gap:8 }}>
-                      <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
-                         target="_blank" rel="noreferrer"
-                         style={{ ...styles.btnTab }} title="Yahoo Finance 열기">
-                        Yahoo
-                      </a>
-                      <a href={`/company/${encodeURIComponent(r.symbol)}`} style={{ ...styles.btnTab }} title="AI 요약 화면으로 이동">AI뉴스요약</a>
-                    </div>
-                  </div>
+    <section className="dashboard-section">
+      <div className="section-header">
+        <h2 className="section-title">Equity Monitor</h2>
+        <div className="section-meta">
+          Real-time · Major retailers
+        </div>
+      </div>
 
-                  {sumState[r.symbol]?.open && (<div style={{ marginTop: 8 }}>{renderSummaryBox(r.symbol)}</div>)}
-                </div>
-
-              );
-            })}
+      <div className="equity-grid">
+        {stocks.map(stock => (
+          <div key={stock.symbol} className="equity-card">
+            <div className="equity-header">
+              <div>
+                <div className="equity-name">{stock.name}</div>
+                <div className="equity-symbol">{stock.symbol}</div>
+              </div>
+              <div className={`equity-change ${stock.pct >= 0 ? 'positive' : 'negative'}`}>
+                {stock.pct >= 0 ? '▲' : '▼'} {Math.abs(stock.pct).toFixed(2)}%
+              </div>
+            </div>
+            <div className="equity-price">
+              {stock.price ? `$${stock.price.toFixed(2)}` : "—"}
+            </div>
+            <div className="equity-actions">
+              <a href={`/company/${stock.symbol}`} className="btn-text">
+                AI Analysis →
+              </a>
+            </div>
           </div>
-          <AIBox block="stocks" payload={aiPayload} />
-        </>
-      )}
+        ))}
+      </div>
+
+      <AIAnalysisPanel 
+        block="stocks" 
+        payload={{ stocks: stocks.filter(s => Math.abs(s.pct) >= 3) }}
+        title="Equity Analysis"
+      />
     </section>
   );
 }
 
 /* =========================
-   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (한국: 필터 없이 최근 2일)
+   News Intelligence
 ========================= */
-const BRAND_TERMS = [
-  "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
-  "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
-];
-const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
+function NewsIntelligence() {
+  const [activeSource, setActiveSource] = useState('global');
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-
-function NewsTabsSection() {
-  const [activeTab, setActiveTab] = useState('overseas'); // overseas | korea
-  const [newsItems, setNewsItems] = useState([]);
-  const [newsLoading, setNewsLoading] = useState(false);
-  const [newsErr, setNewsErr] = useState('');
-  const [collapsed, setCollapsed] = useState(true);
-
-  
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiErr, setAiErr] = useState("");
-  const [aiForeign, setAiForeign] = useState(null);
-  const [aiKorea, setAiKorea] = useState(null);
-
-  async function loadAISummary() {
+  async function loadNews(source) {
     try {
-      setAiLoading(true); setAiErr(""); setAiForeign(null); setAiKorea(null); setAiOpen(true);
-      const [rf, rk] = await Promise.all([
-        fetch("/api/ai-news-foreign"),
-        fetch("/api/ai-news-korea")
-      ]);
-      const jf = await rf.json();
-      const jk = await rk.json();
-      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
-      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
-      setAiForeign(jf);
-      setAiKorea(jk);
-    } catch (e) {
-      setAiErr(String(e));
-    } finally {
-      setAiLoading(false);
-    }
-  }
-async function load(tab = activeTab) {
-    try {
-      setNewsLoading(true); setNewsErr(''); setNewsItems([]);
+      setLoading(true);
+      setNews([]);
       let url = '';
-      if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
+      if (source === 'global') {
+        url = "/api/news?" + new URLSearchParams({ 
+          industry: "fashion|apparel|garment|textile", 
+          language: "en", 
+          days: "7", 
+          limit: "20",
+          domains: FOREIGN_DOMAINS
+        }).toString();
       } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
+        url = "/api/news-kr-rss?" + new URLSearchParams({ 
+          feeds: "http://www.ktnews.com/rss/allArticle.xml", 
+          days: "1", 
+          limit: "20" 
+        }).toString();
       }
-      const r = await fetch(url, { cache: 'no-store' });
-      const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(n => ({
-        title: n.title,
-        url: n.url || n.link,
-        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
-      }));
-      setNewsItems(items);
-      setCollapsed(true);
+      const r = await fetch(url);
+      const data = await r.json();
+      setNews(data || []);
     } catch (e) {
-      setNewsErr(String(e));
-    } finally {
-      setNewsLoading(false);
-    }
-  }
-
-  useEffect(() => { load('overseas'); }, []);
-
-  const rendered = (collapsed ? newsItems.slice(0,5) : newsItems);
-
-  return (
-    <section style={{ marginTop: 24 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
-          <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
-          <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} style={{ ...styles.btnTab }}>AI 요약</button>
-        </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
-</div>
-      </div>
-
-      <div style={{ marginTop: 12, border:"1px solid #e5e7eb", borderRadius:12, background:"#fff" }}>
-        {newsLoading && <div style={{ padding:12, color:"#6b7280" }}>불러오는 중…</div>}
-        {newsErr && <div style={{ padding:12, color:"#b91c1c" }}>에러: {newsErr}</div>}
-        {!newsLoading && !newsErr && (
-          <div style={{ padding:12 }}>
-            {rendered.length === 0 ? (
-              <div style={{ color:"#6b7280" }}>관련 기사가 아직 없어요.</div>
-            ) : (
-              <ol style={{ margin:0, paddingLeft:18 }}>
-                {rendered.map((it, i) => (
-                  <li key={i} style={{ margin:"8px 0" }}>
-                    <a href={it.url} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
-                    {it.publishedAt ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.publishedAt}</div> : null}
-                    <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source}</div>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {newsItems.length > 5 && (
-              <div style={{ marginTop: 8 }}>
-                <button onClick={() => setCollapsed(v => !v)} style={{ ...styles.btnGhost }}>
-                  {collapsed ? "더보기" : "접기"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {/* AI 요약 모달 */}
-</section>
-  );
-}
-
-/* =========================
-   페이지
-========================= */
-
-function LinkifyCitations(text="") {
-  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
-    const id = String(grp).split('-')[0];
-    return `<a href="#ref-${id}" style="text-decoration: underline;">[${grp}]</a>`;
-  });
-}
-function splitSections(md="") {
-  const lines = String(md).split(/\r?\n/);
-  const out=[]; let title=null, buf=[];
-  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\n")}); };
-  for(const ln of lines){
-    if(/^###\s+/.test(ln)){ push(); title=ln.replace(/^###\s+/,"").trim(); buf=[]; }
-    else buf.push(ln);
-  } push(); return out;
-}
-
-function NewsAISummaryPanel({ title, endpoint }) {
-  const [loading, setLoading] = React.useState(false);
-  const [data, setData] = React.useState(null);
-  const [err, setErr] = React.useState("");
-
-  async function load() {
-    try {
-      setLoading(true); setErr(""); setData(null);
-      const r = await fetch(endpoint);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Failed");
-      setData(j);
-    } catch (e) {
-      setErr(String(e));
+      console.error(e);
     } finally {
       setLoading(false);
     }
   }
 
-  React.useEffect(() => { load(); }, []);
-
-  const sections = React.useMemo(() => splitSections(data?.summary||""), [data?.summary]);
+  useEffect(() => {
+    loadNews('global');
+  }, []);
 
   return (
-    <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:14, background:"#fff" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-        <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <div style={{ fontSize:12, color:"#6b7280" }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
-          <button onClick={load} disabled={loading} style={{ ...styles.btnTab }}>{loading ? "요약 중..." : "다시 요약"}</button>
+    <section className="dashboard-section">
+      <div className="section-header">
+        <h2 className="section-title">News Intelligence</h2>
+        <div className="news-tabs">
+          <button 
+            onClick={() => { setActiveSource('global'); loadNews('global'); }}
+            className={`tab ${activeSource === 'global' ? 'tab-active' : ''}`}
+          >
+            Global
+          </button>
+          <button 
+            onClick={() => { setActiveSource('korea'); loadNews('korea'); }}
+            className={`tab ${activeSource === 'korea' ? 'tab-active' : ''}`}
+          >
+            Korea
+          </button>
         </div>
       </div>
 
-      {err && <div style={{ color:"crimson" }}>에러: {err}</div>}
-      {!data && !loading && <div>요약을 불러오는 중…</div>}
-      {data && (
-        <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:12 }}>
-          <div style={{ background:"#f8fafc", border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
-            {sections.map((sec, idx) => (
-              <section key={idx} style={{ marginTop: idx===0?0:12 }}>
-                {sec.title ? <h4 style={{ margin:"4px 0", fontSize:14, fontWeight:800 }}>{sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}</h4> : null}
-                <div
-                  style={{ fontSize: 14, lineHeight:1.7 }}
-                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\s+/gm, "• ").replace(/\n/g, "<br/>") }}
-                />
-              </section>
-            ))}
-          </div>
-          <aside style={{ border:"1px solid #e5e7eb", borderRadius:10, padding:12 }}>
-            <h4 style={{ margin:"0 0 6px 0", fontSize:14, fontWeight:800 }}>참조 뉴스</h4>
-            <ol style={{ paddingLeft:18, margin:0 }}>
-              {(data.items || []).slice(0, 20).map((it, i) => (
-                <li id={`ref-${i+1}`} key={i} style={{ margin:"6px 0" }}>
-                  <a href={it.link} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
-                  {it.pubDate ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.pubDate}</div> : null}
-                  <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source || ""}</div>
-                </li>
-              ))}
-            </ol>
-          </aside>
+      <div className="news-grid">
+        <div className="news-list">
+          {loading ? (
+            <div className="loading-skeleton">
+              <div className="skeleton-pulse"></div>
+            </div>
+          ) : (
+            news.slice(0, 10).map((item, i) => (
+              <article key={i} className="news-item">
+                <a href={item.url || item.link} target="_blank" rel="noreferrer" className="news-link">
+                  <div className="news-title">{item.title}</div>
+                  <div className="news-meta">
+                    <span className="news-source">{item.source?.name || item.source || 'Unknown'}</span>
+                    <span className="news-time">
+                      {item.publishedAt || item.pubDate ? 
+                        new Date(item.publishedAt || item.pubDate).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                </a>
+              </article>
+            ))
+          )}
         </div>
-      )}
-    </div>
-  );
-}
 
-function NewsAISummarySection() {
-  return (
-    <div id="aiNewsSection" style={{ marginTop: 24 }}>
-      <div style={{ ...styles.blockTitle }}>뉴스 AI 분석</div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <NewsAISummaryPanel title="해외뉴스분석(AI)" endpoint="/api/ai-news-foreign" />
-        <NewsAISummaryPanel title="국내뉴스분석(AI)" endpoint="/api/ai-news-korea" />
+        <div className="news-ai">
+          <AIAnalysisPanel 
+            block="news" 
+            payload={{ articles: news.slice(0, 10), source: activeSource }}
+            title="News Insights"
+          />
+        </div>
       </div>
-    </div>
-  );
-}
-
-export default function Home() {
-  async function loadNews(tab='overseas') {
-    try {
-      setNewsLoading(true); setNewsErr(""); setNewsItems([]);
-      let url = "";
-      if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
-      } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
-      }
-      const r = await fetch(url, { cache: "no-store" });
-      const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(n => ({
-        title: n.title,
-        url: n.url || n.link,
-        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
-      }));
-      setNewsItems(items);
-      setNewsCollapsed(true);
-    } catch (e) {
-      setNewsErr(String(e));
-    } finally {
-      setNewsLoading(false);
-    }
-  }
-  return (
-    <>
-      <Head>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet"/>
-
-        <title>Hansol Purchasing — Market & Materials</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <HeaderBar />
-
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-        <ProcurementTopBlock />
-        <IndicatorsSection />
-        <StocksSection />
-        <NewsTabsSection />
-        
-    </main>
-
-      <footer style={styles.footer}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", color: "#6b7280", fontSize: 12 }}>
-          © Market Trend — internal pilot
-        </div>
-      </footer>
-    </>
+    </section>
   );
 }
 
 /* =========================
-   스타일
+   Main App
 ========================= */
-const styles = {
-  aiBox: { border:"1px dashed var(--line)", borderRadius:12, background:"#fff", padding:12, whiteSpace:"pre-wrap", lineHeight:1.7 },
-  blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { border:"1px solid var(--line)", borderRadius:14, background:"#fff", boxShadow:"0 12px 30px -20px rgba(2,6,23,.25)" },
-  brand: { fontWeight:800 },
-  btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
-  btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
-  btnGhost: { padding:"8px 12px", borderRadius:10, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 },
-  btnGray: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f3f4f6", color:"#1f2937", fontWeight:700, fontSize:14 },
-  btnTiny: { padding:"6px 8px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:12 }, 
-  btnTab: { padding:"8px 12px", border:"1px solid var(--line)", borderRadius:999, background:"#fff", cursor:"pointer", fontWeight:700, fontSize:13, boxShadow:"0 1px 0 rgba(0,0,0,.02)", transition:"all .2s ease", display:"inline-block" },
-  btnTabActive: { background:"linear-gradient(90deg, var(--accent), var(--accent2))", color:"#fff", border:"1px solid transparent", boxShadow:"0 8px 22px -12px rgba(99,102,241,.6)" },
-  card: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:12 },
-  cardLink: { textDecoration:"none", color:"#111827" },
-  cardSub: { color:"#6b7280", fontSize:12 },
-  cardTitle: { color:"#6b7280", fontSize:12 },
-  cardValue: { fontWeight:800, fontSize:18 },
-  ctaDark: { padding:"10px 14px", borderRadius:12, background:"#0f172a", color:"#fff", textDecoration:"none", fontWeight:800 },
-  ctaLight: { },
-  ctaRow: { },
-  editBox: { },
-  err: { },
-  footer: { },
-  grid2: { display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:16, alignItems:"start" },
-  grid3: { display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:12 },
-  grid4: { display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:12 },
-  grid5: { display:"grid", gridTemplateColumns:"repeat(5, minmax(0,1fr))", gap:12 },
-  h2: { margin:0, fontWeight:800, fontSize:20 },
-  h3: { margin:"20px 0 8px", fontWeight:800, fontSize:18 },
-  headerInner: { display:"flex", gap:8, alignItems:"center" },
-  headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 },
-  stickyTop: { position:"static" },
-  badgeRow: { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" },
-  badge: { fontSize:12, color:"#6b7280", border:"1px solid #e5e7eb", padding:"4px 8px", borderRadius:999 },
-  headerWrap: { display:"flex", justifyContent:"space-between", alignItems:"center" },
-  innerBlock: { border:"1px solid #eef2f7", borderRadius:12, padding:12, background:"#fff" },
-  legend: { display:"flex", gap:8, color:"#6b7280", fontSize:12 },
-  meta: { color:"#6b7280", fontSize:12 },
-  nav: { display:"flex", gap:8, alignItems:"center" },
-  navLink: { textDecoration:"none", color:"#111827", fontWeight:700 },
-  progressBar: { height:"100%", background:"#111827" },
-  progressWrap: { height:8, borderRadius:999, background:"#f3f4f6", marginTop:8, overflow:"hidden" },
-  row: { display:"flex", justifyContent:"space-between", alignItems:"center", gap:12 },
-  seg: { height:"100%" },
-  stackBar: { display:"flex", height:16, borderRadius:8, overflow:"hidden", border:"1px solid #e5e7eb" }
-};
+export default function Home() {
+  return (
+    <>
+      <Head>
+        <title>Hansol Intelligence | Market Trend Analysis</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+        <style jsx global>{`
+          :root {
+            --primary: #1e40af;
+            --primary-dark: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+          }
+
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+
+          /* Header Styles */
+          .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.95);
+          }
+
+          .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+          }
+
+          .brand-logo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: var(--shadow-md);
+          }
+
+          .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+          }
+
+          .brand-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+          }
+
+          .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+          }
+
+          .header-time {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+          }
+
+          .time-divider {
+            margin: 0 0.5rem;
+            color: var(--text-muted);
+          }
+
+          /* Main Layout */
+          main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+          }
+
+          /* Dashboard Sections */
+          .dashboard-section {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+          }
+
+          .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+          }
+
+          .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+          }
+
+          .section-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+          }
+
+          /* Metrics Grid */
+          .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .metric-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            position: relative;
+            transition: all 0.2s ease;
+          }
+
+          .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+          }
+
+          .metric-accent {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: none;
+            color: white;
+          }
+
+          .metric-accent .metric-label {
+            color: rgba(255, 255, 255, 0.9);
+          }
+
+          .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+          }
+
+          .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+          }
+
+          .metric-accent .metric-value {
+            color: white;
+          }
+
+          .metric-change {
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 0.5rem;
+          }
+
+          .trend-up {
+            color: var(--success);
+          }
+
+          .trend-down {
+            color: var(--danger);
+          }
+
+          /* Supply Visualization */
+          .supply-viz {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .viz-header {
+            margin-bottom: 1.5rem;
+          }
+
+          .viz-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .supply-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .supply-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .bar-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+          }
+
+          .bar-value {
+            font-weight: 700;
+            color: var(--text-primary);
+          }
+
+          .bar-track {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+          }
+
+          .bar-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 999px;
+          }
+
+          .bar-domestic {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+          }
+
+          .bar-third {
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+          }
+
+          .bar-local {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+          }
+
+          /* AI Panel */
+          .ai-panel {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 1.5rem;
+          }
+
+          .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background: white;
+            border-bottom: 1px solid var(--border);
+          }
+
+          .ai-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+          }
+
+          .ai-icon {
+            font-size: 16px;
+          }
+
+          .ai-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+          }
+
+          .ai-toggle:hover {
+            background: #f1f5f9;
+            color: var(--text-primary);
+          }
+
+          .ai-content {
+            padding: 1.25rem;
+            animation: slideDown 0.3s ease;
+          }
+
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .ai-loading {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 14px;
+          }
+
+          .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.5s ease infinite;
+          }
+
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.5);
+            }
+          }
+
+          .ai-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+          }
+
+          .ai-meta {
+            margin-top: 0.75rem;
+            font-size: 12px;
+            color: var(--text-muted);
+          }
+
+          .ai-error {
+            color: var(--danger);
+            font-size: 14px;
+          }
+
+          /* Indicators Grid */
+          .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .indicator-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+          }
+
+          .indicator-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+          }
+
+          .indicator-critical {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%);
+          }
+
+          .indicator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+          }
+
+          .indicator-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+          }
+
+          .indicator-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+          }
+
+          .indicator-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+          }
+
+          .indicator-unit {
+            font-size: 0.875rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-left: 0.25rem;
+          }
+
+          .indicator-changes {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+          }
+
+          .indicator-change.positive {
+            color: var(--success);
+          }
+
+          .indicator-change.negative {
+            color: var(--danger);
+          }
+
+          .indicator-yoy {
+            color: var(--text-muted);
+          }
+
+          .sparkline {
+            margin-top: 0.5rem;
+          }
+
+          /* Equity Grid */
+          .equity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .equity-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+          }
+
+          .equity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+          }
+
+          .equity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+          }
+
+          .equity-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+          }
+
+          .equity-symbol {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+          }
+
+          .equity-change {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+          }
+
+          .equity-change.positive {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+          }
+
+          .equity-change.negative {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+          }
+
+          .equity-price {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+          }
+
+          .equity-actions {
+            display: flex;
+            gap: 0.5rem;
+          }
+
+          /* News Styles */
+          .news-tabs {
+            display: flex;
+            gap: 0.5rem;
+          }
+
+          .tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .tab:hover {
+            background: #f8fafc;
+            color: var(--text-primary);
+          }
+
+          .tab-active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+          }
+
+          .news-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+          }
+
+          .news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+
+          .news-item {
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+          }
+
+          .news-item:hover {
+            background: white;
+            box-shadow: var(--shadow-sm);
+          }
+
+          .news-link {
+            text-decoration: none;
+            color: inherit;
+          }
+
+          .news-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+          }
+
+          .news-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 12px;
+            color: var(--text-muted);
+          }
+
+          .news-source {
+            font-weight: 500;
+          }
+
+          /* Buttons */
+          .btn-primary {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+          }
+
+          .btn-text {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+          }
+
+          .btn-text:hover {
+            color: var(--primary-dark);
+          }
+
+          .btn-icon {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+          }
+
+          .btn-icon:hover {
+            background: #f8fafc;
+            color: var(--text-primary);
+          }
+
+          /* Edit Panel */
+          .edit-panel {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 1rem;
+            animation: slideDown 0.3s ease;
+          }
+
+          .edit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+          }
+
+          .edit-panel input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.2s ease;
+          }
+
+          .edit-panel input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          }
+
+          /* Loading Skeleton */
+          .loading-skeleton {
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .skeleton-pulse {
+            width: 100%;
+            max-width: 400px;
+            height: 100px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+          }
+
+          @keyframes loading {
+            0% {
+              background-position: 200% 0;
+            }
+            100% {
+              background-position: -200% 0;
+            }
+          }
+
+          /* Responsive Design */
+          @media (max-width: 1024px) {
+            .metrics-grid {
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            .indicators-grid {
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+            
+            .equity-grid {
+              grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+            
+            .news-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .header-inner {
+              padding: 1rem;
+            }
+            
+            main {
+              padding: 1rem;
+            }
+            
+            .dashboard-section {
+              padding: 1rem;
+            }
+            
+            .section-header {
+              flex-direction: column;
+              gap: 1rem;
+            }
+            
+            .metrics-grid {
+              grid-template-columns: 1fr;
+            }
+          }
