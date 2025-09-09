@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: market-trend-pro
-    env: node
-    plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
-    nodeVersion: 18
