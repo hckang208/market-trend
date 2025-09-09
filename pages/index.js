@@ -51,7 +51,7 @@ function AIBox({ block, payload }) {
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
         let s = j.summary || "";
-        s = s.replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gmi, "").replace(/(전략기획부|임원)[^\n]*\n?/g, "");
+        s = s.replace(/^(?:##\\s*)?(?:한솔섬유)?\\s*(?:임원보고)?\\s*$/gmi, "").replace(/(전략기획부|임원)[^\\n]*\\n?/g, "");
         setText(s);
         setTs(new Date().toISOString());
       } catch (e) {
@@ -64,12 +64,12 @@ function AIBox({ block, payload }) {
 
   return (
     <div className="ai-block">
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: 4 }}>
-        <div style={{ fontWeight: 800 }}>AI 현황분석</div>
-        <button onClick={() => setOpen(o=>!o)} className="btn">{open ? "접기" : "AI 요약"}</button>
+      <div className="card-head">
+        <div className="card-title">AI 현황분석</div>
+        <button onClick={() => setOpen(o=>!o)} className="btn btn-ghost">{open ? "접기" : "AI 요약"}</button>
       </div>
       {open ? (
-        <div style={{ fontSize:12, color:"#6b7280", marginBottom:6 }}>
+        <div className="muted" style={{ marginBottom:6, fontSize:12 }}>
           <span suppressHydrationWarning>GEMINI 2.5 사용중{ts ? ` · ${new Date(ts).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : ""}</span>
         </div>
       ) : null}
@@ -77,7 +77,7 @@ function AIBox({ block, payload }) {
         <>
           {loading && <div className="muted">분석 중…</div>}
           {err && <div className="text-danger">오류: {err}</div>}
-          {!loading && !err && <div style={{ whiteSpace: "pre-wrap" }}>{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
+          {!loading && !err && <div className="prewrap">{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
         </>
       )}
     </div>
@@ -91,12 +91,12 @@ function AIBox({ block, payload }) {
 ========================= */
 function HeaderBar() {
   return (
-    <header style={styles.headerWrap}>
-      <div style={styles.headerInner}>
-        <div style={styles.brand}>
+    <header>
+      <div className="container" style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ fontWeight:800 }}>
           <span>Hansoll Market Trend</span>
         </div>
-        <nav style={styles.nav}></nav>
+        <nav></nav>
       </div>
     </header>
   );
@@ -187,14 +187,14 @@ function ProcurementTopBlock() {
 
   return (
     <section className="card">
-      <div style={styles.headerRow}>
+      <div className="card-head">
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
+          <h2 className="h2">부자재구매현황 DASHBOARD (SAMPLE DATA)</h2>
           <div className="muted">
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
           <div>
-            <button onClick={() => setOpenEdit(o=>!o)} style={styles.btnTiny}>{openEdit ? "입력 닫기" : "수기 입력"}</button>
+            <button onClick={() => setOpenEdit(o=>!o)} className="btn">{openEdit ? "입력 닫기" : "수기 입력"}</button>
 </div>
         </div>
 </div>
@@ -206,7 +206,7 @@ function ProcurementTopBlock() {
         <div className="card">
           <div className="card-title">매출 대비 부자재 매입비중</div>
           <div style={styles.cardValue}>{fmtSignPct(ratio, 1)}</div>
-          <div style={styles.progressWrap}><div style={{ ...styles.progressBar, width: `${ratio}%` }} /></div>
+          <div className="progress"><div className="bar" style={{ width: `${ratio}%` }} /></div>
         </div>
         <Card title="총 Cost Save" value={fmtCurrency(data.costSave || 0, data.currency)} />
         <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
@@ -224,7 +224,7 @@ function ProcurementTopBlock() {
           <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
           <span>현지 {fmtNum(supply.local, 1)}%</span>
         </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
+        <div className="muted" style={{ fontSize:12 }}>GEMINI 2.5 사용중</div>
       </div>
 
       </div>
@@ -355,18 +355,18 @@ function IndicatorsSection() {
 
   return (
     <section style={{ marginTop: 24 }}>
-      <h3 style={styles.h3}>주요 지표</h3>
+      <h3 className="h3">주요 지표</h3>
       {lastUpdated && (
-        <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+        <div className="muted" style={{ marginBottom: 8, fontSize:12 }}>
           전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
         </div>
       )}
       {state.loading && <div>불러오는 중...</div>}
-      {state.error && <div style={styles.err}>에러: {state.error}</div>}
+      {state.error && <div className="text-danger">에러: {state.error}</div>}
 
       {!state.loading && !state.error && (
         <>
-          <div style={styles.grid4}>
+          <div className="grid-12">
             {curated.map((c) => {
               const node = state.data?.[c.key] || null;
               const v = node?.value ?? null;
@@ -379,7 +379,7 @@ function IndicatorsSection() {
               const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
 
               return (
-                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card" style={{ ...styles.cardLink }} title="원본 데이터 열기">
+                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card col-3" style={{ textDecoration:"none", color:"inherit" }} title="원본 데이터 열기">
                   <div className="card-title">{c.title}</div>
                   <div style={styles.cardValue}>{v != null ? fmtNum(v) : "-"}</div>
                   <div className="subtle" style={{ fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
@@ -391,8 +391,8 @@ function IndicatorsSection() {
                     </div>
                   )}
                   <Sparkline series={s || []} />
-                  {lastDateStr && <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                  <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                  {lastDateStr && <div className="subtle" style={{ marginTop: 4, fontSize:12 }}>업데이트: {lastDateStr}</div>}
+                  <div className="subtle" style={{ marginTop: 4, fontSize:12 }}>원본 보기 ↗</div>
                 </a>
               );
             })}
@@ -429,13 +429,13 @@ function StocksSection() {
   const [sumState, setSumState] = useState({}); 
   // --- Markdown-lite helpers for clear, scannable layout ---
   function parseSections(text="") {
-    const lines = String(text).split(/\r?\n/);
+    const lines = String(text).split(/\\r?\\n/);
     const sections = [];
     let title = null, buf = [];
     const push = () => { if (title || buf.length) { sections.push({ title: title || "", lines: buf.slice() }); } };
     for (const ln of lines) {
-      if (/^###\s+/.test(ln)) {
-        push(); title = ln.replace(/^###\s+/, "").trim(); buf = [];
+      if (/^###\\s+/.test(ln)) {
+        push(); title = ln.replace(/^###\\s+/, "").trim(); buf = [];
       } else {
         buf.push(ln);
       }
@@ -450,7 +450,7 @@ function StocksSection() {
     for (const raw of sec.lines) {
       const ln = raw.trim();
       if (!ln) { flushList(); continue; }
-      if (/^[-•]\s+/.test(ln)) { inList = true; list.push(ln.replace(/^[-•]\s+/, "")); continue; }
+      if (/^[-•]\\s+/.test(ln)) { inList = true; list.push(ln.replace(/^[-•]\\s+/, "")); continue; }
       if (inList) { flushList(); inList = false; }
       items.push(<p key={"p"+items.length} style={{ margin: "6px 0", lineHeight: 1.6 }}>{ln}</p>);
     }
@@ -548,18 +548,18 @@ useEffect(() => {
 
   return (
     <section style={{ marginTop: 24 }}>
-      <h3 style={styles.h3}>일일 리테일러 주가 등락률 (전일 종가 대비)</h3>
+      <h3 className="h3">일일 리테일러 주가 등락률 (전일 종가 대비)</h3>
       {loading && <div>불러오는 중...</div>}
-      {err && <div style={styles.err}>에러: {err}</div>}
+      {err && <div className="text-danger">에러: {err}</div>}
       {!loading && !err && (
         <>
-          <div style={styles.grid4}>
+          <div className="grid-12">
             {sorted.map((r) => {
               const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
               return (
                 
-                <div key={r.symbol} className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div key={r.symbol} className="card col-3">
+                  <div className="card-head" style={{ alignItems:"flex-start" }}>
                     <div>
                       <div className="card-title">
                         {r.name} <span className="muted">({r.symbol})</span>
@@ -568,9 +568,9 @@ useEffect(() => {
                       <div className="subtle" style={{ fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
                         {fmtSignPct(r.pct)}
                       </div>
-                      <div className="subtle" style={{ color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
+                      <div className="subtle" style={{ marginTop: 4, fontSize:12 }}>변동률은 전일 종가 대비</div>
                     </div>
-                    <div style={{ display:"flex", gap:8 }}>
+                    <div className="btn-row">
                       <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
                          target="_blank" rel="noreferrer"
                          className="btn btn-ghost" title="Yahoo Finance 열기">
@@ -633,7 +633,7 @@ function NewsTabsSection() {
     } catch (e) {
       setAiErr(String(e));
     } finally {
-      setAiLoading(false);
+           setAiLoading(false);
     }
   }
 async function load(tab = activeTab) {
@@ -669,37 +669,37 @@ async function load(tab = activeTab) {
   return (
     <section style={{ marginTop: 24 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} className="btn btn-ghost" style={{ ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
-          <button onClick={() => { setActiveTab('korea'); load('korea'); }} className="btn btn-ghost" style={{ ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
+        <div className="btn-row">
+          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} className={"btn " + (activeTab==='overseas' ? "btn-subtle" : "btn-ghost")}>해외뉴스</button>
+          <button onClick={() => { setActiveTab('korea'); load('korea'); }} className={"btn " + (activeTab==='korea' ? "btn-subtle" : "btn-ghost")}>국내뉴스</button>
           <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="btn btn-ghost">AI 요약</button>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
+        <div className="muted" style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:12 }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
 </div>
       </div>
 
-      <div style={{ marginTop: 12, border:"1px solid #e5e7eb", borderRadius:12, background:"#fff" }}>
-        {newsLoading && <div style={{ padding:12, color:"#6b7280" }}>불러오는 중…</div>}
-        {newsErr && <div style={{ padding:12, color:"#b91c1c" }}>에러: {newsErr}</div>}
+      <div className="card" style={{ marginTop: 12 }}>
+        {newsLoading && <div className="muted">불러오는 중…</div>}
+        {newsErr && <div className="text-danger">에러: {newsErr}</div>}
         {!newsLoading && !newsErr && (
-          <div style={{ padding:12 }}>
+          <div>
             {rendered.length === 0 ? (
               <div className="muted">관련 기사가 아직 없어요.</div>
             ) : (
               <ol style={{ margin:0, paddingLeft:18 }}>
                 {rendered.map((it, i) => (
                   <li key={i} style={{ margin:"8px 0" }}>
-                    <a href={it.url} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
-                    {it.publishedAt ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.publishedAt}</div> : null}
-                    <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source}</div>
+                    <a href={it.url} target="_blank" rel="noreferrer">{it.title}</a>
+                    {it.publishedAt ? <div className="muted" style={{ fontSize:12 }}>{it.publishedAt}</div> : null}
+                    <div className="muted" style={{ fontSize:11 }}>{it.source}</div>
                   </li>
                 ))}
               </ol>
             )}
             {newsItems.length > 5 && (
               <div style={{ marginTop: 8 }}>
-                <button onClick={() => setCollapsed(v => !v)} style={{ ...styles.btnGhost }}>
+                <button onClick={() => setCollapsed(v => !v)} className="btn btn-ghost">
                   {collapsed ? "더보기" : "접기"}
                 </button>
               </div>
@@ -717,17 +717,17 @@ async function load(tab = activeTab) {
 ========================= */
 
 function LinkifyCitations(text="") {
-  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
+  return String(text).replace(/\\[(\\d+(?:-\\d+)?)\\]/g, (m, grp) => {
     const id = String(grp).split('-')[0];
     return `<a href="#ref-${id}" style="text-decoration: underline;">[${grp}]</a>`;
   });
 }
 function splitSections(md="") {
-  const lines = String(md).split(/\r?\n/);
+  const lines = String(md).split(/\\r?\\n/);
   const out=[]; let title=null, buf=[];
-  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\n")}); };
+  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\\n")}); };
   for(const ln of lines){
-    if(/^###\s+/.test(ln)){ push(); title=ln.replace(/^###\s+/,"").trim(); buf=[]; }
+    if(/^###\\s+/.test(ln)){ push(); title=ln.replace(/^###\\s+/,"").trim(); buf=[]; }
     else buf.push(ln);
   } push(); return out;
 }
@@ -756,16 +756,18 @@ function NewsAISummaryPanel({ title, endpoint }) {
   const sections = React.useMemo(() => splitSections(data?.summary||""), [data?.summary]);
 
   return (
-    <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:14, background:"#fff" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-        <h3 style={{ margin:0, fontSize:16, fontWeight:800 }}>{title}</h3>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <div style={{ fontSize:12, color:"#6b7280" }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
+    <div className="card">
+      <div className="card-head">
+        <h3 className="card-title" style={{ margin:0 }}>{
+          title
+        }</h3>
+        <div className="btn-row">
+          <div className="muted" style={{ fontSize:12 }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
           <button onClick={load} disabled={loading} className="btn btn-ghost">{loading ? "요약 중..." : "다시 요약"}</button>
         </div>
       </div>
 
-      {err && <div style={{ color:"crimson" }}>에러: {err}</div>}
+      {err && <div className="text-danger">에러: {err}</div>}
       {!data && !loading && <div>요약을 불러오는 중…</div>}
       {data && (
         <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:12 }}>
@@ -775,7 +777,7 @@ function NewsAISummaryPanel({ title, endpoint }) {
                 {sec.title ? <h4 style={{ margin:"4px 0", fontSize:14, fontWeight:800 }}>{sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}</h4> : null}
                 <div
                   style={{ fontSize: 14, lineHeight:1.7 }}
-                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\s+/gm, "• ").replace(/\n/g, "<br/>") }}
+                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\\s+/gm, "• ").replace(/\\n/g, "<br/>") }}
                 />
               </section>
             ))}
@@ -785,9 +787,9 @@ function NewsAISummaryPanel({ title, endpoint }) {
             <ol style={{ paddingLeft:18, margin:0 }}>
               {(data.items || []).slice(0, 20).map((it, i) => (
                 <li id={`ref-${i+1}`} key={i} style={{ margin:"6px 0" }}>
-                  <a href={it.link} target="_blank" rel="noreferrer" style={{ color:"#1d4ed8" }}>{it.title}</a>
-                  {it.pubDate ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.pubDate}</div> : null}
-                  <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source || ""}</div>
+                  <a href={it.link} target="_blank" rel="noreferrer">{it.title}</a>
+                  {it.pubDate ? <div className="muted" style={{ fontSize:12 }}>{it.pubDate}</div> : null}
+                  <div className="muted" style={{ fontSize:11 }}>{it.source || ""}</div>
                 </li>
               ))}
             </ol>
@@ -811,31 +813,6 @@ function NewsAISummarySection() {
 }
 
 export default function Home() {
-  async function loadNews(tab='overseas') {
-    try {
-      setNewsLoading(true); setNewsErr(""); setNewsItems([]);
-      let url = "";
-      if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
-      } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
-      }
-      const r = await fetch(url, { cache: "no-store" });
-      const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(n => ({
-        title: n.title,
-        url: n.url || n.link,
-        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
-      }));
-      setNewsItems(items);
-      setNewsCollapsed(true);
-    } catch (e) {
-      setNewsErr(String(e));
-    } finally {
-      setNewsLoading(false);
-    }
-  }
   return (
     <>
       <Head>
@@ -849,7 +826,7 @@ export default function Home() {
 
       <HeaderBar />
 
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+      <main className="container">
         <ProcurementTopBlock />
         <IndicatorsSection />
         <StocksSection />
@@ -857,8 +834,8 @@ export default function Home() {
         
     </main>
 
-      <footer style={styles.footer}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", color: "#6b7280", fontSize: 12 }}>
+      <footer>
+        <div className="container muted" style={{ padding: "12px 16px", fontSize: 12 }}>
           © Market Trend — internal pilot
         </div>
       </footer>
