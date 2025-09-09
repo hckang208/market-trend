@@ -179,7 +179,7 @@ function ProcurementTopBlock() {
     <section style={styles.blockWrap}>
       <div style={styles.headerRow}>
         <div>
-          <h2 style={styles.h2}>부자재구매현황 DASHBOARD (sample data입니다)</h2>
+          <h2 style={styles.h2}></h2>
           <div style={styles.meta}>
             기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
           </div>
