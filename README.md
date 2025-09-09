@@ -1,56 +1,17 @@
-# Market Trend — Next.js Pro Dashboard
+# Patch: Stock data not showing & AI heading text
 
-## Scripts
-- `npm run dev` — local dev
-- `npm run build` — prod build
-- `npm start` — run production
+1) **주가 데이터 표시 개선**
+   - `/pages/api/stocks.js`를 RapidAPI Yahoo → Yahoo public → Stooq 순서로 폴백.
+   - `RAPIDAPI_KEY`가 있으면 첫 단계에서 거의 항상 실시간 가격/전일종가/변동률을 얻습니다.
+   - 응답 스키마를 프론트가 쓰는 `regularMarketPrice`, `regularMarketPreviousClose`, `changePercent`에 맞춰 반환.
 
-## Environment Variables (Vercel)
-- `RAPIDAPI_KEY` — RapidAPI key for Yahoo Finance + Contextual Web Search
-- `FRED_API_KEY` — FRED key for macro indicators
-- `OPENAI_API_KEY` — optional, for /api/analysis summarization
+2) **AI 요약/분석 제목 문제**
+   - `/pages/api/ai-summary.js`를 수정해 더 이상 `"### STOCK-CARD"` 같은 헤더를 붙이지 않습니다.
+   - 이제는 **글머리 기호(•)**만 반환합니다.
 
-## Endpoints
-- `/api/stocks?symbol=WMT`
-- `/api/news?q=Walmart`
-- `/api/indicators`
-- `/api/analysis` (POST: { items: [{title, url}, ...] })
+3) **프론트 정합성**
+   - `components/EquityMonitor.js`가 API의 `changePercent`를 우선 사용, 없으면 `price vs previousClose`로 계산.
+   - 더 이상 0으로 보이는 기본값을 강제하지 않고, 값이 없으면 `-`를 표시합니다.
 
-## Notes
-- News endpoint caches for 5 minutes in-memory per lambda.
-- Retailer news is only fetched on hover to avoid 429 throttling.
-
-
-## One-click Hosting (Vercel 대안)
-### Netlify
-1) GitHub 레포 연결 → **Environment variables**에 다음 3개 추가
-   - `RAPIDAPI_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY`
-2) 그대로 Deploy (플러그인 `@netlify/plugin-nextjs`가 SSR/API 자동 처리)
-3) 헬스체크: `/api/ok`
-
-### Render
-1) 대시보드 → New → Web Service → GitHub 레포 선택
-2) Build Command: `npm install && npm run build`
-3) Start Command: `npm run start`
-4) Node Version: `18`
-5) Environment → `RAPIDAPI_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY` 추가
-6) 배포 후 헬스체크: `/api/ok`
-
-> Cloudflare Pages/Workers도 가능하지만, `@cloudflare/next-on-pages` 어댑터 설정이 필요합니다.
-
-
-## Netlify deployment notes
-- Ensure `package.json` includes `@netlify/plugin-nextjs` in devDependencies (already added).
-- Ensure `netlify.toml` is in repo root (already added).
-- `.nvmrc` forces Node 18 (already added).
-- In Netlify, set Environment Variables: RAPIDAPI_KEY, FRED_API_KEY, OPENAI_API_KEY.
-- Then trigger "Clear cache and deploy site".
-- Check build logs: should see "Detected Next.js" and "@netlify/plugin-nextjs".
-- Test at /api/ok for API health.
-
-
-### Overseas News Domain Whitelist
-Set `.env.local` or deployment env:
-```
-FOREIGN_NEWS_DOMAINS=businessoffashion.com,just-style.com
-```
+> 적용: zip을 리포 루트에 덮어쓰기 → 커밋/푸시 → Netlify에서 Clear cache and deploy
+> 환경: Netlify 환경변수에 `RAPIDAPI_KEY`가 있으면 정확도/안정성이 크게 올라갑니다.

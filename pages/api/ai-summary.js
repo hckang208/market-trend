@@ -1,20 +1,25 @@
 export const config = { runtime: 'nodejs' };
 
 /**
- * Minimal placeholder summarizer to avoid 404/500 when GEMINI is not wired.
- * It concatenates titles and returns bullet points.
- * You can later replace with real Gemini/OpenAI call.
+ * Placeholder summarizer that returns bullet points ONLY (no headings like "### block").
+ * Replace with real Gemini/OpenAI call later if needed.
  */
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-    const { block, language = "ko", mode = "brief", data = {} } = await req.json?.() || req.body || {};
+    let payload = {};
+    try {
+      // Next.js API on Netlify may not support req.json()
+      payload = (await req.json?.()) || req.body || {};
+    } catch {
+      payload = req.body || {};
+    }
+    const { data = {} } = payload;
     const items = Array.isArray(data?.items) ? data.items : [];
-    const head = (block ? `### ${block} 요약` : "### 요약");
-    const lines = items.slice(0, 12).map((it, i) => `- ${it.title || it.url || "항목"}${it.url ? ` [${i+1}]` : ""}`);
-    const summary = [head, "", ...lines].join("\n");
-    return res.status(200).json({ summary, items, generatedAt: new Date().toISOString() });
+    const lines = items.slice(0, 12).map((it, i) => `• ${it.title || it.url || "항목"}`);
+    const summary = (lines.length ? lines.join("\n") : "요약할 항목이 없습니다.");
+    return res.status(200).json({ summary, generatedAt: new Date().toISOString() });
   } catch (e) {
-    return res.status(200).json({ summary: "(요약 생성 실패 또는 미구현)", error: String(e?.message || e) });
+    return res.status(200).json({ summary: "요약 생성 실패", error: String(e?.message || e) });
   }
 }
