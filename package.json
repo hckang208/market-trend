@@ -1,25 +1,24 @@
 {
-  "name": "market-trend-revamp",
-  "private": true,
+  "name": "market-trend-pro",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo 'lint disabled'"
+    "lint": "next lint"
   },
   "dependencies": {
-    "clsx": "2.1.1",
-    "date-fns": "3.6.0",
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "sanitize-html": "2.13.0",
-    "google-generative-ai": "0.21.0"
+    "axios": "^1.6.7",
+    "dayjs": "^1.11.11",
+    "next": "13.5.6",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss": "^3.4.3",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.20"
   },
   "devDependencies": {
-    "autoprefixer": "10.4.19",
-    "postcss": "8.4.39",
-    "tailwindcss": "3.4.9"
+    "@netlify/plugin-nextjs": "^5.0.0"
   }
 }
