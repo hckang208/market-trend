@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
+// 필요한 컴포넌트 임포트
+import IndicatorsSection from "./IndicatorsSection"; // 위치에 맞게 추가
+import StocksSection from "./StocksSection"; // 다른 필요한 컴포넌트
+import NewsTabsSection from "./NewsTabsSection"; // 다른 필요한 컴포넌트
+
 const FOREIGN_DOMAINS =
   process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
   "businessoffashion.com,just-style.com";
@@ -13,12 +18,14 @@ const fmtNum = (n, d = 2) => {
   if (!isFinite(v)) return "-";
   return v.toLocaleString(undefined, { maximumFractionDigits: d });
 };
+
 const fmtSignPct = (n, d = 2) => {
   const v = Number(n);
   if (!isFinite(v)) return "0.00%";
   const s = v >= 0 ? "+" : "";
   return `${s}${v.toFixed(d)}%`;
 };
+
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 /* =========================
@@ -31,6 +38,7 @@ function redactForbidden(s) {
     return "";
   }
 }
+
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -445,6 +453,9 @@ function ProcurementTopBlock() {
   );
 }
 
+/* =========================
+   페이지
+========================= */
 export default function Home() {
   return (
     <>
