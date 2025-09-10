@@ -1,0 +1,662 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --accent2:#22d3ee; --ink:#0F172A; --sub:#475569; --accent:#1B79D9; --line:#e5e7eb; --bg:#f8fafc; }
+
+html, body { background: var(--bg); color: var(--ink); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+.container { max-width: 1160px; margin: 0 auto; padding: 24px; }
+.card { background:#fff; border:1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 25px -18px rgba(0,0,0,.2); }
+.kpi { @apply card p-5; }
+.muted { color: var(--sub); }
+
+/* === Auto-generated classes from inline style cleanup === */
+.s-components-procurementtopblock-jsx-auto1 {
+  margin-bottom: 8;
+}
+.s-components-procurementtopblock-jsx-auto2 {
+  margin: 0;
+  font-weight: 800;
+}
+.s-components-procurementtopblock-jsx-auto3 {
+  display: flex;
+  gap: 8;
+}
+.s-components-procurementtopblock-jsx-auto4 {
+  display: none;
+}
+.s-components-procurementtopblock-jsx-auto5 {
+  color: #666;
+  margin-top: 0;
+}
+.s-components-procurementtopblock-jsx-auto6 {
+  gap: 12;
+}
+.s-components-procurementtopblock-jsx-auto7 {
+  gap: 12;
+}
+.s-components-procurementtopblock-jsx-auto8 {
+  line-height: 1.6;
+}
+.s-components-procurementtopblock-jsx-auto9 {
+  border: 1px solid #eee;
+  border-radius: 10;
+  padding: 12;
+}
+.s-components-procurementtopblock-jsx-auto10 {
+  color: #666;
+  font-size: 12;
+}
+.s-components-procurementtopblock-jsx-auto11 {
+  font-weight: 800;
+  font-size: 18;
+}
+.s-components-procurementtopblock-jsx-auto12 {
+  margin-top: 0;
+}
+.s-components-procurementtopblock-jsx-auto13 {
+  margin-top: 8;
+}
+.s-components-procurementtopblock-jsx-auto14 {
+  cursor: pointer;
+  font-weight: 700;
+}
+.s-components-procurementtopblock-jsx-auto15 {
+  margin-top: 8;
+}
+.s-components-procurementtopblock-jsx-auto16 {
+  margin-top: 12;
+}
+.s-pages-ai-summary-js-header {
+  margin-bottom: 12;
+}
+.s-pages-ai-summary-js-main {
+  display: grid;
+  gap: 16;
+}
+.s-pages-ai-summary-js-aside {
+  display: grid;
+  gap: 16;
+}
+.s-pages-ai-summary-js-box {
+  padding: 14;
+}
+.s-pages-ai-summary-js-h2 {
+  margin: 0 0 10px 0;
+  font-size: 17;
+  font-weight: 900;
+}
+.s-pages-ai-summary-js-list {
+  gap: 8;
+}
+.s-pages-ai-summary-js-meta {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-ai-summary-js-auto1 {
+  gap: 8;
+}
+.s-pages-ai-summary-js-auto2 {
+  margin: 0;
+  font-size: 18;
+}
+.s-pages-ai-summary-js-auto3 {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-ai-summary-js-auto4 {
+  margin-bottom: 8;
+}
+.s-pages-daily-report-js-article {
+  border-radius: 12;
+  padding: 16;
+}
+.s-pages-daily-report-js-auto1 {
+  padding: 16;
+}
+.s-pages-daily-report-js-auto2 {
+  margin: 8px 0 12px;
+  font-size: 24;
+  font-weight: 900;
+}
+.s-pages-daily-report-js-auto3 {
+  color: #b91c1c;
+}
+.s-pages-daily-report-js-auto4 {
+  color: #6b7280;
+  font-size: 12;
+  margin-bottom: 8;
+}
+.s-pages-index-js-aibox {
+  line-height: 1.7;
+}
+.s-pages-index-js-blocktitle {
+  font-size: 14;
+  font-weight: 700;
+  margin-bottom: 8;
+}
+.s-pages-index-js-brand {
+  font-weight: 800;
+}
+.s-pages-index-js-btnblue {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-index-js-btndanger {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-index-js-btnghost {
+  gap: 6;
+}
+.s-pages-index-js-btngray {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-index-js-btntiny {
+  font-weight: 700;
+  font-size: 12;
+}
+.s-pages-index-js-card {
+  padding: 12;
+}
+.s-pages-index-js-cardsub {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-index-js-cardtitle {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-index-js-cardvalue {
+  font-weight: 800;
+  font-size: 18;
+}
+.s-pages-index-js-ctadark {
+  font-weight: 800;
+}
+.s-pages-index-js-grid3 {
+  gap: 12;
+}
+.s-pages-index-js-grid4 {
+  gap: 12;
+}
+.s-pages-index-js-grid5 {
+  gap: 12;
+}
+.s-pages-index-js-h2 {
+  margin: 0;
+  font-weight: 800;
+  font-size: 20;
+}
+.s-pages-index-js-h3 {
+  margin: 20px 0 8px;
+  font-weight: 800;
+  font-size: 18;
+}
+.s-pages-index-js-headerrow {
+  margin-bottom: 8;
+}
+.s-pages-index-js-stickytop {
+  position: static;
+}
+.s-pages-index-js-badge {
+  border-radius: 999;
+}
+.s-pages-index-js-legend {
+  font-size: 12;
+}
+.s-pages-index-js-meta {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-index-js-navlink {
+  font-weight: 700;
+}
+.s-pages-index-js-row {
+  gap: 12;
+}
+.s-pages-index-js-seg {
+  height: 100%;
+}
+.s-pages-index-js-auto1 {
+  margin-bottom: 4;
+}
+.s-pages-index-js-auto2 {
+  font-weight: 800;
+}
+.s-pages-index-js-auto3 {
+  margin-bottom: 6;
+}
+.s-pages-index-js-auto4 {
+  color: #6b7280;
+}
+.s-pages-index-js-auto5 {
+  color: #b91c1c;
+}
+.s-pages-index-js-auto6 {
+  white-space: pre-wrap;
+}
+.s-pages-index-js-auto7 {
+  padding-top: 8;
+}
+.s-pages-index-js-auto8 {
+  display: flex;
+  gap: 8;
+  margin-top: 10;
+}
+.s-pages-index-js-auto9 {
+  display: block;
+  margin-top: 6;
+}
+.s-pages-index-js-auto10 {
+  margin-top: 24;
+}
+.s-pages-index-js-auto11 {
+  margin-bottom: 8;
+}
+.s-pages-index-js-auto12 {
+  margin: 6px 0 10px 18px;
+}
+.s-pages-index-js-auto13 {
+  line-height: 1.5;
+}
+.s-pages-index-js-auto14 {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+.s-pages-index-js-auto15 {
+  margin-top: 6;
+}
+.s-pages-index-js-auto16 {
+  margin-top: 24;
+}
+.s-pages-index-js-auto17 {
+  color: #6b7280;
+}
+.s-pages-index-js-auto18 {
+  display: flex;
+  gap: 8;
+}
+.s-pages-index-js-auto19 {
+  margin-top: 8;
+}
+.s-pages-index-js-auto20 {
+  margin-top: 24;
+}
+.s-pages-index-js-auto21 {
+  display: flex;
+  gap: 8;
+}
+.s-pages-index-js-auto22 {
+  padding: 12;
+}
+.s-pages-index-js-auto23 {
+  color: #6b7280;
+}
+.s-pages-index-js-auto24 {
+  margin: 0;
+  padding-left: 18;
+}
+.s-pages-index-js-auto25 {
+  margin: 8px 0;
+}
+.s-pages-index-js-auto26 {
+  color: #1d4ed8;
+}
+.s-pages-index-js-auto27 {
+  margin-top: 8;
+}
+.s-pages-index-js-auto28 {
+  margin-bottom: 6;
+}
+.s-pages-index-js-auto29 {
+  margin: 0;
+  font-size: 16;
+  font-weight: 800;
+}
+.s-pages-index-js-auto30 {
+  color: crimson;
+}
+.s-pages-index-js-auto31 {
+  gap: 12;
+}
+.s-pages-index-js-auto32 {
+  border-radius: 10;
+  padding: 12;
+}
+.s-pages-index-js-auto33 {
+  margin: 4px 0;
+  font-size: 14;
+  font-weight: 800;
+}
+.s-pages-index-js-auto34 {
+  font-size: 14;
+  line-height: 1.7;
+}
+.s-pages-index-js-auto35 {
+  border: 1px solid #e5e7eb;
+  border-radius: 10;
+  padding: 12;
+}
+.s-pages-index-js-auto36 {
+  margin: 0 0 6px 0;
+  font-size: 14;
+  font-weight: 800;
+}
+.s-pages-index-js-auto37 {
+  padding-left: 18;
+  margin: 0;
+}
+.s-pages-index-js-auto38 {
+  margin: 6px 0;
+}
+.s-pages-index-js-auto39 {
+  color: #1d4ed8;
+}
+.s-pages-index-js-auto40 {
+  margin-top: 24;
+}
+.s-pages-index-js-auto41 {
+  gap: 12;
+}
+.s-pages-index-js-auto42 {
+  padding: 16;
+}
+.s-pages-index-js-auto43 {
+  font-size: 12;
+}
+.s-pages-pages-index-js-blocktitle {
+  font-size: 14;
+  font-weight: 700;
+  margin-bottom: 8;
+}
+.s-pages-pages-index-js-blockwrap {
+  border-radius: 12;
+  padding: 16;
+}
+.s-pages-pages-index-js-brand {
+  font-weight: 800;
+}
+.s-pages-pages-index-js-btnblue {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-pages-index-js-btndanger {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-pages-index-js-btnghost {
+  gap: 6;
+}
+.s-pages-pages-index-js-btngray {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-pages-index-js-btntab {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-pages-index-js-btntabactive {
+  font-weight: 700;
+  font-size: 14;
+}
+.s-pages-pages-index-js-card {
+  padding: 12;
+}
+.s-pages-pages-index-js-cardsub {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-pages-index-js-cardtitle {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-pages-index-js-cardvalue {
+  font-weight: 800;
+  font-size: 18;
+}
+.s-pages-pages-index-js-ctadark {
+  font-weight: 800;
+}
+.s-pages-pages-index-js-grid3 {
+  gap: 12;
+}
+.s-pages-pages-index-js-grid4 {
+  gap: 12;
+}
+.s-pages-pages-index-js-grid5 {
+  gap: 12;
+}
+.s-pages-pages-index-js-h2 {
+  margin: 0;
+  font-weight: 800;
+  font-size: 20;
+}
+.s-pages-pages-index-js-h3 {
+  margin: 20px 0 8px;
+  font-weight: 800;
+  font-size: 18;
+}
+.s-pages-pages-index-js-headerrow {
+  margin-bottom: 8;
+}
+.s-pages-pages-index-js-stickytop {
+  position: static;
+}
+.s-pages-pages-index-js-badge {
+  border-radius: 999;
+}
+.s-pages-pages-index-js-legend {
+  font-size: 12;
+}
+.s-pages-pages-index-js-meta {
+  color: #6b7280;
+  font-size: 12;
+}
+.s-pages-pages-index-js-navlink {
+  font-weight: 700;
+}
+.s-pages-pages-index-js-row {
+  gap: 12;
+}
+.s-pages-pages-index-js-seg {
+  height: 100%;
+}
+.s-pages-pages-index-js-auto1 {
+  margin-bottom: 4;
+}
+.s-pages-pages-index-js-auto2 {
+  font-weight: 800;
+}
+.s-pages-pages-index-js-auto3 {
+  color: #6b7280;
+}
+.s-pages-pages-index-js-auto4 {
+  color: #b91c1c;
+}
+.s-pages-pages-index-js-auto5 {
+  white-space: pre-wrap;
+}
+.s-pages-pages-index-js-auto6 {
+  padding-top: 8;
+}
+.s-pages-pages-index-js-auto7 {
+  display: flex;
+  gap: 8;
+  margin-top: 10;
+}
+.s-pages-pages-index-js-auto8 {
+  display: block;
+  margin-top: 6;
+}
+.s-pages-pages-index-js-auto9 {
+  margin-top: 24;
+}
+.s-pages-pages-index-js-auto10 {
+  margin-bottom: 8;
+}
+.s-pages-pages-index-js-auto11 {
+  margin: 6px 0 10px 18px;
+}
+.s-pages-pages-index-js-auto12 {
+  line-height: 1.5;
+}
+.s-pages-pages-index-js-auto13 {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+.s-pages-pages-index-js-auto14 {
+  margin-top: 6;
+}
+.s-pages-pages-index-js-auto15 {
+  margin-top: 24;
+}
+.s-pages-pages-index-js-auto16 {
+  color: #6b7280;
+}
+.s-pages-pages-index-js-auto17 {
+  display: flex;
+  gap: 8;
+}
+.s-pages-pages-index-js-auto18 {
+  margin-top: 8;
+}
+.s-pages-pages-index-js-auto19 {
+  margin-top: 24;
+}
+.s-pages-pages-index-js-auto20 {
+  display: flex;
+  gap: 8;
+}
+.s-pages-pages-index-js-auto21 {
+  padding: 12;
+}
+.s-pages-pages-index-js-auto22 {
+  color: #6b7280;
+}
+.s-pages-pages-index-js-auto23 {
+  margin: 0;
+  padding-left: 18;
+}
+.s-pages-pages-index-js-auto24 {
+  margin: 8px 0;
+}
+.s-pages-pages-index-js-auto25 {
+  color: #1d4ed8;
+}
+.s-pages-pages-index-js-auto26 {
+  margin-top: 8;
+}
+.s-pages-pages-index-js-auto27 {
+  margin-bottom: 8;
+}
+.s-pages-pages-index-js-auto28 {
+  margin: 0;
+  font-size: 16;
+  font-weight: 800;
+}
+.s-pages-pages-index-js-auto29 {
+  display: flex;
+  gap: 8;
+}
+.s-pages-pages-index-js-auto30 {
+  color: crimson;
+}
+.s-pages-pages-index-js-auto31 {
+  gap: 12;
+}
+.s-pages-pages-index-js-auto32 {
+  border-radius: 10;
+  padding: 12;
+}
+.s-pages-pages-index-js-auto33 {
+  margin: 4px 0;
+  font-size: 14;
+  font-weight: 800;
+}
+.s-pages-pages-index-js-auto34 {
+  font-size: 14;
+  line-height: 1.7;
+}
+.s-pages-pages-index-js-auto35 {
+  border: 1px solid #e5e7eb;
+  border-radius: 10;
+  padding: 12;
+}
+.s-pages-pages-index-js-auto36 {
+  margin: 0 0 6px 0;
+  font-size: 14;
+  font-weight: 800;
+}
+.s-pages-pages-index-js-auto37 {
+  padding-left: 18;
+  margin: 0;
+}
+.s-pages-pages-index-js-auto38 {
+  margin: 6px 0;
+}
+.s-pages-pages-index-js-auto39 {
+  color: #1d4ed8;
+}
+.s-pages-pages-index-js-auto40 {
+  margin-top: 24;
+}
+.s-pages-pages-index-js-auto41 {
+  gap: 12;
+}
+.s-pages-pages-index-js-auto42 {
+  padding: 16;
+}
+.s-pages-pages-index-js-auto43 {
+  font-size: 12;
+}
+.s-pages-company-symbol-js-header {
+  margin-bottom: 12;
+}
+.s-pages-company-symbol-js-title {
+  font-size: 24;
+  font-weight: 900;
+  letter-spacing: -0.2;
+}
+.s-pages-company-symbol-js-grid {
+  gap: 18;
+}
+.s-pages-company-symbol-js-card {
+  padding: 16;
+}
+.s-pages-company-symbol-js-summary {
+  border-radius: 12;
+  padding: 16;
+}
+.s-pages-company-symbol-js-auto1 {
+  color: crimson;
+  margin-bottom: 10;
+}
+.s-pages-company-symbol-js-auto2 {
+  margin-left: 6;
+  width: 64;
+}
+.s-pages-company-symbol-js-auto3 {
+  margin-left: 6;
+  width: 64;
+}
+.s-pages-company-symbol-js-auto4 {
+  margin-left: 6;
+}
+.s-pages-company-symbol-js-auto5 {
+  font-size: 14;
+  line-height: 1.7;
+}
+.s-pages-company-symbol-js-auto6 {
+  font-size: 14;
+  line-height: 1.7;
+}
+.s-pages-company-symbol-js-auto7 {
+  padding-left: 18;
+  margin: 0;
+}
+.s-pages-company-symbol-js-auto8 {
+  margin: 8px 0;
+}
