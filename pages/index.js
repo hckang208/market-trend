@@ -777,12 +777,9 @@ function StocksSection() {
                     >
                       Yahoo
                     </a>
-                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link">
-                      AI 분석
+                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link ai">AI 분석
                     </a>
-                    <button className="stock-link" onClick={() => loadSummary(r.symbol)}>
-                      요약
-                    </button>
+                    <button className="stock-link ai" onClick={() => loadSummary(r.symbol)}>AI Analysis • GEMINI 2.5</button>
                   </div>
                 </div>
                 <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
@@ -853,7 +850,7 @@ function NewsTabsSection() {
             industry: "fashion|apparel|garment|textile",
             language: "en",
             days: "7",
-            limit: "40",
+            limit: "10",
             domains: FOREIGN_DOMAINS,
           }).toString();
       } else {
@@ -891,12 +888,12 @@ function NewsTabsSection() {
     load("overseas");
   }, []);
 
-  const rendered = collapsed ? newsItems.slice(0, 5) : newsItems;
+  const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
 
   return (
     <section className="section">
       <div className="section-header">
-        <h2 className="section-title">뉴스</h2>
+        <h2 className="section-title">산업뉴스</h2><p>뉴스는 여러 출처에서 제공되고 있습니다: Business of Fashion, Just-Style, and more.</p>
         <div className="tab-nav">
           <button
             onClick={() => {
@@ -916,9 +913,7 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          <button onClick={loadAISummary} className="tab-btn">
-            AI 요약
-          </button>
+          
         </div>
       </div>
 
@@ -942,7 +937,7 @@ function NewsTabsSection() {
                 ))}
               </ol>
             )}
-            {newsItems.length > 5 && (
+            {newsItems.length > 10 && (
               <div className="more-row">
                 <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
                   {collapsed ? "더보기" : "접기"}
