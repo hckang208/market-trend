@@ -1,10 +1,6 @@
+// pages/index.js
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-
-// 필요한 컴포넌트 임포트
-import IndicatorsSection from "./IndicatorsSection"; // 위치에 맞게 추가
-import StocksSection from "./StocksSection"; // 다른 필요한 컴포넌트
-import NewsTabsSection from "./NewsTabsSection"; // 다른 필요한 컴포넌트
 
 const FOREIGN_DOMAINS =
   process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
@@ -18,14 +14,12 @@ const fmtNum = (n, d = 2) => {
   if (!isFinite(v)) return "-";
   return v.toLocaleString(undefined, { maximumFractionDigits: d });
 };
-
 const fmtSignPct = (n, d = 2) => {
   const v = Number(n);
   if (!isFinite(v)) return "0.00%";
   const s = v >= 0 ? "+" : "";
   return `${s}${v.toFixed(d)}%`;
 };
-
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 /* =========================
@@ -38,7 +32,6 @@ function redactForbidden(s) {
     return "";
   }
 }
-
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -122,7 +115,7 @@ function HeaderBar() {
         <div className="logo">
           <div className="logo-mark">H</div>
           <div>
-            <div className="logo-text">Hansoll Market Intelligence</div>
+            <div className="logo-text">Hansol Market Intelligence</div>
             <div className="logo-subtitle">Executive Dashboard</div>
           </div>
         </div>
@@ -454,14 +447,636 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
+   2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
+========================= */
+function Sparkline({ series = [], width = 110, height = 32 }) {
+  if (!series || series.length < 2) return null;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const span = max - min || 1;
+  const step = width / (series.length - 1);
+  const pts = series
+    .map((v, i) => {
+      const x = i * step;
+      const y = height - ((v - min) / span) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const up = series[series.length - 1] >= series[0];
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      className={`sparkline ${up ? "up" : "down"}`}
+      aria-hidden="true"
+    >
+      <polyline fill="none" stroke="currentColor" strokeWidth="2" points={pts} />
+    </svg>
+  );
+}
+
+function IndicatorsSection() {
+  const [state, setState] = useState({ loading: true, data: null, error: "" });
+  const [lastUpdated, setLastUpdated] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/indicators", { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || "지표 API 오류");
+        setState({ loading: false, data: j, error: "" });
+        setLastUpdated(
+          j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
+        );
+      } catch (e) {
+        setState({ loading: false, data: null, error: String(e) });
+      }
+    })();
+  }, []);
+
+  const LINK = {
+    wti: "https://fred.stlouisfed.org/series/DCOILWTICO",
+    usdkrw: "https://fred.stlouisfed.org/series/DEXKOUS",
+    cpi: "https://fred.stlouisfed.org/series/CPIAUCSL",
+    fedfunds: "https://fred.stlouisfed.org/series/DFEDTARU",
+    t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
+    inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
+    unemployment: "https://fred.stlouisfed.org/series/UNRATE",
+    ism_retail:
+      "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
+  };
+  const curated = [
+    { key: "wti", title: "WTI (USD/bbl)" },
+    { key: "usdkrw", title: "USD/KRW" },
+    { key: "cpi", title: "US CPI (Index)" },
+    { key: "fedfunds", title: "미국 기준금리(%)" },
+    { key: "t10y2y", title: "금리 스프레드(10Y–2Y, bp)" },
+    { key: "inventory_ratio", title: "재고/판매 비율" },
+    { key: "ism_retail", title: "ISM Retail(%)" },
+    { key: "unemployment", title: "실업률(%)" },
+  ];
+
+  const payloadForAI = useMemo(() => {
+    const d = state.data || {};
+    const out = {};
+    curated.forEach((c) => {
+      out[c.key] = {
+        value: d?.[c.key]?.value ?? null,
+        changePercent: d?.[c.key]?.changePercent ?? null,
+        yoyPercent: d?.[c.key]?.yoyPercent ?? null,
+        lastDate: d?.[c.key]?.lastDate ?? null,
+      };
+    });
+    return { indicators: out, lastUpdated };
+  }, [state.data, lastUpdated]);
+
+  return (
+    <section className="section">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">주요 지표</h2>
+          {lastUpdated && (
+            <p className="section-subtitle">
+              전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {state.loading && <div>불러오는 중...</div>}
+      {state.error && <div className="text-danger">에러: {state.error}</div>}
+
+      {!state.loading && !state.error && (
+        <>
+          <div className="grid grid-4">
+            {curated.map((c) => {
+              const node = state.data?.[c.key] || null;
+              const v = node?.value ?? null;
+              const s = node?.history || [];
+              const deltaPct = node?.changePercent ?? null;
+              const yoyPct = node?.yoyPercent ?? null;
+              const href = LINK[c.key];
+              const up =
+                deltaPct != null
+                  ? deltaPct >= 0
+                  : s.length >= 2
+                  ? s[s.length - 1] >= s[0]
+                  : true;
+              const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
+              const lastDateStr =
+                lastDate && isFinite(lastDate.getTime())
+                  ? lastDate.toISOString().slice(0, 10)
+                  : null;
+
+              return (
+                <a
+                  key={c.key}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="card link-card"
+                  title="원본 데이터 열기"
+                >
+                  <div className="metric-label">{c.title}</div>
+                  <div className="metric-value">{v != null ? fmtNum(v) : "-"}</div>
+
+                  <div
+                    className={`metric-change ${
+                      deltaPct == null ? "" : up ? "positive" : "negative"
+                    }`}
+                  >
+                    {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
+                  </div>
+
+                  {yoyPct != null && (
+                    <div
+                      className={`metric-change ${
+                        yoyPct >= 0 ? "positive" : "negative"
+                      }`}
+                    >
+                      YoY: {fmtSignPct(yoyPct)}
+                    </div>
+                  )}
+
+                  <Sparkline series={s || []} />
+                  {lastDateStr && (
+                    <div className="meta small">업데이트: {lastDateStr}</div>
+                  )}
+                  <div className="meta small">원본 보기 ↗</div>
+                </a>
+              );
+            })}
+          </div>
+
+          <AIBox block="indicators" payload={payloadForAI} />
+        </>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
+========================= */
+const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
+const NAME_MAP = {
+  WMT: "Walmart",
+  TGT: "Target",
+  ANF: "Abercrombie & Fitch",
+  VSCO: "Victoria's Secret",
+  KSS: "Kohl's",
+  AMZN: "Amazon",
+  BABA: "Alibaba",
+  "9983.T": "Fast Retailing (Uniqlo)",
+};
+
+function StocksSection() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  // (옵션) 종목별 요약 상태
+  const [sumState, setSumState] = useState({});
+
+  async function loadSummary(symbol) {
+    setSumState((s) => ({
+      ...s,
+      [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" },
+    }));
+    try {
+      const r = await fetch(
+        `/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`
+      );
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
+      setSumState((s) => ({
+        ...s,
+        [symbol]: {
+          ...(s[symbol] || {}),
+          open: true,
+          loading: false,
+          summary: j.summary || "(요약 없음)",
+          error: "",
+        },
+      }));
+    } catch (e) {
+      setSumState((s) => ({
+        ...s,
+        [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) },
+      }));
+    }
+  }
+
+  function renderInlineSummary(symbol) {
+    const st = sumState[symbol] || {};
+    if (!st.open) return null;
+    return (
+      <div className="inline-summary">
+        {st.loading && <div className="muted">요약 불러오는 중…</div>}
+        {st.error && <div className="text-danger">오류: {st.error}</div>}
+        {!st.loading && !st.error && (
+          <div className="ai-content" style={{ whiteSpace: "pre-wrap" }}>
+            {st.summary}
+          </div>
+        )}
+        <div className="inline-summary-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={() =>
+              setSumState((s) => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }))
+            }
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const out = await Promise.all(
+          SYMBOLS.map(async (s) => {
+            try {
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, {
+                cache: "no-store",
+              });
+              const j = await r.json();
+              if (!r.ok) throw new Error(j?.error || "stocks api error");
+              const name = j.longName || j.name || NAME_MAP[s] || s;
+              const price =
+                j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
+              let pct = 0;
+              if (
+                isFinite(Number(price)) &&
+                isFinite(Number(prevClose)) &&
+                Number(prevClose) !== 0
+              ) {
+                pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
+              } else if (isFinite(Number(j.changePercent))) {
+                pct = Number(j.changePercent);
+              }
+              return {
+                symbol: s,
+                name,
+                price: isFinite(Number(price)) ? Number(price) : null,
+                pct,
+              };
+            } catch (e) {
+              return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
+            }
+          })
+        );
+        setRows(out);
+      } catch (e) {
+        setErr(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
+  const aiPayload = useMemo(
+    () => ({ rows: sorted.filter((r) => Math.abs(r.pct) >= 4) }),
+    [JSON.stringify(sorted)]
+  );
+
+  return (
+    <section className="section">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">일일 리테일러 주가 등락률</h2>
+          <p className="section-subtitle">전일 종가 대비 변동률</p>
+        </div>
+      </div>
+
+      {loading && <div>불러오는 중...</div>}
+      {err && <div className="text-danger">에러: {err}</div>}
+
+      {!loading && !err && (
+        <>
+          <div className="grid grid-4">
+            {sorted.map((r) => (
+              <div key={r.symbol} className="card stock-card">
+                <div className="stock-header">
+                  <div>
+                    <div className="stock-name">{r.name}</div>
+                    <div className="stock-symbol">{r.symbol}</div>
+                  </div>
+                  <div className="stock-links">
+                    <a
+                      href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="stock-link"
+                    >
+                      Yahoo
+                    </a>
+                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link">
+                      AI 분석
+                    </a>
+                    <button className="stock-link" onClick={() => loadSummary(r.symbol)}>
+                      요약
+                    </button>
+                  </div>
+                </div>
+                <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
+                <div className={`metric-change ${r.pct >= 0 ? "positive" : "negative"}`}>
+                  {fmtSignPct(r.pct)}
+                </div>
+                <div className="meta small">변동률은 전일 종가 대비</div>
+
+                {renderInlineSummary(r.symbol)}
+              </div>
+            ))}
+          </div>
+
+          <AIBox block="stocks" payload={aiPayload} />
+        </>
+      )}
+    </section>
+  );
+}
+
+/* =========================
+   4) 뉴스 탭 — 해외 / 국내 / AI 요약
+========================= */
+function NewsTabsSection() {
+  const [activeTab, setActiveTab] = useState("overseas"); // overseas | korea
+  const [newsItems, setNewsItems] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsErr, setNewsErr] = useState("");
+  const [collapsed, setCollapsed] = useState(true);
+
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiErr, setAiErr] = useState("");
+  const [aiForeign, setAiForeign] = useState(null);
+  const [aiKorea, setAiKorea] = useState(null);
+
+  async function loadAISummary() {
+    try {
+      setAiLoading(true);
+      setAiErr("");
+      setAiForeign(null);
+      setAiKorea(null);
+      setAiOpen(true);
+      const [rf, rk] = await Promise.all([fetch("/api/ai-news-foreign"), fetch("/api/ai-news-korea")]);
+      const jf = await rf.json();
+      const jk = await rk.json();
+      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
+      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
+      setAiForeign(jf);
+      setAiKorea(jk);
+    } catch (e) {
+      setAiErr(String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function load(tab = activeTab) {
+    try {
+      setNewsLoading(true);
+      setNewsErr("");
+      setNewsItems([]);
+      let url = "";
+      if (tab === "overseas") {
+        url =
+          "/api/news?" +
+          new URLSearchParams({
+            industry: "fashion|apparel|garment|textile",
+            language: "en",
+            days: "7",
+            limit: "40",
+            domains: FOREIGN_DOMAINS,
+          }).toString();
+      } else {
+        url =
+          "/api/news-kr-rss?" +
+          new URLSearchParams({
+            feeds: "http://www.ktnews.com/rss/allArticle.xml",
+            days: "1",
+            limit: "200",
+          }).toString();
+      }
+      const r = await fetch(url, { cache: "no-store" });
+      const arr = r.ok ? await r.json() : [];
+      const items = (arr || []).map((n) => ({
+        title: n.title,
+        url: n.url || n.link,
+        source:
+          (typeof n.source === "string"
+            ? n.source
+            : n.source && (n.source.name || n.source.id)
+            ? String(n.source.name || n.source.id)
+            : "") || "",
+        publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
+      }));
+      setNewsItems(items);
+      setCollapsed(true);
+    } catch (e) {
+      setNewsErr(String(e));
+    } finally {
+      setNewsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load("overseas");
+  }, []);
+
+  const rendered = collapsed ? newsItems.slice(0, 5) : newsItems;
+
+  return (
+    <section className="section">
+      <div className="section-header">
+        <h2 className="section-title">뉴스</h2>
+        <div className="tab-nav">
+          <button
+            onClick={() => {
+              setActiveTab("overseas");
+              load("overseas");
+            }}
+            className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
+          >
+            해외뉴스
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("korea");
+              load("korea");
+            }}
+            className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
+          >
+            국내뉴스
+          </button>
+          <button onClick={loadAISummary} className="tab-btn">
+            AI 요약
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        {newsLoading && <div className="muted">불러오는 중…</div>}
+        {newsErr && <div className="text-danger">에러: {newsErr}</div>}
+        {!newsLoading && !newsErr && (
+          <>
+            {rendered.length === 0 ? (
+              <div className="muted">관련 기사가 아직 없어요.</div>
+            ) : (
+              <ol className="news-list">
+                {rendered.map((it, i) => (
+                  <li key={i} className="news-item">
+                    <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
+                      {it.title}
+                    </a>
+                    {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
+                    <div className="news-meta source">{it.source}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {newsItems.length > 5 && (
+              <div className="more-row">
+                <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
+                  {collapsed ? "더보기" : "접기"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {aiOpen && (
+        <div id="aiNewsSection" className="ai-panel">
+          <div className="ai-panel-header">
+            <h3>뉴스 AI 분석</h3>
+            <div className="ai-panel-actions">
+              <div className="ai-meta">
+                {aiForeign?.generatedAt
+                  ? `GEMINI 2.5 · ${new Date(aiForeign.generatedAt).toLocaleString("ko-KR", {
+                      timeZone: "Asia/Seoul",
+                    })}`
+                  : "GEMINI 2.5"}
+              </div>
+              <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
+                {aiLoading ? "요약 중..." : "다시 요약"}
+              </button>
+            </div>
+          </div>
+
+          {aiErr && <div className="text-danger">에러: {aiErr}</div>}
+          {!aiErr && (
+            <div className="grid grid-2">
+              <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
+              <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LinkifyCitations(text = "") {
+  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
+    const id = String(grp).split("-")[0];
+    return `<a href="#ref-${id}" class="ref">[${grp}]</a>`;
+  });
+}
+function splitSections(md = "") {
+  const lines = String(md).split(/\r?\n/);
+  const out = [];
+  let title = null,
+    buf = [];
+  const push = () => {
+    if (title || buf.length) out.push({ title: title || "", body: buf.join("\n") });
+  };
+  for (const ln of lines) {
+    if (/^###\s+/.test(ln)) {
+      push();
+      title = ln.replace(/^###\s+/, "").trim();
+      buf = [];
+    } else buf.push(ln);
+  }
+  push();
+  return out;
+}
+function AISummaryColumn({ title, data }) {
+  const sections = React.useMemo(() => splitSections(data?.summary || ""), [data?.summary]);
+  return (
+    <div className="card">
+      <h4 className="ai-col-title">{title}</h4>
+      {!data ? (
+        <div className="muted">요약을 불러오는 중…</div>
+      ) : (
+        <div className="ai-col">
+          <div className="ai-col-body">
+            {sections.map((sec, idx) => (
+              <section key={idx} className="ai-col-section">
+                {sec.title ? (
+                  <h5 className="ai-col-section-title">
+                    {sec.title === "Implications for Hansoll"
+                      ? "한솔섬유 전략에 미치는 시사점"
+                      : sec.title}
+                  </h5>
+                ) : null}
+                <div
+                  className="ai-col-section-text"
+                  dangerouslySetInnerHTML={{
+                    __html: LinkifyCitations(sec.body)
+                      .replace(/^-\s+/gm, "• ")
+                      .replace(/\n/g, "<br/>"),
+                  }}
+                />
+              </section>
+            ))}
+          </div>
+          <aside className="ai-col-aside">
+            <h5 className="ai-col-aside-title">참조 뉴스</h5>
+            <ol className="ai-col-refs">
+              {(data.items || []).slice(0, 20).map((it, i) => (
+                <li id={`ref-${i + 1}`} key={i} className="ai-col-ref">
+                  <a href={it.link} target="_blank" rel="noreferrer" className="news-title">
+                    {it.title}
+                  </a>
+                  {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
+                  <div className="news-meta source">{it.source || ""}</div>
+                </li>
+              ))}
+            </ol>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================
    페이지
 ========================= */
 export default function Home() {
   return (
     <>
       <Head>
-        <title>Hansoll Market Intelligence | Executive Dashboard</title>
+        <title>Hansol Market Intelligence | Executive Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </Head>
 
       <HeaderBar />
@@ -474,7 +1089,7 @@ export default function Home() {
       </main>
 
       <footer className="footer">
-        <p className="footer-text">© Hansoll Textile — Market Intelligence Dashboard</p>
+        <p className="footer-text">© Hansol Textile — Market Intelligence Dashboard</p>
       </footer>
     </>
   );
