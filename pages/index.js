@@ -2,13 +2,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
-// 도메인 필터 보강: BoF/Just-Style + www/오타(bestoffashion)까지 포함
 const FOREIGN_DOMAINS =
   process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
   [
     "businessoffashion.com",
     "www.businessoffashion.com",
-    "bestoffashion.com",       // 사용자가 언급한 도메인도 포함
+    "bestoffashion.com",       // 사용자 언급 도메인도 포함
     "just-style.com",
     "www.just-style.com",
   ].join(",");
@@ -155,7 +154,6 @@ function ProcurementTopBlock() {
   const [data, setData] = useState(defaultData);
   const [openEdit, setOpenEdit] = useState(false);
 
-  // Load from Google Sheet via API (fallback to localStorage if fails)
   useEffect(() => {
     (async () => {
       try {
@@ -230,11 +228,10 @@ function ProcurementTopBlock() {
     </div>
   );
 
-  // 팔레트(현재 화면 톤과 조화)
   const SUPPLY_COLORS = {
-    domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)", // indigo-violet
-    third: "linear-gradient(90deg,#10b981,#34d399)", // emerald
-    local: "linear-gradient(90deg,#f59e0b,#f97316)", // amber-orange
+    domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)",
+    third: "linear-gradient(90deg,#10b981,#34d399)",
+    local: "linear-gradient(90deg,#f59e0b,#f97316)",
   };
 
   return (
@@ -255,51 +252,26 @@ function ProcurementTopBlock() {
       <div className="card card-premium">
         <div className="grid grid-5">
           <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
-          <Card
-            title="총 부자재매입액"
-            value={fmtCurrency(data.materialSpend, data.currency)}
-          />
+          <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
           <Card title="매출 대비 부자재 매입비중" value={fmtSignPct(ratio, 1)}>
             <div className="progress">
-              <div
-                className="progress-fill"
-                style={{ width: `${ratio}%` }}
-                aria-label="부자재 매입 비중"
-              />
+              <div className="progress-fill" style={{ width: `${ratio}%` }} aria-label="부자재 매입 비중" />
             </div>
           </Card>
-          <Card
-            title="총 Cost Save"
-            value={fmtCurrency(data.costSave || 0, data.currency)}
-          />
+          <Card title="총 Cost Save" value={fmtCurrency(data.costSave || 0, data.currency)} />
           <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
         </div>
 
         <div className="subsection">
           <h3 className="subsection-title">공급현황 분석</h3>
           <div className="stack-bar" role="img" aria-label="공급현황(국내/3국/현지)">
-            <div
-              className="stack-segment seg-domestic"
-              title={`국내 ${fmtNum(supply.domestic, 1)}%`}
-              style={{ width: `${supply.domestic}%`, background: SUPPLY_COLORS.domestic }}
-            />
-            <div
-              className="stack-segment seg-third"
-              title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`}
-              style={{ width: `${supply.thirdCountry}%`, background: SUPPLY_COLORS.third }}
-            />
-            <div
-              className="stack-segment seg-local"
-              title={`현지 ${fmtNum(supply.local, 1)}%`}
-              style={{ width: `${supply.local}%`, background: SUPPLY_COLORS.local }}
-            />
+            <div className="stack-segment seg-domestic" title={`국내 ${fmtNum(supply.domestic, 1)}%`} style={{ width: `${supply.domestic}%`, background: SUPPLY_COLORS.domestic }} />
+            <div className="stack-segment seg-third" title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`} style={{ width: `${supply.thirdCountry}%`, background: SUPPLY_COLORS.third }} />
+            <div className="stack-segment seg-local" title={`현지 ${fmtNum(supply.local, 1)}%`} style={{ width: `${supply.local}%`, background: SUPPLY_COLORS.local }} />
           </div>
           <div className="legend">
             <div className="legend-item">
-              <span
-                className="legend-dot dot-domestic"
-                style={{ background: SUPPLY_COLORS.domestic }}
-              />
+              <span className="legend-dot dot-domestic" style={{ background: SUPPLY_COLORS.domestic }} />
               <span>국내 {fmtNum(supply.domestic, 1)}%</span>
             </div>
             <div className="legend-item">
@@ -320,31 +292,15 @@ function ProcurementTopBlock() {
         <div className="edit-box">
           <div className="form-row">
             <label className="form-label">기간 표시</label>
-            <input
-              className="form-input"
-              value={data.periodLabel || ""}
-              onChange={(e) =>
-                setData((d) => ({ ...d, periodLabel: e.target.value }))
-              }
-              placeholder="예: 2025-09"
-            />
+            <input className="form-input" value={data.periodLabel || ""} onChange={(e) => setData((d) => ({ ...d, periodLabel: e.target.value }))} placeholder="예: 2025-09" />
           </div>
           <div className="form-row">
             <label className="form-label">방식</label>
-            <input
-              className="form-input"
-              value={data.period || ""}
-              onChange={(e) => setData((d) => ({ ...d, period: e.target.value }))}
-              placeholder="월간 / 주간 / 일간 등"
-            />
+            <input className="form-input" value={data.period || ""} onChange={(e) => setData((d) => ({ ...d, period: e.target.value }))} placeholder="월간 / 주간 / 일간 등" />
           </div>
           <div className="form-row">
             <label className="form-label">통화</label>
-            <select
-              className="form-input"
-              value={data.currency}
-              onChange={(e) => setData((d) => ({ ...d, currency: e.target.value }))}
-            >
+            <select className="form-input" value={data.currency} onChange={(e) => setData((d) => ({ ...d, currency: e.target.value }))}>
               <option value="USD">USD</option>
               <option value="KRW">KRW</option>
             </select>
@@ -353,39 +309,15 @@ function ProcurementTopBlock() {
           <div className="grid grid-2">
             <div className="form-row">
               <label className="form-label">총 매출액</label>
-              <input
-                className="form-input"
-                type="number"
-                value={data.revenue}
-                onChange={(e) =>
-                  setData((d) => ({ ...d, revenue: Number(e.target.value) }))
-                }
-              />
+              <input className="form-input" type="number" value={data.revenue} onChange={(e) => setData((d) => ({ ...d, revenue: Number(e.target.value) }))} />
             </div>
             <div className="form-row">
               <label className="form-label">총 부자재매입액</label>
-              <input
-                className="form-input"
-                type="number"
-                value={data.materialSpend}
-                onChange={(e) =>
-                  setData((d) => ({
-                    ...d,
-                    materialSpend: Number(e.target.value),
-                  }))
-                }
-              />
+              <input className="form-input" type="number" value={data.materialSpend} onChange={(e) => setData((d) => ({ ...d, materialSpend: Number(e.target.value) }))} />
             </div>
             <div className="form-row">
               <label className="form-label">총 Cost Save</label>
-              <input
-                className="form-input"
-                type="number"
-                value={data.costSave}
-                onChange={(e) =>
-                  setData((d) => ({ ...d, costSave: Number(e.target.value) }))
-                }
-              />
+              <input className="form-input" type="number" value={data.costSave} onChange={(e) => setData((d) => ({ ...d, costSave: Number(e.target.value) }))} />
             </div>
           </div>
 
@@ -394,68 +326,23 @@ function ProcurementTopBlock() {
             <div className="grid grid-3">
               <div className="form-row">
                 <label className="form-label">국내(%)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={data.supplyBreakdown.domestic}
-                  onChange={(e) =>
-                    setData((d) => ({
-                      ...d,
-                      supplyBreakdown: {
-                        ...d.supplyBreakdown,
-                        domestic: Number(e.target.value),
-                      },
-                    }))
-                  }
-                />
+                <input className="form-input" type="number" value={data.supplyBreakdown.domestic} onChange={(e) => setData((d) => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} />
               </div>
               <div className="form-row">
                 <label className="form-label">3국(%)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={data.supplyBreakdown.thirdCountry}
-                  onChange={(e) =>
-                    setData((d) => ({
-                      ...d,
-                      supplyBreakdown: {
-                        ...d.supplyBreakdown,
-                        thirdCountry: Number(e.target.value),
-                      },
-                    }))
-                  }
-                />
+                <input className="form-input" type="number" value={data.supplyBreakdown.thirdCountry} onChange={(e) => setData((d) => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, thirdCountry: Number(e.target.value) } }))} />
               </div>
               <div className="form-row">
                 <label className="form-label">현지(%)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  value={data.supplyBreakdown.local}
-                  onChange={(e) =>
-                    setData((d) => ({
-                      ...d,
-                      supplyBreakdown: {
-                        ...d.supplyBreakdown,
-                        local: Number(e.target.value),
-                      },
-                    }))
-                  }
-                />
+                <input className="form-input" type="number" value={data.supplyBreakdown.local} onChange={(e) => setData((d) => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) } }))} />
               </div>
             </div>
           </div>
 
           <div className="form-actions">
-            <button onClick={save} className="btn btn-primary">
-              저장
-            </button>
-            <button onClick={() => setOpenEdit(false)} className="btn btn-secondary">
-              닫기
-            </button>
-            <button onClick={reset} className="btn btn-danger">
-              초기화
-            </button>
+            <button onClick={save} className="btn btn-primary">저장</button>
+            <button onClick={() => setOpenEdit(false)} className="btn btn-secondary">닫기</button>
+            <button onClick={reset} className="btn btn-danger">초기화</button>
           </div>
         </div>
       )}
@@ -464,7 +351,7 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
+   2) 주요지표
 ========================= */
 function Sparkline({ series = [], width = 110, height = 32 }) {
   if (!series || series.length < 2) return null;
@@ -472,22 +359,14 @@ function Sparkline({ series = [], width = 110, height = 32 }) {
   const max = Math.max(...series);
   const span = max - min || 1;
   const step = width / (series.length - 1);
-  const pts = series
-    .map((v, i) => {
-      const x = i * step;
-      const y = height - ((v - min) / span) * height;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const pts = series.map((v, i) => {
+    const x = i * step;
+    const y = height - ((v - min) / span) * height;
+    return `${x},${y}`;
+  }).join(" ");
   const up = series[series.length - 1] >= series[0];
-
   return (
-    <svg
-      width={width}
-      height={height}
-      className={`sparkline ${up ? "up" : "down"}`}
-      aria-hidden="true"
-    >
+    <svg width={width} height={height} className={`sparkline ${up ? "up" : "down"}`} aria-hidden="true">
       <polyline fill="none" stroke="currentColor" strokeWidth="2" points={pts} />
     </svg>
   );
@@ -504,9 +383,7 @@ function IndicatorsSection() {
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "지표 API 오류");
         setState({ loading: false, data: j, error: "" });
-        setLastUpdated(
-          j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
-        );
+        setLastUpdated(j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString());
       } catch (e) {
         setState({ loading: false, data: null, error: String(e) });
       }
@@ -521,8 +398,7 @@ function IndicatorsSection() {
     t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
     inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
     unemployment: "https://fred.stlouisfed.org/series/UNRATE",
-    ism_retail:
-      "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
+    ism_retail: "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
   };
   const curated = [
     { key: "wti", title: "WTI (USD/bbl)" },
@@ -554,11 +430,7 @@ function IndicatorsSection() {
       <div className="section-header">
         <div>
           <h2 className="section-title">주요 지표</h2>
-          {lastUpdated && (
-            <p className="section-subtitle">
-              전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
-            </p>
-          )}
+          {lastUpdated && <p className="section-subtitle">전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}</p>}
         </div>
       </div>
 
@@ -575,52 +447,20 @@ function IndicatorsSection() {
               const deltaPct = node?.changePercent ?? null;
               const yoyPct = node?.yoyPercent ?? null;
               const href = LINK[c.key];
-              const up =
-                deltaPct != null
-                  ? deltaPct >= 0
-                  : s.length >= 2
-                  ? s[s.length - 1] >= s[0]
-                  : true;
+              const up = deltaPct != null ? deltaPct >= 0 : s.length >= 2 ? s[s.length - 1] >= s[0] : true;
               const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
-              const lastDateStr =
-                lastDate && isFinite(lastDate.getTime())
-                  ? lastDate.toISOString().slice(0, 10)
-                  : null;
+              const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0, 10) : null;
 
               return (
-                <a
-                  key={c.key}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="card link-card"
-                  title="원본 데이터 열기"
-                >
+                <a key={c.key} href={href} target="_blank" rel="noreferrer" className="card link-card" title="원본 데이터 열기">
                   <div className="metric-label">{c.title}</div>
                   <div className="metric-value">{v != null ? fmtNum(v) : "-"}</div>
-
-                  <div
-                    className={`metric-change ${
-                      deltaPct == null ? "" : up ? "positive" : "negative"
-                    }`}
-                  >
+                  <div className={`metric-change ${deltaPct == null ? "" : up ? "positive" : "negative"}`}>
                     {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                   </div>
-
-                  {yoyPct != null && (
-                    <div
-                      className={`metric-change ${
-                        yoyPct >= 0 ? "positive" : "negative"
-                      }`}
-                    >
-                      YoY: {fmtSignPct(yoyPct)}
-                    </div>
-                  )}
-
+                  {yoyPct != null && <div className={`metric-change ${yoyPct >= 0 ? "positive" : "negative"}`}>YoY: {fmtSignPct(yoyPct)}</div>}
                   <Sparkline series={s || []} />
-                  {lastDateStr && (
-                    <div className="meta small">업데이트: {lastDateStr}</div>
-                  )}
+                  {lastDateStr && <div className="meta small">업데이트: {lastDateStr}</div>}
                   <div className="meta small">원본 보기 ↗</div>
                 </a>
               );
@@ -635,7 +475,7 @@ function IndicatorsSection() {
 }
 
 /* =========================
-   3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
+   3) 일일 리테일러 주가 등락률
 ========================= */
 const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
 const NAME_MAP = {
@@ -660,31 +500,19 @@ function StocksSection() {
         const out = await Promise.all(
           SYMBOLS.map(async (s) => {
             try {
-              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, {
-                cache: "no-store",
-              });
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
               const j = await r.json();
               if (!r.ok) throw new Error(j?.error || "stocks api error");
               const name = j.longName || j.name || NAME_MAP[s] || s;
-              const price =
-                j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const price = j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
               let pct = 0;
-              if (
-                isFinite(Number(price)) &&
-                isFinite(Number(prevClose)) &&
-                Number(prevClose) !== 0
-              ) {
+              if (isFinite(Number(price)) && isFinite(Number(prevClose)) && Number(prevClose) !== 0) {
                 pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
               } else if (isFinite(Number(j.changePercent))) {
                 pct = Number(j.changePercent);
               }
-              return {
-                symbol: s,
-                name,
-                price: isFinite(Number(price)) ? Number(price) : null,
-                pct,
-              };
+              return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct };
             } catch (e) {
               return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
             }
@@ -700,10 +528,7 @@ function StocksSection() {
   }, []);
 
   const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
-  const aiPayload = useMemo(
-    () => ({ rows: sorted.filter((r) => Math.abs(r.pct) >= 4) }),
-    [JSON.stringify(sorted)]
-  );
+  const aiPayload = useMemo(() => ({ rows: sorted.filter((r) => Math.abs(r.pct) >= 4) }), [JSON.stringify(sorted)]);
 
   return (
     <section className="section">
@@ -728,34 +553,16 @@ function StocksSection() {
                     <div className="stock-symbol">{r.symbol}</div>
                   </div>
                   <div className="stock-links">
-                    <a
-                      href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="stock-link"
-                    >
-                      Yahoo
-                    </a>
-                    {/* AI 분석은 별도 페이지에서 확인 */}
-                    <a
-                      href={`/company/${encodeURIComponent(r.symbol)}`}
-                      className="stock-link ai"
-                      title="AI 분석 페이지로 이동"
-                    >
-                      AI 분석
-                    </a>
+                    <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`} target="_blank" rel="noreferrer" className="stock-link">Yahoo</a>
+                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link ai" title="AI 분석 페이지로 이동">AI 분석</a>
                   </div>
                 </div>
                 <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                <div className={`metric-change ${r.pct >= 0 ? "positive" : "negative"}`}>
-                  {fmtSignPct(r.pct)}
-                </div>
+                <div className={`metric-change ${r.pct >= 0 ? "positive" : "negative"}`}>{fmtSignPct(r.pct)}</div>
                 <div className="meta small">변동률은 전일 종가 대비</div>
               </div>
             ))}
           </div>
-
-          {/* 큰 변동 종목 요약은 유지(카드 내 요약 버튼은 제거됨) */}
           <AIBox block="stocks" payload={aiPayload} />
         </>
       )}
@@ -772,9 +579,8 @@ function NewsTabsSection() {
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsErr, setNewsErr] = useState("");
 
-  // 전체 뉴스 섹션 펼침/접힘 (요청사항)
-  const [listOpen, setListOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(true);
+  const [listOpen, setListOpen] = useState(false); // 전체 목록 접힘/펼침
+  const [collapsed, setCollapsed] = useState(true); // 10개 이상일 때 더보기
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -782,28 +588,6 @@ function NewsTabsSection() {
   const [aiForeign, setAiForeign] = useState(null);
   const [aiKorea, setAiKorea] = useState(null);
 
-  async function loadAISummary() {
-    try {
-      setAiLoading(true);
-      setAiErr("");
-      setAiForeign(null);
-      setAiKorea(null);
-      setAiOpen(true);
-      const [rf, rk] = await Promise.all([fetch("/api/ai-news-foreign"), fetch("/api/ai-news-korea")]);
-      const jf = await rf.json();
-      const jk = await rk.json();
-      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
-      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
-      setAiForeign(jf);
-      setAiKorea(jk);
-    } catch (e) {
-      setAiErr(String(e));
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
-  // --- 해외뉴스(도메인 기반, 최신순, 부족 시 기간 확장) ---
   const parseMs = (s) => (isNaN(Date.parse(s)) ? 0 : Date.parse(s));
   const normalizeItem = (n) => {
     const urlStr = n.url || n.link || "";
@@ -826,35 +610,72 @@ function NewsTabsSection() {
     };
   };
 
-  async function fetchOverseasAt(days, limit = 50) {
-    const url =
-      "/api/news?" +
-      new URLSearchParams({
-        language: "en",
-        days: String(days),
-        limit: String(limit),
-        domains: FOREIGN_DOMAINS,
-      }).toString();
+  // /api/news가 파라미터 유효성(예: industry/q 필수)을 요구할 수 있어 폴백 시퀀스로 재시도
+  async function requestNews(params) {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === "") return;
+      qs.set(k, String(v));
+    });
+    const url = `/api/news?${qs.toString()}`;
     const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) return [];
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      throw new Error(`[${r.status}] ${t.slice(0, 180)}`);
+    }
     const arr = (await r.json()) || [];
     return arr.map(normalizeItem);
   }
 
-  async function loadOverseas() {
-    // 1차: 최근 7일
-    let items = await fetchOverseasAt(7, 50);
-    items.sort((a, b) => b._ts - a._ts);
-    // 10개 미만이면 2차: 최근 30일 병합
-    if (items.length < 10) {
-      const more = await fetchOverseasAt(30, 80);
-      const byUrl = new Map();
-      [...items, ...more].forEach((x) => {
-        if (!byUrl.has(x.url)) byUrl.set(x.url, x);
-      });
-      items = Array.from(byUrl.values()).sort((a, b) => b._ts - a._ts);
+  async function loadOverseasRobust() {
+    const tries = [
+      // 1) 권장: industry + domains (7일)
+      { language: "en", days: 7,  limit: 25, industry: "fashion|apparel|garment|textile", domains: FOREIGN_DOMAINS },
+      // 2) 기간 확장
+      { language: "en", days: 14, limit: 25, industry: "fashion|apparel|garment|textile", domains: FOREIGN_DOMAINS },
+      { language: "en", days: 30, limit: 25, industry: "fashion|apparel|garment|textile", domains: FOREIGN_DOMAINS },
+      // 3) 도메인 제거(서비스가 domains 미지원/차단일 때)
+      { language: "en", days: 14, limit: 25, industry: "fashion|apparel|garment|textile" },
+      { language: "en", days: 30, limit: 25, industry: "fashion|apparel|garment|textile" },
+    ];
+    let collected = [];
+    let lastError = "";
+    for (const p of tries) {
+      try {
+        const items = await requestNews(p);
+        collected = items.sort((a, b) => b._ts - a._ts);
+        if (collected.length >= 10) break; // 최소 10개 확보되면 종료
+      } catch (e) {
+        lastError = String(e);
+        // 다음 시도
+      }
     }
-    return items.slice(0, 20);
+    if (collected.length === 0 && lastError) {
+      throw new Error(lastError); // 최종 에러 노출
+    }
+    // 최대 20개까지만 표시
+    return collected.slice(0, 20);
+  }
+
+  async function loadAISummary() {
+    try {
+      setAiLoading(true);
+      setAiErr("");
+      setAiForeign(null);
+      setAiKorea(null);
+      setAiOpen(true);
+      const [rf, rk] = await Promise.all([fetch("/api/ai-news-foreign"), fetch("/api/ai-news-korea")]);
+      const jf = await rf.json();
+      const jk = await rk.json();
+      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
+      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
+      setAiForeign(jf);
+      setAiKorea(jk);
+    } catch (e) {
+      setAiErr(String(e));
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   async function load(tab = activeTab) {
@@ -864,11 +685,10 @@ function NewsTabsSection() {
       setNewsItems([]);
 
       if (tab === "overseas") {
-        const items = await loadOverseas();
+        const items = await loadOverseasRobust();
         setNewsItems(items);
         setCollapsed(true);
       } else {
-        // 국내
         const url =
           "/api/news-kr-rss?" +
           new URLSearchParams({
@@ -877,7 +697,8 @@ function NewsTabsSection() {
             limit: "200",
           }).toString();
         const r = await fetch(url, { cache: "no-store" });
-        const arr = r.ok ? await r.json() : [];
+        if (!r.ok) throw new Error(`[${r.status}] ${await r.text()}`);
+        const arr = (await r.json()) || [];
         const items = (arr || []).map(normalizeItem).sort((a, b) => b._ts - a._ts);
         setNewsItems(items);
         setCollapsed(true);
@@ -894,8 +715,6 @@ function NewsTabsSection() {
   }, []);
 
   const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
-
-  // 탭별 고정 출처 라벨 (요청 사항 반영)
   const sourceFixed =
     activeTab === "overseas"
       ? "출처: businessoffashion.com / just-style.com"
@@ -909,49 +728,21 @@ function NewsTabsSection() {
           <p className="section-subtitle">{sourceFixed}</p>
         </div>
         <div className="tab-nav">
-          <button
-            onClick={() => {
-              setActiveTab("overseas");
-              load("overseas");
-            }}
-            className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
-          >
-            해외뉴스
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("korea");
-              load("korea");
-            }}
-            className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
-          >
-            국내뉴스
-          </button>
+          <button onClick={() => { setActiveTab("overseas"); load("overseas"); }} className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}>해외뉴스</button>
+          <button onClick={() => { setActiveTab("korea"); load("korea"); }} className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}>국내뉴스</button>
 
-          {/* 뉴스 전체 펼침/접힘 토글 버튼 */}
-          <button
-            onClick={() => setListOpen((v) => !v)}
-            className="btn btn-secondary"
-            style={{ marginLeft: 8 }}
-            title="뉴스 목록 열기/접기"
-          >
+          {/* 목록 접힘/펼침 */}
+          <button onClick={() => setListOpen((v) => !v)} className="btn btn-secondary" style={{ marginLeft: 8 }} title="뉴스 목록 열기/접기">
             {listOpen ? "뉴스 목록 접기" : "뉴스 목록 열기"}
           </button>
 
-          {/* 필요 시 AI 요약 */}
-          <button
-            onClick={loadAISummary}
-            className="btn btn-secondary"
-            disabled={aiLoading}
-            style={{ marginLeft: 8 }}
-            title="AI 요약 열기"
-          >
+          {/* AI 요약 */}
+          <button onClick={loadAISummary} className="btn btn-secondary" disabled={aiLoading} style={{ marginLeft: 8 }} title="AI 요약 열기">
             {aiLoading ? "AI 요약 중…" : "AI 요약 보기"}
           </button>
         </div>
       </div>
 
-      {/* 목록은 버튼으로 펼쳐짐 */}
       {listOpen && (
         <div className="card">
           {newsLoading && <div className="muted">불러오는 중…</div>}
@@ -992,9 +783,7 @@ function NewsTabsSection() {
             <div className="ai-panel-actions">
               <div className="ai-meta">
                 {aiForeign?.generatedAt
-                  ? `GEMINI 2.5 · ${new Date(aiForeign.generatedAt).toLocaleString("ko-KR", {
-                      timeZone: "Asia/Seoul",
-                    })}`
+                  ? `GEMINI 2.5 · ${new Date(aiForeign.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
                   : "GEMINI 2.5"}
               </div>
               <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
@@ -1025,17 +814,13 @@ function LinkifyCitations(text = "") {
 function splitSections(md = "") {
   const lines = String(md).split(/\r?\n/);
   const out = [];
-  let title = null,
-    buf = [];
+  let title = null, buf = [];
   const push = () => {
     if (title || buf.length) out.push({ title: title || "", body: buf.join("\n") });
   };
   for (const ln of lines) {
-    if (/^###\s+/.test(ln)) {
-      push();
-      title = ln.replace(/^###\s+/, "").trim();
-      buf = [];
-    } else buf.push(ln);
+    if (/^###\s+/.test(ln)) { push(); title = ln.replace(/^###\s+/, "").trim(); buf = []; }
+    else buf.push(ln);
   }
   push();
   return out;
@@ -1054,17 +839,13 @@ function AISummaryColumn({ title, data }) {
               <section key={idx} className="ai-col-section">
                 {sec.title ? (
                   <h5 className="ai-col-section-title">
-                    {sec.title === "Implications for Hansoll"
-                      ? "한솔섬유 전략에 미치는 시사점"
-                      : sec.title}
+                    {sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}
                   </h5>
                 ) : null}
                 <div
                   className="ai-col-section-text"
                   dangerouslySetInnerHTML={{
-                    __html: LinkifyCitations(sec.body)
-                      .replace(/^-\s+/gm, "• ")
-                      .replace(/\n/g, "<br/>"),
+                    __html: LinkifyCitations(sec.body).replace(/^-\s+/gm, "• ").replace(/\n/g, "<br/>"),
                   }}
                 />
               </section>
@@ -1099,11 +880,7 @@ export default function Home() {
       <Head>
         <title>Hansoll Market Intelligence | Executive Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-          rel="preconnect"
-          href="https://fonts.googleapis.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
