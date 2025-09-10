@@ -115,7 +115,7 @@ function HeaderBar() {
         <div className="logo">
           <div className="logo-mark">H</div>
           <div>
-            <div className="logo-text">Hansol Market Intelligence</div>
+            <div className="logo-text">Hansoll Market Intelligence</div>
             <div className="logo-subtitle">Executive Dashboard</div>
           </div>
         </div>
@@ -223,6 +223,13 @@ function ProcurementTopBlock() {
     </div>
   );
 
+  // 팔레트(현재 화면 톤과 조화)
+  const SUPPLY_COLORS = {
+    domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)", // indigo-violet
+    third: "linear-gradient(90deg,#10b981,#34d399)",    // emerald
+    local: "linear-gradient(90deg,#f59e0b,#f97316)",    // amber-orange
+  };
+
   return (
     <section className="section">
       <div className="section-header">
@@ -267,30 +274,30 @@ function ProcurementTopBlock() {
             <div
               className="stack-segment seg-domestic"
               title={`국내 ${fmtNum(supply.domestic, 1)}%`}
-              style={{ width: `${supply.domestic}%` }}
+              style={{ width: `${supply.domestic}%`, background: SUPPLY_COLORS.domestic }}
             />
             <div
               className="stack-segment seg-third"
               title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`}
-              style={{ width: `${supply.thirdCountry}%` }}
+              style={{ width: `${supply.thirdCountry}%`, background: SUPPLY_COLORS.third }}
             />
             <div
               className="stack-segment seg-local"
               title={`현지 ${fmtNum(supply.local, 1)}%`}
-              style={{ width: `${supply.local}%` }}
+              style={{ width: `${supply.local}%`, background: SUPPLY_COLORS.local }}
             />
           </div>
           <div className="legend">
             <div className="legend-item">
-              <span className="legend-dot dot-domestic" />
+              <span className="legend-dot dot-domestic" style={{ background: SUPPLY_COLORS.domestic }} />
               <span>국내 {fmtNum(supply.domestic, 1)}%</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot dot-third" />
+              <span className="legend-dot dot-third" style={{ background: SUPPLY_COLORS.third }} />
               <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
             </div>
             <div className="legend-item">
-              <span className="legend-dot dot-local" />
+              <span className="legend-dot dot-local" style={{ background: SUPPLY_COLORS.local }} />
               <span>현지 {fmtNum(supply.local, 1)}%</span>
             </div>
           </div>
@@ -637,64 +644,6 @@ function StocksSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // (옵션) 종목별 요약 상태
-  const [sumState, setSumState] = useState({});
-
-  async function loadSummary(symbol) {
-    setSumState((s) => ({
-      ...s,
-      [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" },
-    }));
-    try {
-      const r = await fetch(
-        `/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`
-      );
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
-      setSumState((s) => ({
-        ...s,
-        [symbol]: {
-          ...(s[symbol] || {}),
-          open: true,
-          loading: false,
-          summary: j.summary || "(요약 없음)",
-          error: "",
-        },
-      }));
-    } catch (e) {
-      setSumState((s) => ({
-        ...s,
-        [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) },
-      }));
-    }
-  }
-
-  function renderInlineSummary(symbol) {
-    const st = sumState[symbol] || {};
-    if (!st.open) return null;
-    return (
-      <div className="inline-summary">
-        {st.loading && <div className="muted">요약 불러오는 중…</div>}
-        {st.error && <div className="text-danger">오류: {st.error}</div>}
-        {!st.loading && !st.error && (
-          <div className="ai-content" style={{ whiteSpace: "pre-wrap" }}>
-            {st.summary}
-          </div>
-        )}
-        <div className="inline-summary-actions">
-          <button
-            className="btn btn-ghost"
-            onClick={() =>
-              setSumState((s) => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }))
-            }
-          >
-            닫기
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     (async () => {
       try {
@@ -762,7 +711,7 @@ function StocksSection() {
         <>
           <div className="grid grid-4">
             {sorted.map((r) => (
-              <div key={r.symbol} className="card stock-card">
+              <div key={r.symbol} className="card stock-card" style={{ lineHeight: 1.6 }}>
                 <div className="stock-header">
                   <div>
                     <div className="stock-name">{r.name}</div>
@@ -777,9 +726,14 @@ function StocksSection() {
                     >
                       Yahoo
                     </a>
-                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link ai">AI 분석
+                    {/* AI 분석은 별도 페이지에서 확인 */}
+                    <a
+                      href={`/company/${encodeURIComponent(r.symbol)}`}
+                      className="stock-link ai"
+                      title="AI 분석 페이지로 이동"
+                    >
+                      AI 분석
                     </a>
-                    <button className="stock-link ai" onClick={() => loadSummary(r.symbol)}>AI Analysis • GEMINI 2.5</button>
                   </div>
                 </div>
                 <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
@@ -787,12 +741,11 @@ function StocksSection() {
                   {fmtSignPct(r.pct)}
                 </div>
                 <div className="meta small">변동률은 전일 종가 대비</div>
-
-                {renderInlineSummary(r.symbol)}
               </div>
             ))}
           </div>
 
+          {/* 큰 변동 종목 요약은 유지(카드 내 요약 버튼은 제거됨) */}
           <AIBox block="stocks" payload={aiPayload} />
         </>
       )}
@@ -850,7 +803,7 @@ function NewsTabsSection() {
             industry: "fashion|apparel|garment|textile",
             language: "en",
             days: "7",
-            limit: "10",
+            limit: "20", // ▶ 해외 뉴스 확장: 최소 10개 이상 확보
             domains: FOREIGN_DOMAINS,
           }).toString();
       } else {
@@ -864,17 +817,24 @@ function NewsTabsSection() {
       }
       const r = await fetch(url, { cache: "no-store" });
       const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map((n) => ({
-        title: n.title,
-        url: n.url || n.link,
-        source:
-          (typeof n.source === "string"
-            ? n.source
-            : n.source && (n.source.name || n.source.id)
-            ? String(n.source.name || n.source.id)
-            : "") || "",
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
-      }));
+      const items = (arr || []).map((n) => {
+        const urlStr = n.url || n.link || "";
+        let host = "";
+        try {
+          host = new URL(urlStr).hostname.replace(/^www\./, "");
+        } catch {}
+        return {
+          title: n.title,
+          url: urlStr,
+          source:
+            (typeof n.source === "string"
+              ? n.source
+              : n.source && (n.source.name || n.source.id)
+              ? String(n.source.name || n.source.id)
+              : "") || host || "",
+          publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
+        };
+      });
       setNewsItems(items);
       setCollapsed(true);
     } catch (e) {
@@ -890,10 +850,21 @@ function NewsTabsSection() {
 
   const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
 
+  // 현재 탭의 동적 출처 라인
+  const sourceLine = useMemo(() => {
+    const uniq = Array.from(new Set(newsItems.map((n) => n.source).filter(Boolean)));
+    if (uniq.length === 0) return "출처: 설정된 해외/국내 주요 뉴스 도메인";
+    const shown = uniq.slice(0, 6).join(", ");
+    return uniq.length > 6 ? `출처: ${shown} 외 ${uniq.length - 6}곳` : `출처: ${shown}`;
+  }, [newsItems]);
+
   return (
     <section className="section">
       <div className="section-header">
-        <h2 className="section-title">산업뉴스</h2><p>뉴스는 여러 출처에서 제공되고 있습니다: Business of Fashion, Just-Style, and more.</p>
+        <div>
+          <h2 className="section-title">산업뉴스</h2>
+          <p className="section-subtitle">{sourceLine}</p>
+        </div>
         <div className="tab-nav">
           <button
             onClick={() => {
@@ -913,7 +884,16 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          
+          {/* 필요 시 뉴스 AI 요약을 열 수 있는 버튼 */}
+          <button
+            onClick={loadAISummary}
+            className="btn btn-secondary"
+            disabled={aiLoading}
+            style={{ marginLeft: 8 }}
+            title="AI 요약 열기"
+          >
+            {aiLoading ? "AI 요약 중…" : "AI 요약 보기"}
+          </button>
         </div>
       </div>
 
@@ -1041,8 +1021,8 @@ function AISummaryColumn({ title, data }) {
                   <a href={it.link} target="_blank" rel="noreferrer" className="news-title">
                     {it.title}
                   </a>
-                  {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
-                  <div className="news-meta source">{it.source || ""}</div>
+                    {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
+                    <div className="news-meta source">{it.source || ""}</div>
                 </li>
               ))}
             </ol>
@@ -1060,7 +1040,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Hansol Market Intelligence | Executive Dashboard</title>
+        <title>Hansoll Market Intelligence | Executive Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link
           rel="preconnect"
@@ -1084,7 +1064,7 @@ export default function Home() {
       </main>
 
       <footer className="footer">
-        <p className="footer-text">© Hansol Textile — Market Intelligence Dashboard</p>
+        <p className="footer-text">© Hansoll Textile — Market Intelligence Dashboard</p>
       </footer>
     </>
   );
