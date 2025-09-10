@@ -115,7 +115,7 @@ function HeaderBar() {
         <div className="logo">
           <div className="logo-mark">H</div>
           <div>
-            <div className="logo-text">Hansol Market Intelligence</div>
+            <div className="logo-text">Hansoll Market Intelligence</div>
             <div className="logo-subtitle">Executive Dashboard</div>
           </div>
         </div>
@@ -223,11 +223,11 @@ function ProcurementTopBlock() {
     </div>
   );
 
-  // 팔레트(현재 화면 톤과 조화)
+  // 팔레트
   const SUPPLY_COLORS = {
-    domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)", // indigo-violet
-    third: "linear-gradient(90deg,#10b981,#34d399)",    // emerald
-    local: "linear-gradient(90deg,#f59e0b,#f97316)",    // amber-orange
+    domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)",
+    third: "linear-gradient(90deg,#10b981,#34d399)",
+    local: "linear-gradient(90deg,#f59e0b,#f97316)",
   };
 
   return (
@@ -407,11 +407,8 @@ function ProcurementTopBlock() {
                   value={data.supplyBreakdown.thirdCountry}
                   onChange={(e) =>
                     setData((d) => ({
-                      ...d,
-                      supplyBreakdown: {
-                        ...d.supplyBreakdown,
-                        thirdCountry: Number(e.target.value),
-                      },
+                      ...d.supplyBreakdown,
+                      thirdCountry: Number(e.target.value),
                     }))
                   }
                 />
@@ -424,11 +421,8 @@ function ProcurementTopBlock() {
                   value={data.supplyBreakdown.local}
                   onChange={(e) =>
                     setData((d) => ({
-                      ...d,
-                      supplyBreakdown: {
-                        ...d.supplyBreakdown,
-                        local: Number(e.target.value),
-                      },
+                      ...d.supplyBreakdown,
+                      local: Number(e.target.value),
                     }))
                   }
                 />
@@ -454,7 +448,7 @@ function ProcurementTopBlock() {
 }
 
 /* =========================
-   2) 주요지표 (스파크라인 + 이전대비 + YoY + 카드별 업데이트일)
+   2) 주요지표
 ========================= */
 function Sparkline({ series = [], width = 110, height = 32 }) {
   if (!series || series.length < 2) return null;
@@ -625,7 +619,7 @@ function IndicatorsSection() {
 }
 
 /* =========================
-   3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
+   3) 일일 리테일러 주가 등락률
 ========================= */
 const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
 const NAME_MAP = {
@@ -770,6 +764,7 @@ function NewsTabsSection() {
   const [aiKorea, setAiKorea] = useState(null);
 
   const [lastUpdated, setLastUpdated] = useState("");
+  const [guideMsg, setGuideMsg] = useState("");
 
   async function loadAISummary() {
     try {
@@ -829,7 +824,8 @@ function NewsTabsSection() {
           };
         });
         setNewsItems(items);
-        setLastUpdated(data.updatedAt || "");
+        setLastUpdated(data.updatedAtKST || ""); // ← KST 문자열 그대로 사용
+        setGuideMsg(data.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
       } else {
         const arr = data || [];
         const items = (arr || []).map((n) => {
@@ -852,6 +848,7 @@ function NewsTabsSection() {
         });
         setNewsItems(items);
         setLastUpdated("");
+        setGuideMsg(""); // 국내는 고정 가이드 생략
       }
 
       setCollapsed(true);
@@ -874,13 +871,13 @@ function NewsTabsSection() {
       activeTab === "overseas"
         ? "출처: businessoffashion.com, just-style.com"
         : "출처: 한국섬유산업신문 외";
-    const guide = " · 뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
+    const guide = guideMsg ? ` · ${guideMsg}` : " · 뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
     const last =
       activeTab === "overseas" && lastUpdated
-        ? ` · 마지막 갱신: ${new Date(lastUpdated).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+        ? ` · 마지막 갱신: ${lastUpdated}`
         : "";
     return base + guide + last;
-  }, [activeTab, lastUpdated]);
+  }, [activeTab, lastUpdated, guideMsg]);
 
   return (
     <section className="section">
