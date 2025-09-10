@@ -1,175 +1,241 @@
 // pages/api/news-daily.js
-// 하루 1회(한국시간 22:00 기준)만 외부 API를 호출해 캐시하고,
-// 호출 결과 20개를 고정으로 반환합니다.
+import fs from "fs";
+const fsp = fs.promises;
 
+/**
+ * 뉴스는 매일 한국시간 22:00에 갱신되도록 설계.
+ * - 캐시 파일: /tmp/news_daily_cache.json
+ * - 소스: businessoffashion.com, just-style.com
+ * - 최대 20개 병합/중복제거 후 최신순 반환
+ */
+
+const CACHE_PATH = "/tmp/news_daily_cache.json";
+const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
+
+// KST 유틸 (UTC+9)
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const nowUTC = () => new Date();
+const nowKST = () => new Date(Date.now() + KST_OFFSET_MS);
+const fmtKST = (d) =>
+  new Date(d).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 
-// 환경변수 키(둘 중 아무거나 사용 가능)
-const NEWS_API_KEY = process.env.NEWSAPI || process.env.NEWS_API_KEY;
-
-// 도메인 목록: BoF + Just-Style
-const DOMAINS = (
-  process.env.NEWS_DAILY_DOMAINS ||
-  "businessoffashion.com,www.businessoffashion.com,just-style.com,www.just-style.com"
-)
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-// 하루 제공 개수
-const LIMIT = Number(process.env.NEWS_DAILY_LIMIT || 20);
-
-// 전역 캐시 (Lambda 재사용 시 유지됨)
-globalThis.__NEWS_DAILY_CACHE__ =
-  globalThis.__NEWS_DAILY_CACHE__ || {
-    anchorUtcMs: 0,     // 마지막으로 반영된 "KST 22:00 경계"의 UTC ms
-    updatedAtKst: "",   // 한국시간 문자열
-    items: [],          // 캐시된 뉴스 배열
-    lastError: null,
-  };
-
-// ──────────────────────────────────────────────
-// KST 22:00 기준 경계(anchor) 계산
-// 지금 KST 기준으로 "가장 최근의 22:00" 타임스탬프(UTC ms)를 반환
-function getLatestKst2200AnchorUtcMs(nowUtcMs = Date.now()) {
-  const nowKstMs = nowUtcMs + KST_OFFSET_MS;
-  const dayStartKstMs = Math.floor(nowKstMs / DAY_MS) * DAY_MS; // 00:00 KST
-  let anchorKstMs = dayStartKstMs + 22 * 60 * 60 * 1000; // 22:00 KST
-  if (nowKstMs < anchorKstMs) {
-    // 아직 오늘 22:00 전이면, 어제 22:00가 마지막 경계
-    anchorKstMs -= DAY_MS;
-  }
-  // KST → UTC로 환산
-  return anchorKstMs - KST_OFFSET_MS;
+// 오늘 KST 기준 22:00(=UTC 13:00) 컷오프(UTC 시각) 계산
+function todayCutoffUTC() {
+  const kst = nowKST();
+  const y = kst.getUTCFullYear();
+  const m = kst.getUTCMonth();
+  const d = kst.getUTCDate();
+  // 22:00 KST == 13:00 UTC
+  return new Date(Date.UTC(y, m, d, 13, 0, 0, 0));
 }
 
-function toKstString(utcMs) {
-  return new Date(utcMs + KST_OFFSET_MS).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
+// 캐시 읽기/쓰기
+async function readCache() {
+  try {
+    const buf = await fsp.readFile(CACHE_PATH, "utf8");
+    return JSON.parse(buf);
+  } catch {
+    return null;
+  }
+}
+async function writeCache(payload) {
+  try {
+    await fsp.writeFile(CACHE_PATH, JSON.stringify(payload), "utf8");
+  } catch {
+    // 서버리스 환경에 따라 쓰기 실패할 수 있음(무시)
+  }
+}
+
+// 현재 호스트 기준 내부 /api/news 호출 URL 생성
+function buildInternalUrl(req, qsObj) {
+  const proto =
+    req.headers["x-forwarded-proto"] ||
+    (process.env.VERCEL || process.env.NETLIFY ? "https" : "http");
+  const host = req.headers.host || "localhost:3000";
+  const base = `${proto}://${host}`;
+  const qs = new URLSearchParams(qsObj).toString();
+  return `${base}/api/news?${qs}`;
+}
+
+// /api/news를 도메인 단위로 호출 (실패해도 빈 배열 반환)
+async function fetchDomain(req, domainsCSV, limit = 40, days = 14) {
+  const url = buildInternalUrl(req, {
+    language: "en",
+    days: String(days),
+    limit: String(limit),
+    domains: domainsCSV,
   });
+  try {
+    const r = await fetch(url, { headers: { "x-internal": "1" } });
+    if (!r.ok) {
+      // 에러 메시지 추출 시도
+      let msg = `${r.status}`;
+      try {
+        const j = await r.json();
+        if (j?.error) msg = `${r.status} ${j.error}`;
+      } catch {}
+      throw new Error(msg);
+    }
+    const arr = await r.json();
+    if (!Array.isArray(arr)) return [];
+    return arr.map((n) => ({
+      title: n.title,
+      url: n.url || n.link || "",
+      publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
+      source:
+        typeof n.source === "string"
+          ? n.source
+          : n.source?.name || n.source?.id || "",
+    }));
+  } catch (e) {
+    console.warn("[news-daily] fetchDomain error:", domainsCSV, String(e));
+    return [];
+  }
 }
 
-// NewsAPI 호출 (도메인 필터, 최신순)
-async function fetchFromNewsAPI() {
-  if (!NEWS_API_KEY) {
-    throw new Error(
-      "뉴스 API Key가 없습니다. 환경변수 NEWSAPI 또는 NEWS_API_KEY를 설정하세요."
-    );
-  }
-
-  // 여유 있게 더 받아 중복/정제 후 LIMIT에 맞춰 자름
-  const pageSize = Math.min(100, Math.max(LIMIT * 2, LIMIT));
-
-  const url =
-    "https://newsapi.org/v2/everything?" +
-    new URLSearchParams({
-      language: "en",
-      sortBy: "publishedAt",
-      pageSize: String(pageSize),
-      // 최근 30일만(안전장치)
-      from: new Date(Date.now() - 30 * DAY_MS).toISOString(),
-      domains: DOMAINS.join(","),
-      apiKey: NEWS_API_KEY,
-    }).toString();
-
-  const r = await fetch(url);
-  const j = await r.json().catch(() => ({}));
-
-  if (!r.ok || j.status !== "ok") {
-    throw new Error(
-      `NewsAPI error: ${j?.code || r.status} ${j?.message || ""}`.trim()
-    );
-  }
-
+// 중복 제거(우선 url로, 없으면 제목으로)
+function dedupe(items) {
   const seen = new Set();
-  const items = [];
-
-  for (const a of j.articles || []) {
-    const u = a.url || "";
-    if (!u || seen.has(u)) continue;
-    seen.add(u);
-
-    let host = "";
-    try {
-      host = new URL(u).hostname.replace(/^www\./, "");
-    } catch {}
-
-    items.push({
-      title: a.title || "",
-      url: u,
-      source: a.source?.name || host || "",
-      publishedAt: a.publishedAt || a.published_at || "",
-    });
-
-    if (items.length >= LIMIT) break;
+  const out = [];
+  for (const it of items) {
+    const key =
+      (it.url && it.url.toLowerCase()) ||
+      `t:${(it.title || "").trim().toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(it);
   }
-
-  return items;
+  return out;
 }
 
-// ──────────────────────────────────────────────
+// 날짜 내림차순
+function sortByDateDesc(items) {
+  return items
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt || 0).getTime() -
+        new Date(a.publishedAt || 0).getTime()
+    );
+}
+
+// 호스트명 보정
+function hostFromUrl(u) {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
 
 export default async function handler(req, res) {
   try {
-    // CORS / 메서드 가드 최소화 (필요시 확장)
-    if (req.method && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-      res.status(405).json({ error: "Method Not Allowed" });
-      return;
+    // 1) 캐시 읽기
+    const cache = await readCache();
+
+    // 2) 캐시 신선도 판단 (오늘 KST 22:00 이후로 갱신됐는지)
+    let isFresh = false;
+    if (cache?.updatedAtISO) {
+      const updatedUTC = new Date(cache.updatedAtISO);
+      const cutoffUTC = todayCutoffUTC();
+      isFresh = updatedUTC >= cutoffUTC && (cache.items || []).length > 0;
     }
 
-    const now = Date.now();
-    const anchorUtcMs = getLatestKst2200AnchorUtcMs(now);
-    const cache = globalThis.__NEWS_DAILY_CACHE__;
-
-    // 강제 갱신 (옵션): ?force=1&secret=XXXX
-    const allowForce =
-      process.env.NEWS_DAILY_SECRET &&
-      req.query?.secret === process.env.NEWS_DAILY_SECRET &&
-      req.query?.force === "1";
-
-    // 앵커가 바뀌었거나(하루 경계 넘어감) 강제 갱신이면 새로 가져옴
-    if (allowForce || cache.anchorUtcMs !== anchorUtcMs) {
-      const items = await fetchFromNewsAPI();
-
-      cache.anchorUtcMs = anchorUtcMs;
-      cache.updatedAtKst = toKstString(anchorUtcMs);
-      cache.items = items;
-      cache.lastError = null;
+    // 3) 신선하면 캐시 그대로 반환
+    if (isFresh) {
+      return res.status(200).json({
+        ok: true,
+        guide: cache.guide || GUIDE_TEXT,
+        updatedAt: cache.updatedAtISO,
+        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
+        items: cache.items || [],
+        stale: false,
+      });
     }
 
-    const nextRefreshUtc = anchorUtcMs + DAY_MS; // 다음 22:00(KST) 경계의 UTC
-    const guide =
-      "뉴스는 한국시간 매일 오후 10시(22:00) 기준으로 업데이트됩니다.";
+    // 4) 갱신 필요 → BoF/Just-Style 각각 최소 호출로 수집
+    const bof = await fetchDomain(
+      req,
+      "businessoffashion.com,www.businessoffashion.com",
+      40,
+      14
+    );
+    const js = await fetchDomain(
+      req,
+      "just-style.com,www.just-style.com",
+      40,
+      14
+    );
 
-    // 캐시 헤더(선택): 브라우저 캐시 짧게, CDN은 5분
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
+    // 5) 병합/정제/정렬/상한
+    let items = dedupe([...bof, ...js]).map((n) => {
+      const host = hostFromUrl(n.url);
+      return {
+        title: n.title,
+        url: n.url,
+        publishedAt: n.publishedAt,
+        source: n.source || host || "",
+      };
+    });
+    items = sortByDateDesc(items).slice(0, 20);
 
-    res.status(200).json({
+    const now = nowUTC();
+    const payload = {
       ok: true,
-      guide,
-      sourceDomains: DOMAINS,
-      updatedAtKST: cache.updatedAtKst,
-      nextRefreshKST: toKstString(nextRefreshUtc),
-      limit: LIMIT,
-      items: cache.items,
+      guide: GUIDE_TEXT,
+      updatedAtISO: now.toISOString(),
+      updatedAtKST: fmtKST(now),
+      items,
+    };
+
+    // 6) 캐시 저장 (성공/부분성공 모두 저장)
+    if (items.length > 0) {
+      await writeCache(payload);
+    }
+
+    // 7) 응답 (아이템이 하나도 없으면 캐시 폴백 시도)
+    if (items.length === 0 && cache?.items?.length > 0) {
+      return res.status(200).json({
+        ok: true,
+        guide: cache.guide || GUIDE_TEXT,
+        updatedAt: cache.updatedAtISO,
+        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
+        items: cache.items,
+        stale: true,
+        note: "신규 수집 실패로 캐시를 반환했습니다.",
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      guide: GUIDE_TEXT,
+      updatedAt: payload.updatedAtISO,
+      updatedAtKST: payload.updatedAtKST,
+      items,
+      stale: false,
     });
   } catch (e) {
-    // 캐시가 있으면 캐시라도 반환 (페일오버)
-    const cache = globalThis.__NEWS_DAILY_CACHE__;
-    if (cache.items?.length) {
-      res.status(200).json({
+    // 최후: 캐시라도 내려주기
+    const cache = await readCache();
+    if (cache?.items?.length) {
+      return res.status(200).json({
         ok: true,
-        guide:
-          "뉴스는 한국시간 매일 오후 10시(22:00) 기준으로 업데이트됩니다.",
-        sourceDomains: DOMAINS,
-        updatedAtKST: cache.updatedAtKst,
-        limit: LIMIT,
+        guide: cache.guide || GUIDE_TEXT,
+        updatedAt: cache.updatedAtISO,
+        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
         items: cache.items,
-        warning: String(e),
+        stale: true,
+        note: "오류로 캐시를 반환했습니다.",
+        error: String(e),
       });
-      return;
     }
-    res.status(500).json({ ok: false, error: String(e) });
+    return res.status(500).json({ ok: false, error: String(e) });
   }
 }
+
+// CDN 캐시 힌트(선택)
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
