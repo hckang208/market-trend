@@ -64,12 +64,12 @@ function AIBox({ block, payload }) {
 
   return (
     <div className="s-pages-index-js-aibox">
-      <div className="s-pages-index-js-auto1" style={{{rest}}}>
+      <div className="s-pages-index-js-auto1">
         <div className="s-pages-index-js-auto2">AI 현황분석</div>
         <button onClick={() => setOpen(o=>!o)} className="s-pages-index-js-btngray">{open ? "접기" : "AI 요약"}</button>
       </div>
       {open ? (
-        <div className="s-pages-index-js-auto3" style={{{rest}}}>
+        <div className="s-pages-index-js-auto3">
           <span suppressHydrationWarning>GEMINI 2.5 사용중{ts ? ` · ${new Date(ts).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : ""}</span>
         </div>
       ) : null}
@@ -256,7 +256,7 @@ function ProcurementTopBlock() {
             <div className="s-pages-index-js-row"><label>총 오더수(스타일)</label><input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} /></div>
             <div className="s-pages-index-js-row"><label>총 발행 PO수</label><input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} /></div>
           </div>
-          <div className="s-pages-index-js-auto7" style={{{rest}}}>
+          <div className="s-pages-index-js-auto7">
             <div className="s-pages-index-js-blocktitle">공급현황(%) — 합계 100 기준</div>
             <div className="s-pages-index-js-grid3">
               <div className="s-pages-index-js-row"><label>국내(%)</label><input type="number" value={data.supplyBreakdown.domestic}
@@ -357,7 +357,7 @@ function IndicatorsSection() {
     <section className="s-pages-index-js-auto10">
       <h3 className="s-pages-index-js-h3">주요 지표</h3>
       {lastUpdated && (
-        <div className="s-pages-index-js-auto11" style={{{rest}}}>
+        <div className="s-pages-index-js-auto11">
           전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
         </div>
       )}
@@ -484,7 +484,7 @@ function StocksSection() {
         {sections.map(renderSection)}
         {collapsed && <div style={{ position: "absolute", left:0, right:0, bottom:0, height: 48,
           background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"}} />}
-        <div className="s-pages-index-js-auto15" style={{{rest}}}>
+        <div className="s-pages-index-js-auto15">
           <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
                   style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
             {collapsed ? "더보기" : "접기"}
@@ -757,7 +757,7 @@ function NewsAISummaryPanel({ title, endpoint }) {
 
   return (
     <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:14, background:"#fff" }}>
-      <div className="s-pages-index-js-auto28" style={{{rest}}}>
+      <div className="s-pages-index-js-auto28">
         <h3 className="s-pages-index-js-auto29">{title}</h3>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <div style={{ fontSize:12, color:"#6b7280" }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
@@ -768,8 +768,8 @@ function NewsAISummaryPanel({ title, endpoint }) {
       {err && <div className="s-pages-index-js-auto30">에러: {err}</div>}
       {!data && !loading && <div>요약을 불러오는 중…</div>}
       {data && (
-        <div className="s-pages-index-js-auto31" style={{{rest}}}>
-          <div className="s-pages-index-js-auto32" style={{{rest}}}>
+        <div className="s-pages-index-js-auto31">
+          <div className="s-pages-index-js-auto32">
             {sections.map((sec, idx) => (
               <section key={idx} style={{ marginTop: idx===0?0:12 }}>
                 {sec.title ? <h4 className="s-pages-index-js-auto33">{sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}</h4> : null}
@@ -802,7 +802,7 @@ function NewsAISummarySection() {
   return (
     <div id="aiNewsSection" className="s-pages-index-js-auto40">
       <div style={{ ...styles.blockTitle }}>뉴스 AI 분석</div>
-      <div className="s-pages-index-js-auto41" style={{{rest}}}>
+      <div className="s-pages-index-js-auto41">
         <NewsAISummaryPanel title="해외뉴스분석(AI)" endpoint="/api/ai-news-foreign" />
         <NewsAISummaryPanel title="국내뉴스분석(AI)" endpoint="/api/ai-news-korea" />
       </div>
@@ -849,7 +849,7 @@ export default function Home() {
 
       <HeaderBar />
 
-      <main className="s-pages-index-js-auto42" style={{{rest}}}>
+      <main className="s-pages-index-js-auto42">
         <ProcurementTopBlock />
         <IndicatorsSection />
         <StocksSection />
@@ -858,7 +858,7 @@ export default function Home() {
     </main>
 
       <footer style={styles.footer}>
-        <div className="s-pages-index-js-auto43" style={{{rest}}}>
+        <div className="s-pages-index-js-auto43">
           © Market Trend — internal pilot
         </div>
       </footer>

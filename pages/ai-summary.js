@@ -32,7 +32,7 @@ export default function AISummaryPage() {
   return (
     <div style={styles.page}>
       <header className="s-pages-ai-summary-js-header">
-        <div className="s-pages-ai-summary-js-auto1" style={{{rest}}}>
+        <div className="s-pages-ai-summary-js-auto1">
           <a href="/" style={styles.link}>&larr; 돌아가기</a>
           <h1 className="s-pages-ai-summary-js-auto2">AI 뉴스 요약</h1>
         </div>
@@ -42,7 +42,7 @@ export default function AISummaryPage() {
 
       {err && <div style={{ ...styles.box, borderColor:"#fecaca", background:"#fef2f2", color:"#7f1d1d" }}>에러: {err}</div>}
 
-      <div className="s-pages-ai-summary-js-auto4" style={{{rest}}}>분석 시각: {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</div>
+      <div className="s-pages-ai-summary-js-auto4">분석 시각: {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</div>
 
       <div style={styles.layout}>
         <main className="s-pages-ai-summary-js-main">

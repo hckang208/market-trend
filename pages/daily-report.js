@@ -23,7 +23,7 @@ export default function DailyReport() {
       <Head>
         <title>AI Daily Report</title>
       </Head>
-      <main className="s-pages-daily-report-js-auto1" style={{{rest}}}>
+      <main className="s-pages-daily-report-js-auto1">
         <h1 className="s-pages-daily-report-js-auto2">
           🤖 Hansoll AI Daily Report
         </h1>
