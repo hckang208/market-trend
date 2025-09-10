@@ -1,6 +1,38 @@
 // pages/company/[symbol].js
 import React, { useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
+
+
+function HeaderBar() {
+  return (
+    <header className="header">
+      <div className="header-inner">
+        <div className="logo">
+          <div className="logo-mark">H</div>
+          <div>
+            <div className="logo-text">Hansol Market Intelligence</div>
+            <div className="logo-subtitle">Executive Dashboard</div>
+          </div>
+        </div>
+        <div className="live-status">
+          <span className="pulse" />
+          <span className="live-label">Live Data</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+
+function FooterBar() {
+  return (
+    <footer className="footer">
+      <p className="footer-text">© Hansol Textile — Market Intelligence Dashboard</p>
+    </footer>
+  );
+}
+
 
 const styles = {
   container: { maxWidth: 1200, margin: "28px auto", padding: "0 20px" },
@@ -72,7 +104,14 @@ export default function CompanyNewsSummaryPage() {
   })), [sections]);
 
   return (
-    <div style={styles.container}>
+    <>
+      <Head>
+        <title>Company AI Analysis | Hansol Market Intelligence</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <HeaderBar/>
+      {loading && (<div className="loading-overlay">AI Analysis • GEMINI 2.5 분석중입니다</div>)}
+      <div style={styles.container}>
       <div className="s-pages-company-symbol-js-header">
         <div>
           <h1 className="s-pages-company-symbol-js-title">{symbol} 뉴스 AI 요약</h1>
@@ -127,6 +166,8 @@ export default function CompanyNewsSummaryPage() {
           </aside>
         </div>
       )}
-    </div>
+      </div>
+      <FooterBar/>
+    </>
   );
 }

@@ -777,12 +777,9 @@ function StocksSection() {
                     >
                       Yahoo
                     </a>
-                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link">
-                      AI 분석
+                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link ai">AI 분석
                     </a>
-                    <button className="stock-link" onClick={() => loadSummary(r.symbol)}>
-                      요약
-                    </button>
+                    <button className="stock-link ai" onClick={() => loadSummary(r.symbol)}>AI Analysis • GEMINI 2.5</button>
                   </div>
                 </div>
                 <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
@@ -891,7 +888,7 @@ function NewsTabsSection() {
     load("overseas");
   }, []);
 
-  const rendered = collapsed ? newsItems.slice(0, 5) : newsItems;
+  const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
 
   return (
     <section className="section">
@@ -916,9 +913,7 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          <button onClick={loadAISummary} className="tab-btn">
-            AI 요약
-          </button>
+          <button onClick={loadAISummary} className="tab-btn ai">AI Analysis • GEMINI 2.5</button>
         </div>
       </div>
 
@@ -942,7 +937,7 @@ function NewsTabsSection() {
                 ))}
               </ol>
             )}
-            {newsItems.length > 5 && (
+            {newsItems.length > 10 && (
               <div className="more-row">
                 <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
                   {collapsed ? "더보기" : "접기"}
