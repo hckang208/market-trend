@@ -121,7 +121,7 @@ export default function CompanyNewsSummaryPage() {
         </div>
         <div style={{display:"flex", gap:8, alignItems:"center"}}>
           <a href={symbol ? `https://finance.yahoo.com/quote/${symbol}` : "#"} target="_blank" rel="noreferrer" style={{ ...styles.link, fontSize:13 }}>Yahoo Finance ↗</a>
-          <button onClick={() => load({})} disabled={loading} style={styles.btn}>{loading ? "요약 중..." : "다시 요약"}</button>
+          <button onClick={() => load({})} disabled={loading} style={styles.btn}>{loading ? "AI 분석 중..." : "AI 분석 다시 시도"}</button>
         </div>
       </div>
 

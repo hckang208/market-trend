@@ -850,7 +850,7 @@ function NewsTabsSection() {
             industry: "fashion|apparel|garment|textile",
             language: "en",
             days: "7",
-            limit: "40",
+            limit: "10",
             domains: FOREIGN_DOMAINS,
           }).toString();
       } else {
@@ -893,7 +893,7 @@ function NewsTabsSection() {
   return (
     <section className="section">
       <div className="section-header">
-        <h2 className="section-title">뉴스</h2>
+        <h2 className="section-title">산업뉴스</h2><p>뉴스는 여러 출처에서 제공되고 있습니다: Business of Fashion, Just-Style, and more.</p>
         <div className="tab-nav">
           <button
             onClick={() => {
@@ -913,7 +913,7 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          <button onClick={loadAISummary} className="tab-btn ai">AI Analysis • GEMINI 2.5</button>
+          
         </div>
       </div>
 
