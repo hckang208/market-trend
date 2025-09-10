@@ -226,8 +226,8 @@ function ProcurementTopBlock() {
   // 팔레트(현재 화면 톤과 조화)
   const SUPPLY_COLORS = {
     domestic: "linear-gradient(90deg,#6366f1,#8b5cf6)", // indigo-violet
-    third: "linear-gradient(90deg,#10b981,#34d399)",    // emerald
-    local: "linear-gradient(90deg,#f59e0b,#f97316)",    // amber-orange
+    third: "linear-gradient(90deg,#10b981,#34d399)", // emerald
+    local: "linear-gradient(90deg,#f59e0b,#f97316)", // amber-orange
   };
 
   return (
@@ -289,7 +289,10 @@ function ProcurementTopBlock() {
           </div>
           <div className="legend">
             <div className="legend-item">
-              <span className="legend-dot dot-domestic" style={{ background: SUPPLY_COLORS.domestic }} />
+              <span
+                className="legend-dot dot-domestic"
+                style={{ background: SUPPLY_COLORS.domestic }}
+              />
               <span>국내 {fmtNum(supply.domestic, 1)}%</span>
             </div>
             <div className="legend-item">
@@ -790,51 +793,87 @@ function NewsTabsSection() {
     }
   }
 
+  // --- 해외뉴스(도메인 기반, 최신순, 부족 시 기간 확장) ---
+  const parseMs = (s) => (isNaN(Date.parse(s)) ? 0 : Date.parse(s));
+  const normalizeItem = (n) => {
+    const urlStr = n.url || n.link || "";
+    let host = "";
+    try {
+      host = new URL(urlStr).hostname.replace(/^www\./, "");
+    } catch {}
+    const publishedAt = n.published_at || n.publishedAt || n.pubDate || "";
+    return {
+      title: n.title,
+      url: urlStr,
+      source:
+        (typeof n.source === "string"
+          ? n.source
+          : n.source && (n.source.name || n.source.id)
+          ? String(n.source.name || n.source.id)
+          : "") || host || "",
+      publishedAt,
+      _ts: parseMs(publishedAt),
+    };
+  };
+
+  async function fetchOverseasAt(days, limit = 50) {
+    const url =
+      "/api/news?" +
+      new URLSearchParams({
+        // industry 제거 (도메인으로 한정)
+        language: "en",
+        days: String(days),
+        limit: String(limit),
+        domains: FOREIGN_DOMAINS, // e.g. "businessoffashion.com,just-style.com"
+      }).toString();
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) return [];
+    const arr = (await r.json()) || [];
+    return arr.map(normalizeItem);
+  }
+
+  async function loadOverseas() {
+    // 1차: 최근 7일
+    let items = await fetchOverseasAt(7, 50);
+    // 최신순 정렬
+    items.sort((a, b) => b._ts - a._ts);
+    // 10개 미만이면 2차: 최근 30일 병합
+    if (items.length < 10) {
+      const more = await fetchOverseasAt(30, 80);
+      const byUrl = new Map();
+      [...items, ...more].forEach((x) => {
+        if (!byUrl.has(x.url)) byUrl.set(x.url, x);
+      });
+      items = Array.from(byUrl.values()).sort((a, b) => b._ts - a._ts);
+    }
+    // 상위 20개까지만 보관(초기엔 10개만 표시)
+    return items.slice(0, 20);
+  }
+
   async function load(tab = activeTab) {
     try {
       setNewsLoading(true);
       setNewsErr("");
       setNewsItems([]);
-      let url = "";
+
       if (tab === "overseas") {
-        url =
-          "/api/news?" +
-          new URLSearchParams({
-            industry: "fashion|apparel|garment|textile",
-            language: "en",
-            days: "7",
-            limit: "20", // ▶ 해외 뉴스 확장: 최소 10개 이상 확보
-            domains: FOREIGN_DOMAINS,
-          }).toString();
-      } else {
-        url =
-          "/api/news-kr-rss?" +
-          new URLSearchParams({
-            feeds: "http://www.ktnews.com/rss/allArticle.xml",
-            days: "1",
-            limit: "200",
-          }).toString();
+        const items = await loadOverseas();
+        setNewsItems(items);
+        setCollapsed(true);
+        return;
       }
+
+      // 국내
+      const url =
+        "/api/news-kr-rss?" +
+        new URLSearchParams({
+          feeds: "http://www.ktnews.com/rss/allArticle.xml",
+          days: "1",
+          limit: "200",
+        }).toString();
       const r = await fetch(url, { cache: "no-store" });
       const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map((n) => {
-        const urlStr = n.url || n.link || "";
-        let host = "";
-        try {
-          host = new URL(urlStr).hostname.replace(/^www\./, "");
-        } catch {}
-        return {
-          title: n.title,
-          url: urlStr,
-          source:
-            (typeof n.source === "string"
-              ? n.source
-              : n.source && (n.source.name || n.source.id)
-              ? String(n.source.name || n.source.id)
-              : "") || host || "",
-          publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
-        };
-      });
+      const items = (arr || []).map(normalizeItem).sort((a, b) => b._ts - a._ts);
       setNewsItems(items);
       setCollapsed(true);
     } catch (e) {
@@ -1021,8 +1060,8 @@ function AISummaryColumn({ title, data }) {
                   <a href={it.link} target="_blank" rel="noreferrer" className="news-title">
                     {it.title}
                   </a>
-                    {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
-                    <div className="news-meta source">{it.source || ""}</div>
+                  {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
+                  <div className="news-meta source">{it.source || ""}</div>
                 </li>
               ))}
             </ol>
@@ -1064,7 +1103,7 @@ export default function Home() {
       </main>
 
       <footer className="footer">
-        <p className="footer-text">© Hansoll Textile — Market Intelligence Dashboard</p>
+        <p className="footer-text">© Hansol Textile — Market Intelligence Dashboard</p>
       </footer>
     </>
   );
