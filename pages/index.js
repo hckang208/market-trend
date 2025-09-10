@@ -2,7 +2,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
-const FOREIGN_DOMAINS = process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
+const FOREIGN_DOMAINS =
+  process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
+  "businessoffashion.com,just-style.com";
+
 /* =========================
    숫자/시계열 유틸
 ========================= */
@@ -22,12 +25,16 @@ const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 /* =========================
    공통: AI 분석 박스
 ========================= */
-function redactForbidden(s){ try { return String(s ?? ""); } catch { return ""; } }
+function redactForbidden(s) {
+  try {
+    return String(s ?? "");
+  } catch {
+    return "";
+  }
+}
 function AIBox({ block, payload }) {
   const [text, setText] = useState("");
-  const [compact, setCompact] = useState(true);
-  const [fsize, setFsize] = useState(14);
-  const [open, setOpen] = useState(false);;
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ts, setTs] = useState(null);
   const [err, setErr] = useState("");
@@ -51,7 +58,9 @@ function AIBox({ block, payload }) {
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
         let s = j.summary || "";
-        s = s.replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gmi, "").replace(/(전략기획부|임원)[^\n]*\n?/g, "");
+        s = s
+          .replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gim, "")
+          .replace(/(전략기획부|임원)[^\n]*\n?/g, "");
         setText(s);
         setTs(new Date().toISOString());
       } catch (e) {
@@ -63,40 +72,57 @@ function AIBox({ block, payload }) {
   }, [block, JSON.stringify(payload || {})]);
 
   return (
-    <div className="s-pages-index-js-aibox">
-      <div className="s-pages-index-js-auto1">
-        <div className="s-pages-index-js-auto2">AI 현황분석</div>
-        <button onClick={() => setOpen(o=>!o)} className="s-pages-index-js-btngray">{open ? "접기" : "AI 요약"}</button>
-      </div>
-      {open ? (
-        <div className="s-pages-index-js-auto3">
-          <span suppressHydrationWarning>GEMINI 2.5 사용중{ts ? ` · ${new Date(ts).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : ""}</span>
+    <div className="ai-box">
+      <div className="ai-header">
+        <div className="ai-badge">
+          <span className="pulse small" />
+          AI Analysis • GEMINI 2.5
         </div>
-      ) : null}
+        <button onClick={() => setOpen((o) => !o)} className="btn btn-ghost">
+          {open ? "접기" : "AI 요약"}
+        </button>
+      </div>
+
       {open && (
         <>
-          {loading && <div className="s-pages-index-js-auto4">분석 중…</div>}
-          {err && <div className="s-pages-index-js-auto5">오류: {err}</div>}
-          {!loading && !err && <div className="s-pages-index-js-auto6">{redactForbidden(text) || "분석 결과가 없습니다."}</div>}
+          <div className="ai-meta" suppressHydrationWarning>
+            {ts
+              ? `GEMINI 2.5 · ${new Date(ts).toLocaleString("ko-KR", {
+                  timeZone: "Asia/Seoul",
+                })}`
+              : "GEMINI 2.5"}
+          </div>
+          {loading && <div className="muted">분석 중…</div>}
+          {err && <div className="text-danger">오류: {err}</div>}
+          {!loading && !err && (
+            <div className="ai-content">
+              {redactForbidden(text) || "분석 결과가 없습니다."}
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
 
-
-
 /* =========================
    헤더
 ========================= */
 function HeaderBar() {
   return (
-    <header style={styles.headerWrap}>
-      <div style={styles.headerInner}>
-        <div className="s-pages-index-js-brand">
-          <span>Hansoll Market Trend</span>
+    <header className="header">
+      <div className="header-inner">
+        <div className="logo">
+          <div className="logo-mark">H</div>
+          <div>
+            <div className="logo-text">Hansol Market Intelligence</div>
+            <div className="logo-subtitle">Executive Dashboard</div>
+          </div>
         </div>
-        <nav style={styles.nav}></nav>
+        <div className="live-status">
+          <span className="pulse" />
+          <span className="live-label">Live Data</span>
+        </div>
       </div>
     </header>
   );
@@ -120,10 +146,9 @@ function ProcurementTopBlock() {
   };
 
   const [data, setData] = useState(defaultData);
-  
-  
   const [openEdit, setOpenEdit] = useState(false);
-// Load from Google Sheet via API (fallback to localStorage if fails)
+
+  // Load from Google Sheet via API (fallback to localStorage if fails)
   useEffect(() => {
     (async () => {
       try {
@@ -134,14 +159,12 @@ function ProcurementTopBlock() {
           return;
         }
       } catch {}
-      // fallback to localStorage
       try {
         const raw = localStorage.getItem(LS_KEY);
         if (raw) setData((prev) => ({ ...prev, ...JSON.parse(raw) }));
       } catch {}
     })();
   }, []);
-
 
   const ratio = useMemo(() => {
     const r = Number(data.revenue || 0);
@@ -162,115 +185,260 @@ function ProcurementTopBlock() {
     };
   }, [data]);
 
-  const save = () => { localStorage.setItem(LS_KEY, JSON.stringify(data)); setOpenEdit(false); };
-  const reset = () => { localStorage.removeItem(LS_KEY); setData(defaultData); };
+  const save = () => {
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+    setOpenEdit(false);
+  };
+  const reset = () => {
+    localStorage.removeItem(LS_KEY);
+    setData(defaultData);
+  };
 
   const fmtCurrency = (value, currency = "USD") => {
     const num = Number(value || 0);
     try {
       if (currency === "KRW") {
-        return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(num);
+        return new Intl.NumberFormat("ko-KR", {
+          style: "currency",
+          currency: "KRW",
+          maximumFractionDigits: 0,
+        }).format(num);
       }
-      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(num);
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(num);
     } catch {
       return (currency === "KRW" ? "₩" : "$") + num.toLocaleString();
     }
   };
 
-  const Card = ({ title, value, sub }) => (
-    <div className="s-pages-index-js-card">
-      <div className="s-pages-index-js-cardtitle">{title}</div>
-      <div className="s-pages-index-js-cardvalue">{value}</div>
-      {sub ? <div className="s-pages-index-js-cardsub">{sub}</div> : null}
+  const Card = ({ title, value, sub, children }) => (
+    <div className="card metric-card">
+      <div className="metric-label">{title}</div>
+      <div className="metric-value">{value}</div>
+      {sub ? <div className="muted">{sub}</div> : null}
+      {children}
     </div>
   );
 
   return (
-    <section style={styles.blockWrap}>
-      <div className="s-pages-index-js-headerrow">
+    <section className="section">
+      <div className="section-header">
         <div>
-          <h2 className="s-pages-index-js-h2">부자재구매현황 DASHBOARD (sample data입니다)</h2>
-          <div className="s-pages-index-js-meta">
-            기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b> / 통화: <b>{data.currency}</b>
+          <h2 className="section-title">부자재구매현황 DASHBOARD</h2>
+          <p className="section-subtitle">
+            기간: <b>{data.periodLabel || "—"}</b> / 방식: <b>{data.period}</b>{" "}
+            / 통화: <b>{data.currency}</b>
+          </p>
+        </div>
+        <button onClick={() => setOpenEdit((o) => !o)} className="btn btn-secondary">
+          {openEdit ? "입력 닫기" : "수기 입력"}
+        </button>
+      </div>
+
+      <div className="card card-premium">
+        <div className="grid grid-5">
+          <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
+          <Card
+            title="총 부자재매입액"
+            value={fmtCurrency(data.materialSpend, data.currency)}
+          />
+          <Card title="매출 대비 부자재 매입비중" value={fmtSignPct(ratio, 1)}>
+            <div className="progress">
+              <div
+                className="progress-fill"
+                style={{ width: `${ratio}%` }}
+                aria-label="부자재 매입 비중"
+              />
+            </div>
+          </Card>
+          <Card
+            title="총 Cost Save"
+            value={fmtCurrency(data.costSave || 0, data.currency)}
+          />
+          <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
+        </div>
+
+        <div className="subsection">
+          <h3 className="subsection-title">공급현황 분석</h3>
+          <div className="stack-bar" role="img" aria-label="공급현황(국내/3국/현지)">
+            <div
+              className="stack-segment seg-domestic"
+              title={`국내 ${fmtNum(supply.domestic, 1)}%`}
+              style={{ width: `${supply.domestic}%` }}
+            />
+            <div
+              className="stack-segment seg-third"
+              title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`}
+              style={{ width: `${supply.thirdCountry}%` }}
+            />
+            <div
+              className="stack-segment seg-local"
+              title={`현지 ${fmtNum(supply.local, 1)}%`}
+              style={{ width: `${supply.local}%` }}
+            />
           </div>
-          <div>
-            <button onClick={() => setOpenEdit(o=>!o)} className="s-pages-index-js-btntiny">{openEdit ? "입력 닫기" : "수기 입력"}</button>
-</div>
+          <div className="legend">
+            <div className="legend-item">
+              <span className="legend-dot dot-domestic" />
+              <span>국내 {fmtNum(supply.domestic, 1)}%</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot dot-third" />
+              <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot dot-local" />
+              <span>현지 {fmtNum(supply.local, 1)}%</span>
+            </div>
+          </div>
         </div>
-</div>
-
-      <div >
-      <div className="s-pages-index-js-grid5">
-        <Card title="총 매출액" value={fmtCurrency(data.revenue, data.currency)} />
-        <Card title="총 부자재매입액" value={fmtCurrency(data.materialSpend, data.currency)} />
-        <div className="s-pages-index-js-card">
-          <div className="s-pages-index-js-cardtitle">매출 대비 부자재 매입비중</div>
-          <div className="s-pages-index-js-cardvalue">{fmtSignPct(ratio, 1)}</div>
-          <div style={styles.progressWrap}><div style={{ ...styles.progressBar, width: `${ratio}%` }} /></div>
-        </div>
-        <Card title="총 Cost Save" value={fmtCurrency(data.costSave || 0, data.currency)} />
-        <Card title="총 발행 PO수" value={fmtNum(data.poCount, 0)} />
       </div>
 
-      <div style={styles.innerBlock}>
-        <div className="s-pages-index-js-blocktitle">공급현황 (국내 / 3국 / 현지)</div>
-        <div style={styles.stackBar}>
-          <div style={{ ...styles.seg, background: "#111827", width: `${supply.domestic}%` }} title={`국내 ${fmtNum(supply.domestic, 1)}%`} />
-          <div style={{ ...styles.seg, background: "#4B5563", width: `${supply.thirdCountry}%` }} title={`3국 ${fmtNum(supply.thirdCountry, 1)}%`} />
-          <div style={{ ...styles.seg, background: "#9CA3AF", width: `${supply.local}%` }} title={`현지 ${fmtNum(supply.local, 1)}%`} />
-        </div>
-        <div className="s-pages-index-js-legend">
-          <span>국내 {fmtNum(supply.domestic, 1)}%</span>
-          <span>3국 {fmtNum(supply.thirdCountry, 1)}%</span>
-          <span>현지 {fmtNum(supply.local, 1)}%</span>
-        </div>
-        <div style={{ fontSize:12, color:"var(--sub)" }}>GEMINI 2.5 사용중</div>
-      </div>
-
-      </div>
       <AIBox block="procurement" payload={{ ...data, ratio, supply }} />
 
       {openEdit && (
-        <div style={styles.editBox}>
-          <div className="s-pages-index-js-row">
-            <label>기간 표시</label>
-            <input value={data.periodLabel || ""} onChange={(e) => setData(d => ({ ...d, periodLabel: e.target.value }))} placeholder="예: 2025-09" />
+        <div className="edit-box">
+          <div className="form-row">
+            <label className="form-label">기간 표시</label>
+            <input
+              className="form-input"
+              value={data.periodLabel || ""}
+              onChange={(e) =>
+                setData((d) => ({ ...d, periodLabel: e.target.value }))
+              }
+              placeholder="예: 2025-09"
+            />
           </div>
-          <div className="s-pages-index-js-row">
-            <label>방식</label>
-            <input value={data.period || ""} onChange={(e) => setData(d => ({ ...d, period: e.target.value }))} placeholder="월간 / 주간 / 일간 등" />
+          <div className="form-row">
+            <label className="form-label">방식</label>
+            <input
+              className="form-input"
+              value={data.period || ""}
+              onChange={(e) => setData((d) => ({ ...d, period: e.target.value }))}
+              placeholder="월간 / 주간 / 일간 등"
+            />
           </div>
-          <div className="s-pages-index-js-row">
-            <label>통화</label>
-            <select value={data.currency} onChange={(e) => setData(d => ({ ...d, currency: e.target.value }))}>
-              <option value="USD">USD</option><option value="KRW">KRW</option>
+          <div className="form-row">
+            <label className="form-label">통화</label>
+            <select
+              className="form-input"
+              value={data.currency}
+              onChange={(e) => setData((d) => ({ ...d, currency: e.target.value }))}
+            >
+              <option value="USD">USD</option>
+              <option value="KRW">KRW</option>
             </select>
           </div>
-          <div style={styles.grid2}>
-            <div className="s-pages-index-js-row"><label>총 매출액</label><input type="number" value={data.revenue} onChange={(e) => setData(d => ({ ...d, revenue: Number(e.target.value) }))} /></div>
-            <div className="s-pages-index-js-row"><label>총 부자재매입액</label><input type="number" value={data.materialSpend} onChange={(e) => setData(d => ({ ...d, materialSpend: Number(e.target.value) }))} /></div>
-          <div className="s-pages-index-js-row"><label>총 Cost Save</label><input type="number" value={data.costSave}
-            onChange={(e) => setData(d => ({ ...d, costSave: Number(e.target.value) }))} /></div>
-          </div>
-          <div style={styles.grid2}>
-            <div className="s-pages-index-js-row"><label>총 오더수(스타일)</label><input type="number" value={data.styles} onChange={(e) => setData(d => ({ ...d, styles: Number(e.target.value) }))} /></div>
-            <div className="s-pages-index-js-row"><label>총 발행 PO수</label><input type="number" value={data.poCount} onChange={(e) => setData(d => ({ ...d, poCount: Number(e.target.value) }))} /></div>
-          </div>
-          <div className="s-pages-index-js-auto7">
-            <div className="s-pages-index-js-blocktitle">공급현황(%) — 합계 100 기준</div>
-            <div className="s-pages-index-js-grid3">
-              <div className="s-pages-index-js-row"><label>국내(%)</label><input type="number" value={data.supplyBreakdown.domestic}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, domestic: Number(e.target.value) } }))} /></div>
-              <div className="s-pages-index-js-row"><label>3국(%)</label><input type="number" value={data.supplyBreakdown.thirdCountry}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, thirdCountry: Number(e.target.value) } }))} /></div>
-              <div className="s-pages-index-js-row"><label>현지(%)</label><input type="number" value={data.supplyBreakdown.local}
-                onChange={(e) => setData(d => ({ ...d, supplyBreakdown: { ...d.supplyBreakdown, local: Number(e.target.value) } }))} /></div>
+
+          <div className="grid grid-2">
+            <div className="form-row">
+              <label className="form-label">총 매출액</label>
+              <input
+                className="form-input"
+                type="number"
+                value={data.revenue}
+                onChange={(e) =>
+                  setData((d) => ({ ...d, revenue: Number(e.target.value) }))
+                }
+              />
+            </div>
+            <div className="form-row">
+              <label className="form-label">총 부자재매입액</label>
+              <input
+                className="form-input"
+                type="number"
+                value={data.materialSpend}
+                onChange={(e) =>
+                  setData((d) => ({
+                    ...d,
+                    materialSpend: Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div className="form-row">
+              <label className="form-label">총 Cost Save</label>
+              <input
+                className="form-input"
+                type="number"
+                value={data.costSave}
+                onChange={(e) =>
+                  setData((d) => ({ ...d, costSave: Number(e.target.value) }))
+                }
+              />
             </div>
           </div>
-          <div className="s-pages-index-js-auto8">
-            <button onClick={save} className="s-pages-index-js-btnblue">저장</button>
-            <button  className="s-pages-index-js-btngray">닫기</button>
-            <button onClick={reset} className="s-pages-index-js-btndanger">초기화</button>
+
+          <div className="subedit">
+            <div className="subsection-title">공급현황(%) — 합계 100 기준</div>
+            <div className="grid grid-3">
+              <div className="form-row">
+                <label className="form-label">국내(%)</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  value={data.supplyBreakdown.domestic}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: {
+                        ...d.supplyBreakdown,
+                        domestic: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div className="form-row">
+                <label className="form-label">3국(%)</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  value={data.supplyBreakdown.thirdCountry}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: {
+                        ...d.supplyBreakdown,
+                        thirdCountry: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div className="form-row">
+                <label className="form-label">현지(%)</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  value={data.supplyBreakdown.local}
+                  onChange={(e) =>
+                    setData((d) => ({
+                      ...d,
+                      supplyBreakdown: {
+                        ...d.supplyBreakdown,
+                        local: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button onClick={save} className="btn btn-primary">
+              저장
+            </button>
+            <button onClick={() => setOpenEdit(false)} className="btn btn-secondary">
+              닫기
+            </button>
+            <button onClick={reset} className="btn btn-danger">
+              초기화
+            </button>
           </div>
         </div>
       )}
@@ -287,15 +455,23 @@ function Sparkline({ series = [], width = 110, height = 32 }) {
   const max = Math.max(...series);
   const span = max - min || 1;
   const step = width / (series.length - 1);
-  const pts = series.map((v, i) => {
-    const x = i * step;
-    const y = height - ((v - min) / span) * height;
-    return `${x},${y}`;
-  }).join(" ");
+  const pts = series
+    .map((v, i) => {
+      const x = i * step;
+      const y = height - ((v - min) / span) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
   const up = series[series.length - 1] >= series[0];
+
   return (
-    <svg width={width} height={height} className="s-pages-index-js-auto9">
-      <polyline fill="none" stroke={up ? "#065f46" : "#991b1b"} strokeWidth="2" points={pts} />
+    <svg
+      width={width}
+      height={height}
+      className={`sparkline ${up ? "up" : "down"}`}
+      aria-hidden="true"
+    >
+      <polyline fill="none" stroke="currentColor" strokeWidth="2" points={pts} />
     </svg>
   );
 }
@@ -311,7 +487,9 @@ function IndicatorsSection() {
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "지표 API 오류");
         setState({ loading: false, data: j, error: "" });
-        setLastUpdated(j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString());
+        setLastUpdated(
+          j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
+        );
       } catch (e) {
         setState({ loading: false, data: null, error: String(e) });
       }
@@ -326,7 +504,8 @@ function IndicatorsSection() {
     t10y2y: "https://fred.stlouisfed.org/series/T10Y2Y",
     inventory_ratio: "https://fred.stlouisfed.org/series/ISRATIO",
     unemployment: "https://fred.stlouisfed.org/series/UNRATE",
-    ism_retail: "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
+    ism_retail:
+      "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/retail-trade/",
   };
   const curated = [
     { key: "wti", title: "WTI (USD/bbl)" },
@@ -354,19 +533,24 @@ function IndicatorsSection() {
   }, [state.data, lastUpdated]);
 
   return (
-    <section className="s-pages-index-js-auto10">
-      <h3 className="s-pages-index-js-h3">주요 지표</h3>
-      {lastUpdated && (
-        <div className="s-pages-index-js-auto11">
-          전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+    <section className="section">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">주요 지표</h2>
+          {lastUpdated && (
+            <p className="section-subtitle">
+              전체 업데이트: {new Date(lastUpdated).toLocaleString("ko-KR")}
+            </p>
+          )}
         </div>
-      )}
+      </div>
+
       {state.loading && <div>불러오는 중...</div>}
-      {state.error && <div style={styles.err}>에러: {state.error}</div>}
+      {state.error && <div className="text-danger">에러: {state.error}</div>}
 
       {!state.loading && !state.error && (
         <>
-          <div className="s-pages-index-js-grid4">
+          <div className="grid grid-4">
             {curated.map((c) => {
               const node = state.data?.[c.key] || null;
               const v = node?.value ?? null;
@@ -374,29 +558,58 @@ function IndicatorsSection() {
               const deltaPct = node?.changePercent ?? null;
               const yoyPct = node?.yoyPercent ?? null;
               const href = LINK[c.key];
-              const up = deltaPct != null ? deltaPct >= 0 : (s.length >= 2 ? s[s.length - 1] >= s[0] : true);
+              const up =
+                deltaPct != null
+                  ? deltaPct >= 0
+                  : s.length >= 2
+                  ? s[s.length - 1] >= s[0]
+                  : true;
               const lastDate = node?.lastDate ? new Date(node.lastDate) : null;
-              const lastDateStr = lastDate && isFinite(lastDate.getTime()) ? lastDate.toISOString().slice(0,10) : null;
+              const lastDateStr =
+                lastDate && isFinite(lastDate.getTime())
+                  ? lastDate.toISOString().slice(0, 10)
+                  : null;
 
               return (
-                <a key={c.key} href={href} target="_blank" rel="noreferrer" style={{ ...styles.card, ...styles.cardLink }} title="원본 데이터 열기">
-                  <div className="s-pages-index-js-cardtitle">{c.title}</div>
-                  <div className="s-pages-index-js-cardvalue">{v != null ? fmtNum(v) : "-"}</div>
-                  <div style={{ ...styles.cardSub, fontWeight: 800, color: deltaPct == null ? "#6b7280" : (up ? "#065f46" : "#991b1b") }}>
+                <a
+                  key={c.key}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="card link-card"
+                  title="원본 데이터 열기"
+                >
+                  <div className="metric-label">{c.title}</div>
+                  <div className="metric-value">{v != null ? fmtNum(v) : "-"}</div>
+
+                  <div
+                    className={`metric-change ${
+                      deltaPct == null ? "" : up ? "positive" : "negative"
+                    }`}
+                  >
                     {deltaPct == null ? "vs prev: -" : `vs prev: ${fmtSignPct(deltaPct)}`}
                   </div>
+
                   {yoyPct != null && (
-                    <div style={{ ...styles.cardSub, fontWeight: 800, color: yoyPct >= 0 ? "#065f46" : "#991b1b" }}>
+                    <div
+                      className={`metric-change ${
+                        yoyPct >= 0 ? "positive" : "negative"
+                      }`}
+                    >
                       YoY: {fmtSignPct(yoyPct)}
                     </div>
                   )}
+
                   <Sparkline series={s || []} />
-                  {lastDateStr && <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>업데이트: {lastDateStr}</div>}
-                  <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>원본 보기 ↗</div>
+                  {lastDateStr && (
+                    <div className="meta small">업데이트: {lastDateStr}</div>
+                  )}
+                  <div className="meta small">원본 보기 ↗</div>
                 </a>
               );
             })}
           </div>
+
           <AIBox block="indicators" payload={payloadForAI} />
         </>
       )}
@@ -407,7 +620,7 @@ function IndicatorsSection() {
 /* =========================
    3) 일일 리테일러 주가 등락률 (전일 종가 대비) + 원본 링크
 ========================= */
-const SYMBOLS = ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"];
+const SYMBOLS = ["WMT", "TGT", "ANF", "VSCO", "KSS", "AMZN", "BABA", "9983.T"];
 const NAME_MAP = {
   WMT: "Walmart",
   TGT: "Target",
@@ -424,111 +637,95 @@ function StocksSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  
-  // Inline AI summary state per symbol
-  const [sumState, setSumState] = useState({}); 
-  // --- Markdown-lite helpers for clear, scannable layout ---
-  function parseSections(text="") {
-    const lines = String(text).split(/\r?\n/);
-    const sections = [];
-    let title = null, buf = [];
-    const push = () => { if (title || buf.length) { sections.push({ title: title || "", lines: buf.slice() }); } };
-    for (const ln of lines) {
-      if (/^###\s+/.test(ln)) {
-        push(); title = ln.replace(/^###\s+/, "").trim(); buf = [];
-      } else {
-        buf.push(ln);
-      }
+  // (옵션) 종목별 요약 상태
+  const [sumState, setSumState] = useState({});
+
+  async function loadSummary(symbol) {
+    setSumState((s) => ({
+      ...s,
+      [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" },
+    }));
+    try {
+      const r = await fetch(
+        `/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`
+      );
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
+      setSumState((s) => ({
+        ...s,
+        [symbol]: {
+          ...(s[symbol] || {}),
+          open: true,
+          loading: false,
+          summary: j.summary || "(요약 없음)",
+          error: "",
+        },
+      }));
+    } catch (e) {
+      setSumState((s) => ({
+        ...s,
+        [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) },
+      }));
     }
-    push();
-    return sections;
   }
-  function renderSection(sec, idx) {
-    const items = [];
-    let inList = false, list = [];
-    const flushList = () => { if (list.length) { items.push(<ul key={"ul"+items.length} className="s-pages-index-js-auto12">{list.map((t,i)=><li key={i} className="s-pages-index-js-auto13">{t}</li>)}</ul>); list = []; } };
-    for (const raw of sec.lines) {
-      const ln = raw.trim();
-      if (!ln) { flushList(); continue; }
-      if (/^[-•]\s+/.test(ln)) { inList = true; list.push(ln.replace(/^[-•]\s+/, "")); continue; }
-      if (inList) { flushList(); inList = false; }
-      items.push(<p key={"p"+items.length} className="s-pages-index-js-auto14">{ln}</p>);
-    }
-    flushList();
-    const titleMap = {
-      "Implications for Hansoll": "한솔섬유 전략에 미치는 시사점"
-    };
-    const title = titleMap[sec.title] || sec.title;
+
+  function renderInlineSummary(symbol) {
+    const st = sumState[symbol] || {};
+    if (!st.open) return null;
     return (
-      <section key={idx} style={{ marginTop: idx===0?0:10 }}>
-        {title ? <h3 style={{ fontSize: 14, fontWeight: 700, margin: "8px 0 4px 0" }}>{title}</h3> : null}
-        {items}
-      </section>
-    );
-  }
-  function renderSummaryBox(sym) {
-    const st = sumState[sym] || {};
-    const sections = parseSections(st.summary || "");
-    const collapsed = st.expanded ? false : true;
-    return (
-      <div style={{
-        border: "1px solid #e5e7eb",
-        background: "#f8fafc",
-        padding: 12,
-        borderRadius: 10,
-        marginTop: 10,
-        position: "relative",
-        maxHeight: collapsed ? 240 : "none",
-        overflow: "hidden"
-      }}>
-        {sections.map(renderSection)}
-        {collapsed && <div style={{ position: "absolute", left:0, right:0, bottom:0, height: 48,
-          background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"}} />}
-        <div className="s-pages-index-js-auto15">
-          <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
-                  style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
-            {collapsed ? "더보기" : "접기"}
+      <div className="inline-summary">
+        {st.loading && <div className="muted">요약 불러오는 중…</div>}
+        {st.error && <div className="text-danger">오류: {st.error}</div>}
+        {!st.loading && !st.error && (
+          <div className="ai-content" style={{ whiteSpace: "pre-wrap" }}>
+            {st.summary}
+          </div>
+        )}
+        <div className="inline-summary-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={() =>
+              setSumState((s) => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }))
+            }
+          >
+            닫기
           </button>
         </div>
       </div>
     );
   }
-// { [symbol]: { open, loading, summary, error } }
 
-  async function loadSummary(symbol) {
-    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" } }));
-    try {
-      const r = await fetch(`/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: j.summary || "(요약 없음)", error: "" } }));
-    } catch (e) {
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) } }));
-    }
-  }
-
-  function closeSummary(symbol) {
-    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: false } }));
-  }
-useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
         const out = await Promise.all(
           SYMBOLS.map(async (s) => {
             try {
-              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, { cache: "no-store" });
+              const r = await fetch(`/api/stocks?symbol=${encodeURIComponent(s)}`, {
+                cache: "no-store",
+              });
               const j = await r.json();
               if (!r.ok) throw new Error(j?.error || "stocks api error");
               const name = j.longName || j.name || NAME_MAP[s] || s;
-              const price = j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
+              const price =
+                j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
               let pct = 0;
-              if (isFinite(Number(price)) && isFinite(Number(prevClose)) && Number(prevClose) !== 0) {
+              if (
+                isFinite(Number(price)) &&
+                isFinite(Number(prevClose)) &&
+                Number(prevClose) !== 0
+              ) {
                 pct = ((Number(price) - Number(prevClose)) / Number(prevClose)) * 100;
               } else if (isFinite(Number(j.changePercent))) {
                 pct = Number(j.changePercent);
               }
-              return { symbol: s, name, price: isFinite(Number(price)) ? Number(price) : null, pct };
+              return {
+                symbol: s,
+                name,
+                price: isFinite(Number(price)) ? Number(price) : null,
+                pct,
+              };
             } catch (e) {
               return { symbol: s, name: NAME_MAP[s] || s, price: null, pct: 0, error: true };
             }
@@ -544,48 +741,61 @@ useEffect(() => {
   }, []);
 
   const sorted = rows.slice().sort((a, b) => b.pct - a.pct);
-  const aiPayload = useMemo(() => ({ rows: sorted.filter(r => Math.abs(r.pct) >= 4) }), [JSON.stringify(sorted)]);
+  const aiPayload = useMemo(
+    () => ({ rows: sorted.filter((r) => Math.abs(r.pct) >= 4) }),
+    [JSON.stringify(sorted)]
+  );
 
   return (
-    <section className="s-pages-index-js-auto16">
-      <h3 className="s-pages-index-js-h3">일일 리테일러 주가 등락률 (전일 종가 대비)</h3>
+    <section className="section">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">일일 리테일러 주가 등락률</h2>
+          <p className="section-subtitle">전일 종가 대비 변동률</p>
+        </div>
+      </div>
+
       {loading && <div>불러오는 중...</div>}
-      {err && <div style={styles.err}>에러: {err}</div>}
+      {err && <div className="text-danger">에러: {err}</div>}
+
       {!loading && !err && (
         <>
-          <div className="s-pages-index-js-grid4">
-            {sorted.map((r) => {
-              const link = `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`;
-              return (
-                
-                <div key={r.symbol} style={{ ...styles.card }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ ...styles.cardTitle }}>
-                        {r.name} <span className="s-pages-index-js-auto17">({r.symbol})</span>
-                      </div>
-                      <div style={{ ...styles.cardValue }}>{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
-                      <div style={{ ...styles.cardSub, fontWeight: 900, color: r.pct >= 0 ? "#065f46" : "#991b1b" }}>
-                        {fmtSignPct(r.pct)}
-                      </div>
-                      <div style={{ ...styles.cardSub, color: "#6b7280", marginTop: 4 }}>변동률은 전일 종가 대비</div>
-                    </div>
-                    <div className="s-pages-index-js-auto18">
-                      <a href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
-                         target="_blank" rel="noreferrer"
-                         style={{ ...styles.btnTab }} title="Yahoo Finance 열기">
-                        Yahoo
-                      </a>
-                      <a href={`/company/${encodeURIComponent(r.symbol)}`} style={{ ...styles.btnTab }} title="AI 요약 화면으로 이동">AI뉴스요약</a>
-                    </div>
+          <div className="grid grid-4">
+            {sorted.map((r) => (
+              <div key={r.symbol} className="card stock-card">
+                <div className="stock-header">
+                  <div>
+                    <div className="stock-name">{r.name}</div>
+                    <div className="stock-symbol">{r.symbol}</div>
                   </div>
-
-                  {sumState[r.symbol]?.open && (<div className="s-pages-index-js-auto19">{renderSummaryBox(r.symbol)}</div>)}
+                  <div className="stock-links">
+                    <a
+                      href={`https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="stock-link"
+                    >
+                      Yahoo
+                    </a>
+                    <a href={`/company/${encodeURIComponent(r.symbol)}`} className="stock-link">
+                      AI 분석
+                    </a>
+                    <button className="stock-link" onClick={() => loadSummary(r.symbol)}>
+                      요약
+                    </button>
+                  </div>
                 </div>
+                <div className="stock-price">{r.price != null ? fmtNum(r.price, 2) : "-"}</div>
+                <div className={`metric-change ${r.pct >= 0 ? "positive" : "negative"}`}>
+                  {fmtSignPct(r.pct)}
+                </div>
+                <div className="meta small">변동률은 전일 종가 대비</div>
 
-              );
-            })}
+                {renderInlineSummary(r.symbol)}
+              </div>
+            ))}
           </div>
+
           <AIBox block="stocks" payload={aiPayload} />
         </>
       )}
@@ -594,23 +804,15 @@ useEffect(() => {
 }
 
 /* =========================
-   4) 뉴스 탭 — 브랜드 / 산업 / 한국 (한국: 필터 없이 최근 2일)
+   4) 뉴스 탭 — 해외 / 국내 / AI 요약
 ========================= */
-const BRAND_TERMS = [
-  "Walmart","Victoria's Secret","Abercrombie","Carter's","Kohl's","Uniqlo","Fast Retailing",
-  "Aerie","Duluth","Under Armour","Aritzia","Amazon","Alibaba"
-];
-const INDUSTRY_TERMS = ["fashion","textile","garment","apparel"];
-
-
 function NewsTabsSection() {
-  const [activeTab, setActiveTab] = useState('overseas'); // overseas | korea
+  const [activeTab, setActiveTab] = useState("overseas"); // overseas | korea
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
-  const [newsErr, setNewsErr] = useState('');
+  const [newsErr, setNewsErr] = useState("");
   const [collapsed, setCollapsed] = useState(true);
 
-  
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiErr, setAiErr] = useState("");
@@ -619,11 +821,12 @@ function NewsTabsSection() {
 
   async function loadAISummary() {
     try {
-      setAiLoading(true); setAiErr(""); setAiForeign(null); setAiKorea(null); setAiOpen(true);
-      const [rf, rk] = await Promise.all([
-        fetch("/api/ai-news-foreign"),
-        fetch("/api/ai-news-korea")
-      ]);
+      setAiLoading(true);
+      setAiErr("");
+      setAiForeign(null);
+      setAiKorea(null);
+      setAiOpen(true);
+      const [rf, rk] = await Promise.all([fetch("/api/ai-news-foreign"), fetch("/api/ai-news-korea")]);
       const jf = await rf.json();
       const jk = await rk.json();
       if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
@@ -636,22 +839,44 @@ function NewsTabsSection() {
       setAiLoading(false);
     }
   }
-async function load(tab = activeTab) {
+
+  async function load(tab = activeTab) {
     try {
-      setNewsLoading(true); setNewsErr(''); setNewsItems([]);
-      let url = '';
-      if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
+      setNewsLoading(true);
+      setNewsErr("");
+      setNewsItems([]);
+      let url = "";
+      if (tab === "overseas") {
+        url =
+          "/api/news?" +
+          new URLSearchParams({
+            industry: "fashion|apparel|garment|textile",
+            language: "en",
+            days: "7",
+            limit: "40",
+            domains: FOREIGN_DOMAINS,
+          }).toString();
       } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
+        url =
+          "/api/news-kr-rss?" +
+          new URLSearchParams({
+            feeds: "http://www.ktnews.com/rss/allArticle.xml",
+            days: "1",
+            limit: "200",
+          }).toString();
       }
-      const r = await fetch(url, { cache: 'no-store' });
+      const r = await fetch(url, { cache: "no-store" });
       const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(n => ({
+      const items = (arr || []).map((n) => ({
         title: n.title,
         url: n.url || n.link,
-        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
+        source:
+          (typeof n.source === "string"
+            ? n.source
+            : n.source && (n.source.name || n.source.id)
+            ? String(n.source.name || n.source.id)
+            : "") || "",
+        publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
       }));
       setNewsItems(items);
       setCollapsed(true);
@@ -662,132 +887,167 @@ async function load(tab = activeTab) {
     }
   }
 
-  useEffect(() => { load('overseas'); }, []);
+  useEffect(() => {
+    load("overseas");
+  }, []);
 
-  const rendered = (collapsed ? newsItems.slice(0,5) : newsItems);
+  const rendered = collapsed ? newsItems.slice(0, 5) : newsItems;
 
   return (
-    <section className="s-pages-index-js-auto20">
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
-        <div className="s-pages-index-js-auto21">
-          <button onClick={() => { setActiveTab('overseas'); load('overseas'); }} style={{ ...styles.btnTab, ...(activeTab==='overseas'?styles.btnTabActive:{}) }}>해외뉴스</button>
-          <button onClick={() => { setActiveTab('korea'); load('korea'); }} style={{ ...styles.btnTab, ...(activeTab==='korea'?styles.btnTabActive:{}) }}>국내뉴스</button>
-          <button onClick={async () => { await loadAISummary(); const sec = document.getElementById("aiNewsSection"); if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" }); }} style={{ ...styles.btnTab }}>AI 요약</button>
+    <section className="section">
+      <div className="section-header">
+        <h2 className="section-title">뉴스</h2>
+        <div className="tab-nav">
+          <button
+            onClick={() => {
+              setActiveTab("overseas");
+              load("overseas");
+            }}
+            className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
+          >
+            해외뉴스
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("korea");
+              load("korea");
+            }}
+            className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
+          >
+            국내뉴스
+          </button>
+          <button onClick={loadAISummary} className="tab-btn">
+            AI 요약
+          </button>
         </div>
-        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          <span style={{ fontSize:12, color:"#6b7280" }}>뉴스출처: {FOREIGN_DOMAINS}, 한국섬유신문</span>
-</div>
       </div>
 
-      <div style={{ marginTop: 12, border:"1px solid #e5e7eb", borderRadius:12, background:"#fff" }}>
-        {newsLoading && <div style={{ padding:12, color:"#6b7280" }}>불러오는 중…</div>}
-        {newsErr && <div style={{ padding:12, color:"#b91c1c" }}>에러: {newsErr}</div>}
+      <div className="card">
+        {newsLoading && <div className="muted">불러오는 중…</div>}
+        {newsErr && <div className="text-danger">에러: {newsErr}</div>}
         {!newsLoading && !newsErr && (
-          <div className="s-pages-index-js-auto22">
+          <>
             {rendered.length === 0 ? (
-              <div className="s-pages-index-js-auto23">관련 기사가 아직 없어요.</div>
+              <div className="muted">관련 기사가 아직 없어요.</div>
             ) : (
-              <ol className="s-pages-index-js-auto24">
+              <ol className="news-list">
                 {rendered.map((it, i) => (
-                  <li key={i} className="s-pages-index-js-auto25">
-                    <a href={it.url} target="_blank" rel="noreferrer" className="s-pages-index-js-auto26">{it.title}</a>
-                    {it.publishedAt ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.publishedAt}</div> : null}
-                    <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source}</div>
+                  <li key={i} className="news-item">
+                    <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
+                      {it.title}
+                    </a>
+                    {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
+                    <div className="news-meta source">{it.source}</div>
                   </li>
                 ))}
               </ol>
             )}
             {newsItems.length > 5 && (
-              <div className="s-pages-index-js-auto27">
-                <button onClick={() => setCollapsed(v => !v)} style={{ ...styles.btnGhost }}>
+              <div className="more-row">
+                <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
                   {collapsed ? "더보기" : "접기"}
                 </button>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
-      {/* AI 요약 모달 */}
-</section>
+
+      {aiOpen && (
+        <div id="aiNewsSection" className="ai-panel">
+          <div className="ai-panel-header">
+            <h3>뉴스 AI 분석</h3>
+            <div className="ai-panel-actions">
+              <div className="ai-meta">
+                {aiForeign?.generatedAt
+                  ? `GEMINI 2.5 · ${new Date(aiForeign.generatedAt).toLocaleString("ko-KR", {
+                      timeZone: "Asia/Seoul",
+                    })}`
+                  : "GEMINI 2.5"}
+              </div>
+              <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
+                {aiLoading ? "요약 중..." : "다시 요약"}
+              </button>
+            </div>
+          </div>
+
+          {aiErr && <div className="text-danger">에러: {aiErr}</div>}
+          {!aiErr && (
+            <div className="grid grid-2">
+              <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
+              <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
-/* =========================
-   페이지
-========================= */
-
-function LinkifyCitations(text="") {
+function LinkifyCitations(text = "") {
   return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
-    const id = String(grp).split('-')[0];
-    return `<a href="#ref-${id}" style="text-decoration: underline;">[${grp}]</a>`;
+    const id = String(grp).split("-")[0];
+    return `<a href="#ref-${id}" class="ref">[${grp}]</a>`;
   });
 }
-function splitSections(md="") {
+function splitSections(md = "") {
   const lines = String(md).split(/\r?\n/);
-  const out=[]; let title=null, buf=[];
-  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\n")}); };
-  for(const ln of lines){
-    if(/^###\s+/.test(ln)){ push(); title=ln.replace(/^###\s+/,"").trim(); buf=[]; }
-    else buf.push(ln);
-  } push(); return out;
-}
-
-function NewsAISummaryPanel({ title, endpoint }) {
-  const [loading, setLoading] = React.useState(false);
-  const [data, setData] = React.useState(null);
-  const [err, setErr] = React.useState("");
-
-  async function load() {
-    try {
-      setLoading(true); setErr(""); setData(null);
-      const r = await fetch(endpoint);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Failed");
-      setData(j);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setLoading(false);
-    }
+  const out = [];
+  let title = null,
+    buf = [];
+  const push = () => {
+    if (title || buf.length) out.push({ title: title || "", body: buf.join("\n") });
+  };
+  for (const ln of lines) {
+    if (/^###\s+/.test(ln)) {
+      push();
+      title = ln.replace(/^###\s+/, "").trim();
+      buf = [];
+    } else buf.push(ln);
   }
-
-  React.useEffect(() => { load(); }, []);
-
-  const sections = React.useMemo(() => splitSections(data?.summary||""), [data?.summary]);
-
+  push();
+  return out;
+}
+function AISummaryColumn({ title, data }) {
+  const sections = React.useMemo(() => splitSections(data?.summary || ""), [data?.summary]);
   return (
-    <div style={{ border:"1px solid #e5e7eb", borderRadius:12, padding:14, background:"#fff" }}>
-      <div className="s-pages-index-js-auto28">
-        <h3 className="s-pages-index-js-auto29">{title}</h3>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <div style={{ fontSize:12, color:"#6b7280" }}>{data?.generatedAt ? `GEMINI 2.5 사용중 · ${new Date(data.generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "GEMINI 2.5 사용중"}</div>
-          <button onClick={load} disabled={loading} style={{ ...styles.btnTab }}>{loading ? "요약 중..." : "다시 요약"}</button>
-        </div>
-      </div>
-
-      {err && <div className="s-pages-index-js-auto30">에러: {err}</div>}
-      {!data && !loading && <div>요약을 불러오는 중…</div>}
-      {data && (
-        <div className="s-pages-index-js-auto31">
-          <div className="s-pages-index-js-auto32">
+    <div className="card">
+      <h4 className="ai-col-title">{title}</h4>
+      {!data ? (
+        <div className="muted">요약을 불러오는 중…</div>
+      ) : (
+        <div className="ai-col">
+          <div className="ai-col-body">
             {sections.map((sec, idx) => (
-              <section key={idx} style={{ marginTop: idx===0?0:12 }}>
-                {sec.title ? <h4 className="s-pages-index-js-auto33">{sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}</h4> : null}
+              <section key={idx} className="ai-col-section">
+                {sec.title ? (
+                  <h5 className="ai-col-section-title">
+                    {sec.title === "Implications for Hansoll"
+                      ? "한솔섬유 전략에 미치는 시사점"
+                      : sec.title}
+                  </h5>
+                ) : null}
                 <div
-                  className="s-pages-index-js-auto34"
-                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\s+/gm, "• ").replace(/\n/g, "<br/>") }}
+                  className="ai-col-section-text"
+                  dangerouslySetInnerHTML={{
+                    __html: LinkifyCitations(sec.body)
+                      .replace(/^-\s+/gm, "• ")
+                      .replace(/\n/g, "<br/>"),
+                  }}
                 />
               </section>
             ))}
           </div>
-          <aside className="s-pages-index-js-auto35">
-            <h4 className="s-pages-index-js-auto36">참조 뉴스</h4>
-            <ol className="s-pages-index-js-auto37">
+          <aside className="ai-col-aside">
+            <h5 className="ai-col-aside-title">참조 뉴스</h5>
+            <ol className="ai-col-refs">
               {(data.items || []).slice(0, 20).map((it, i) => (
-                <li id={`ref-${i+1}`} key={i} className="s-pages-index-js-auto38">
-                  <a href={it.link} target="_blank" rel="noreferrer" className="s-pages-index-js-auto39">{it.title}</a>
-                  {it.pubDate ? <div style={{ fontSize:12, color:"#6b7280" }}>{it.pubDate}</div> : null}
-                  <div style={{ fontSize:11, color:"#94a3b8" }}>{it.source || ""}</div>
+                <li id={`ref-${i + 1}`} key={i} className="ai-col-ref">
+                  <a href={it.link} target="_blank" rel="noreferrer" className="news-title">
+                    {it.title}
+                  </a>
+                  {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
+                  <div className="news-meta source">{it.source || ""}</div>
                 </li>
               ))}
             </ol>
@@ -798,120 +1058,39 @@ function NewsAISummaryPanel({ title, endpoint }) {
   );
 }
 
-function NewsAISummarySection() {
-  return (
-    <div id="aiNewsSection" className="s-pages-index-js-auto40">
-      <div style={{ ...styles.blockTitle }}>뉴스 AI 분석</div>
-      <div className="s-pages-index-js-auto41">
-        <NewsAISummaryPanel title="해외뉴스분석(AI)" endpoint="/api/ai-news-foreign" />
-        <NewsAISummaryPanel title="국내뉴스분석(AI)" endpoint="/api/ai-news-korea" />
-      </div>
-    </div>
-  );
-}
-
+/* =========================
+   페이지
+========================= */
 export default function Home() {
-  async function loadNews(tab='overseas') {
-    try {
-      setNewsLoading(true); setNewsErr(""); setNewsItems([]);
-      let url = "";
-      if (tab === 'overseas') {
-        url = "/api/news?" + new URLSearchParams({ industry: "fashion|apparel|garment|textile", language: "en", days: "7", limit: "40" , domains: FOREIGN_DOMAINS}).toString();
-      } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "1", limit: "200" }).toString();
-      }
-      const r = await fetch(url, { cache: "no-store" });
-      const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(n => ({
-        title: n.title,
-        url: n.url || n.link,
-        source: (typeof n.source === 'string' ? n.source : (n.source && (n.source.name || n.source.id) ? String(n.source.name || n.source.id) : '')) || '',
-        publishedAt: n.published_at || n.publishedAt || n.pubDate || ''
-      }));
-      setNewsItems(items);
-      setNewsCollapsed(true);
-    } catch (e) {
-      setNewsErr(String(e));
-    } finally {
-      setNewsLoading(false);
-    }
-  }
   return (
     <>
       <Head>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet"/>
-
-        <title>Hansol Purchasing — Market & Materials</title>
+        <title>Hansol Market Intelligence | Executive Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </Head>
 
       <HeaderBar />
 
-      <main className="s-pages-index-js-auto42">
+      <main className="main-container">
         <ProcurementTopBlock />
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
-        
-    </main>
+      </main>
 
-      <footer style={styles.footer}>
-        <div className="s-pages-index-js-auto43">
-          © Market Trend — internal pilot
-        </div>
+      <footer className="footer">
+        <p className="footer-text">© Hansol Textile — Market Intelligence Dashboard</p>
       </footer>
     </>
   );
 }
-
-/* =========================
-   스타일
-========================= */
-const styles = {
-  aiBox: { border:"1px dashed var(--line)", borderRadius:12, background:"#fff", padding:12, whiteSpace:"pre-wrap", lineHeight:1.7 },
-  blockTitle: { fontSize:14, fontWeight:700, marginBottom:8 },
-  blockWrap: { border:"1px solid var(--line)", borderRadius:14, background:"#fff", boxShadow:"0 12px 30px -20px rgba(2,6,23,.25)" },
-  brand: { fontWeight:800 },
-  btnBlue: { padding:"8px 12px", borderRadius:8, border:"1px solid #2563eb", background:"#2563eb", color:"#fff", fontWeight:700, fontSize:14 },
-  btnDanger: { padding:"8px 12px", borderRadius:8, border:"1px solid #ef4444", background:"#ef4444", color:"#fff", fontWeight:700, fontSize:14 },
-  btnGhost: { padding:"8px 12px", borderRadius:10, border:"1px solid #e5e7eb", background:"#fff", color:"#111827", fontWeight:700, fontSize:14, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:6 },
-  btnGray: { padding:"8px 12px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f3f4f6", color:"#1f2937", fontWeight:700, fontSize:14 },
-  btnTiny: { padding:"6px 8px", borderRadius:8, border:"1px solid #e5e7eb", background:"#f9fafb", color:"#374151", fontWeight:700, fontSize:12 }, 
-  btnTab: { padding:"8px 12px", border:"1px solid var(--line)", borderRadius:999, background:"#fff", cursor:"pointer", fontWeight:700, fontSize:13, boxShadow:"0 1px 0 rgba(0,0,0,.02)", transition:"all .2s ease", display:"inline-block" },
-  btnTabActive: { background:"linear-gradient(90deg, var(--accent), var(--accent2))", color:"#fff", border:"1px solid transparent", boxShadow:"0 8px 22px -12px rgba(99,102,241,.6)" },
-  card: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:12 },
-  cardLink: { textDecoration:"none", color:"#111827" },
-  cardSub: { color:"#6b7280", fontSize:12 },
-  cardTitle: { color:"#6b7280", fontSize:12 },
-  cardValue: { fontWeight:800, fontSize:18 },
-  ctaDark: { padding:"10px 14px", borderRadius:12, background:"#0f172a", color:"#fff", textDecoration:"none", fontWeight:800 },
-  ctaLight: { },
-  ctaRow: { },
-  editBox: { },
-  err: { },
-  footer: { },
-  grid2: { display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:16, alignItems:"start" },
-  grid3: { display:"grid", gridTemplateColumns:"repeat(3, minmax(0,1fr))", gap:12 },
-  grid4: { display:"grid", gridTemplateColumns:"repeat(4, minmax(0,1fr))", gap:12 },
-  grid5: { display:"grid", gridTemplateColumns:"repeat(5, minmax(0,1fr))", gap:12 },
-  h2: { margin:0, fontWeight:800, fontSize:20 },
-  h3: { margin:"20px 0 8px", fontWeight:800, fontSize:18 },
-  headerInner: { display:"flex", gap:8, alignItems:"center" },
-  headerRow: { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 },
-  stickyTop: { position:"static" },
-  badgeRow: { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" },
-  badge: { fontSize:12, color:"#6b7280", border:"1px solid #e5e7eb", padding:"4px 8px", borderRadius:999 },
-  headerWrap: { display:"flex", justifyContent:"space-between", alignItems:"center" },
-  innerBlock: { border:"1px solid #eef2f7", borderRadius:12, padding:12, background:"#fff" },
-  legend: { display:"flex", gap:8, color:"#6b7280", fontSize:12 },
-  meta: { color:"#6b7280", fontSize:12 },
-  nav: { display:"flex", gap:8, alignItems:"center" },
-  navLink: { textDecoration:"none", color:"#111827", fontWeight:700 },
-  progressBar: { height:"100%", background:"#111827" },
-  progressWrap: { height:8, borderRadius:999, background:"#f3f4f6", marginTop:8, overflow:"hidden" },
-  row: { display:"flex", justifyContent:"space-between", alignItems:"center", gap:12 },
-  seg: { height:"100%" },
-  stackBar: { display:"flex", height:16, borderRadius:8, overflow:"hidden", border:"1px solid #e5e7eb" }
-};
