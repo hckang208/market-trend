@@ -2,9 +2,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
+// 도메인 필터 보강: BoF/Just-Style + www/오타(bestoffashion)까지 포함
 const FOREIGN_DOMAINS =
   process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
-  "businessoffashion.com,just-style.com";
+  [
+    "businessoffashion.com",
+    "www.businessoffashion.com",
+    "bestoffashion.com",       // 사용자가 언급한 도메인도 포함
+    "just-style.com",
+    "www.just-style.com",
+  ].join(",");
 
 /* =========================
    숫자/시계열 유틸
@@ -764,6 +771,9 @@ function NewsTabsSection() {
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsErr, setNewsErr] = useState("");
+
+  // 전체 뉴스 섹션 펼침/접힘 (요청사항)
+  const [listOpen, setListOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
 
   const [aiOpen, setAiOpen] = useState(false);
@@ -820,11 +830,10 @@ function NewsTabsSection() {
     const url =
       "/api/news?" +
       new URLSearchParams({
-        // industry 제거 (도메인으로 한정)
         language: "en",
         days: String(days),
         limit: String(limit),
-        domains: FOREIGN_DOMAINS, // e.g. "businessoffashion.com,just-style.com"
+        domains: FOREIGN_DOMAINS,
       }).toString();
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) return [];
@@ -835,7 +844,6 @@ function NewsTabsSection() {
   async function loadOverseas() {
     // 1차: 최근 7일
     let items = await fetchOverseasAt(7, 50);
-    // 최신순 정렬
     items.sort((a, b) => b._ts - a._ts);
     // 10개 미만이면 2차: 최근 30일 병합
     if (items.length < 10) {
@@ -846,7 +854,6 @@ function NewsTabsSection() {
       });
       items = Array.from(byUrl.values()).sort((a, b) => b._ts - a._ts);
     }
-    // 상위 20개까지만 보관(초기엔 10개만 표시)
     return items.slice(0, 20);
   }
 
@@ -860,22 +867,21 @@ function NewsTabsSection() {
         const items = await loadOverseas();
         setNewsItems(items);
         setCollapsed(true);
-        return;
+      } else {
+        // 국내
+        const url =
+          "/api/news-kr-rss?" +
+          new URLSearchParams({
+            feeds: "http://www.ktnews.com/rss/allArticle.xml",
+            days: "1",
+            limit: "200",
+          }).toString();
+        const r = await fetch(url, { cache: "no-store" });
+        const arr = r.ok ? await r.json() : [];
+        const items = (arr || []).map(normalizeItem).sort((a, b) => b._ts - a._ts);
+        setNewsItems(items);
+        setCollapsed(true);
       }
-
-      // 국내
-      const url =
-        "/api/news-kr-rss?" +
-        new URLSearchParams({
-          feeds: "http://www.ktnews.com/rss/allArticle.xml",
-          days: "1",
-          limit: "200",
-        }).toString();
-      const r = await fetch(url, { cache: "no-store" });
-      const arr = r.ok ? await r.json() : [];
-      const items = (arr || []).map(normalizeItem).sort((a, b) => b._ts - a._ts);
-      setNewsItems(items);
-      setCollapsed(true);
     } catch (e) {
       setNewsErr(String(e));
     } finally {
@@ -889,20 +895,18 @@ function NewsTabsSection() {
 
   const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
 
-  // 현재 탭의 동적 출처 라인
-  const sourceLine = useMemo(() => {
-    const uniq = Array.from(new Set(newsItems.map((n) => n.source).filter(Boolean)));
-    if (uniq.length === 0) return "출처: 설정된 해외/국내 주요 뉴스 도메인";
-    const shown = uniq.slice(0, 6).join(", ");
-    return uniq.length > 6 ? `출처: ${shown} 외 ${uniq.length - 6}곳` : `출처: ${shown}`;
-  }, [newsItems]);
+  // 탭별 고정 출처 라벨 (요청 사항 반영)
+  const sourceFixed =
+    activeTab === "overseas"
+      ? "출처: businessoffashion.com / just-style.com"
+      : "출처: 한국섬유산업신문(ktnews.com)";
 
   return (
     <section className="section">
       <div className="section-header">
         <div>
           <h2 className="section-title">산업뉴스</h2>
-          <p className="section-subtitle">{sourceLine}</p>
+          <p className="section-subtitle">{sourceFixed}</p>
         </div>
         <div className="tab-nav">
           <button
@@ -923,7 +927,18 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          {/* 필요 시 뉴스 AI 요약을 열 수 있는 버튼 */}
+
+          {/* 뉴스 전체 펼침/접힘 토글 버튼 */}
+          <button
+            onClick={() => setListOpen((v) => !v)}
+            className="btn btn-secondary"
+            style={{ marginLeft: 8 }}
+            title="뉴스 목록 열기/접기"
+          >
+            {listOpen ? "뉴스 목록 접기" : "뉴스 목록 열기"}
+          </button>
+
+          {/* 필요 시 AI 요약 */}
           <button
             onClick={loadAISummary}
             className="btn btn-secondary"
@@ -936,36 +951,39 @@ function NewsTabsSection() {
         </div>
       </div>
 
-      <div className="card">
-        {newsLoading && <div className="muted">불러오는 중…</div>}
-        {newsErr && <div className="text-danger">에러: {newsErr}</div>}
-        {!newsLoading && !newsErr && (
-          <>
-            {rendered.length === 0 ? (
-              <div className="muted">관련 기사가 아직 없어요.</div>
-            ) : (
-              <ol className="news-list">
-                {rendered.map((it, i) => (
-                  <li key={i} className="news-item">
-                    <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
-                      {it.title}
-                    </a>
-                    {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
-                    <div className="news-meta source">{it.source}</div>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {newsItems.length > 10 && (
-              <div className="more-row">
-                <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
-                  {collapsed ? "더보기" : "접기"}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {/* 목록은 버튼으로 펼쳐짐 */}
+      {listOpen && (
+        <div className="card">
+          {newsLoading && <div className="muted">불러오는 중…</div>}
+          {newsErr && <div className="text-danger">에러: {newsErr}</div>}
+          {!newsLoading && !newsErr && (
+            <>
+              {rendered.length === 0 ? (
+                <div className="muted">관련 기사가 아직 없어요.</div>
+              ) : (
+                <ol className="news-list">
+                  {rendered.map((it, i) => (
+                    <li key={i} className="news-item">
+                      <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
+                        {it.title}
+                      </a>
+                      {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
+                      <div className="news-meta source">{it.source}</div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {newsItems.length > 10 && (
+                <div className="more-row">
+                  <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
+                    {collapsed ? "더보기" : "접기"}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {aiOpen && (
         <div id="aiNewsSection" className="ai-panel">
