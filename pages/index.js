@@ -799,6 +799,7 @@ function NewsTabsSection() {
   }
 
   
+
 async function load(tab = activeTab) {
     try {
       setNewsLoading(true);
@@ -806,22 +807,27 @@ async function load(tab = activeTab) {
       setNewsItems([]);
       let url = "";
       if (tab === "overseas") {
-        // 해외 산업뉴스: 특정 도메인(BoF, Just-Style)만
-        url = "/api/news?" + new URLSearchParams({
-          industry: "retail apparel fashion textile garment",
-          days: "7",
-          limit: "40",
-          domains: FOREIGN_DOMAINS
-        }).toString();
+        // 해외 산업뉴스: BoF + Just-Style (Google News RSS 전용)
+        url = "/api/news-foreign-industry?days=7&limit=40";
       } else {
         // 국내 산업뉴스: 캐시형
         url = "/api/news-kr-daily";
       }
-      const r = await fetch(url, { cache: "no-store" });
-      const data = await r.json();
-      if (!r.ok) throw new Error((data && data.error) || "뉴스 로드 실패");
+      const r = await fetch(url, { cache: "no-store", headers: { accept: "application/json" } });
+      let data = null;
+      let txt = "";
+      try {
+        txt = await r.text();
+        data = txt ? JSON.parse(txt) : null;
+      } catch (e) {
+        throw new Error("뉴스 응답 파싱 실패: " + String(e) + (txt ? " | body: " + txt.slice(0, 140) : ""));
+      }
+      if (!r.ok) {
+        const msg = (data && (data.error || data.message)) || txt || ("HTTP " + r.status);
+        throw new Error(msg);
+      }
 
-      const raw = (tab === "overseas") ? (Array.isArray(data) ? data : []) : (data?.items || []);
+      const raw = Array.isArray(data) ? data : (data?.items || []);
       const items = raw.map((n) => {
         const host = (() => {
           try {
@@ -841,8 +847,8 @@ async function load(tab = activeTab) {
       });
 
       setNewsItems(items);
-      setGuideMsg(tab === "overseas" ? "" : (data?.guide || ""));
-      setLastUpdated(tab === "overseas" ? "" : (data?.updatedAtISO || ""));
+      setGuideMsg(data?.guide || "");
+      setLastUpdated(data?.updatedAtISO || "");
       setCollapsed(true);
     } catch (e) {
       setNewsErr(String(e));
@@ -850,6 +856,7 @@ async function load(tab = activeTab) {
       setNewsLoading(false);
     }
   }
+
   const defaultLimit = activeTab === "overseas" ? 15 : 10;
   const rendered = collapsed ? newsItems.slice(0, defaultLimit) : newsItems;
 

@@ -1,6 +1,6 @@
 // pages/api/news-foreign-industry.js
 // Google News RSS only (site:businessoffashion.com + site:just-style.com)
-// No NewsAPI keys required. Strictly filters to the two domains.
+// Accept items whose <source url> host is one of the allowed hosts, even if link host is news.google.com
 
 const ALLOWED_HOSTS = new Set([
   "businessoffashion.com",
@@ -18,16 +18,10 @@ const CACHE_PATH = "/tmp/news_foreign_industry_cache.json";
 
 function extractOriginalUrl(googleLink = "") {
   try {
-    // Many GN links are like https://news.google.com/rss/articles/....?hl=...&gl=...&ceid=... 
-    // Sometimes they include "url=" query param with the original URL.
     const u = new URL(googleLink);
     const urlParam = u.searchParams.get("url");
-    if (urlParam) {
-      const decoded = decodeURIComponent(urlParam);
-      return decoded;
-    }
-    // Some GN links are amp or redirectors without url=; fall back to the GN link
-    return googleLink;
+    if (urlParam) return decodeURIComponent(urlParam);
+    return googleLink; // fallback to GN link
   } catch { return googleLink; }
 }
 
@@ -73,32 +67,61 @@ function pick(xml = "", tag = "") {
   return decodeEntities((m[1] || "").trim());
 }
 
+function attr(xml = "", tag = "", attrName = "") {
+  const re = new RegExp(`<${tag}[^>]*\\b${attrName}="([^"]+)"[^>]*>`, "i");
+  const m = xml.match(re);
+  return m ? decodeEntities(m[1]) : "";
+}
+
+function hostOf(url = "") {
+  try { return new URL(url).host; } catch { return ""; }
+}
+function normHost(h = "") { return (h || "").replace(/^www\./, ""); }
+
+function mapSourceName(text = "") {
+  const t = (text || "").toLowerCase();
+  if (t.includes("business of fashion")) return "The Business of Fashion";
+  if (t.includes("just-style")) return "Just-Style";
+  return text || "";
+}
+
 function parseRSS(xml = "") {
   const out = [];
-  const items = xml.includes("<item")
-    ? xml.split(/<item[\s>]/i).slice(1).map((x) => "<item " + x)
-    : xml.split(/<entry[\s>]/i).slice(1).map((x) => "<entry " + x);
+  const isRSS = xml.includes("<item");
+  const items = isRSS ? xml.split(/<item[\\s>]/i).slice(1).map((x) => "<item " + x)
+                      : xml.split(/<entry[\\s>]/i).slice(1).map((x) => "<entry " + x);
   for (const c of items) {
     const title = pick(c, "title");
-    // RSS: <link>...</link>, Atom: <link href="..."/>
     let link = pick(c, "link") || pick(c, "guid");
     const alt = (c.match(/<link[^>]*href="([^"]+)"/i) || [])[1] || "";
     link = (link && link.startsWith("http")) ? link : (alt || link);
-    if (link && link.includes("news.google.com")) {
-      link = extractOriginalUrl(link);
-    }
     const pub = pick(c, "pubDate") || pick(c, "published") || pick(c, "updated") || pick(c, "dc:date") || pick(c, "date");
+
+    const sourceText = pick(c, "source");
+    const sourceUrl = attr(c, "source", "url");
+    const sourceHost = normHost(hostOf(sourceUrl));
+    const displaySource = mapSourceName(sourceText) || sourceHost || "";
+
     if (!title || !link) continue;
+
+    if (link.includes("news.google.com")) {
+      const maybe = extractOriginalUrl(link);
+      link = maybe || link;
+    }
+
+    let linkHost = normHost(hostOf(link));
+    const allowed = ALLOWED_HOSTS.has(linkHost) || ALLOWED_HOSTS.has(sourceHost);
+    if (!allowed) continue;
+
     let iso = "";
     try { iso = new Date(pub).toISOString(); } catch {}
-    let host = "";
-    try { host = new URL(link).host; } catch {}
+
     out.push({
       title,
       url: link,
       publishedAtISO: iso || null,
-      source: host.replace(/^www\./, ""),
-      host,
+      source: displaySource || linkHost,
+      host: linkHost || sourceHost,
     });
   }
   return out;
@@ -108,7 +131,7 @@ function dedupeByTitle(items = []) {
   const seen = new Set();
   const res = [];
   for (const it of items) {
-    const key = (it.title || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const key = (it.title || "").trim().toLowerCase().replace(/\\s+/g, " ");
     if (seen.has(key)) continue;
     seen.add(key);
     res.push(it);
@@ -119,7 +142,7 @@ function dedupeByTitle(items = []) {
 function withinDays(iso, days = 7) {
   try {
     const d = new Date(iso || "");
-    if (isNaN(d.getTime())) return true; // keep if unknown
+    if (isNaN(d.getTime())) return true;
     const diff = (Date.now() - d.getTime()) / 86400000;
     return diff <= days && diff >= 0;
   } catch { return true; }
@@ -132,7 +155,6 @@ function readCache() {
 function writeCache(data) {
   try { require("fs").writeFileSync(CACHE_PATH, JSON.stringify(data)); }
   catch {}
-}
 
 export default async function handler(req, res) {
   try {
@@ -142,32 +164,25 @@ export default async function handler(req, res) {
 
     const cache = readCache();
     const need = refresh === "1" || !cache || ((Date.now() - new Date(cache.updatedAtISO).getTime()) > 2 * 3600 * 1000);
-    if (!need) {
-      return res.status(200).json(cache);
-    }
+    if (!need) return res.status(200).json(cache);
 
     let items = [];
     for (const feed of GN_RSS) {
       try {
         const xml = await fetchWithRetry(feed);
         items.push(...parseRSS(xml));
-      } catch (e) {
-        // continue
-      }
+      } catch (e) {}
     }
 
-    // Strictly allow only BoF / Just-Style hosts
-    items = items.filter(it => it && it.url && it.host && ALLOWED_HOSTS.has(it.host));
-
     items = items
-      .filter((it) => withinDays(it.publishedAtISO, d))
+      .filter(it => it && it.url && it.source)
+      .filter(it => withinDays(it.publishedAtISO, d))
       .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
-
     items = dedupeByTitle(items).slice(0, lim);
 
     const payload = {
       updatedAtISO: new Date().toISOString(),
-      guide: "출처: The Business of Fashion, Just-Style (Google News RSS only)",
+      guide: "출처: The Business of Fashion, Just-Style (Google News RSS)",
       items,
       count: items.length,
       sources: "businessoffashion.com, just-style.com",
