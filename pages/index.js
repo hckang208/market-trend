@@ -751,6 +751,16 @@ function StocksSection() {
    4) 뉴스 탭 — 해외 / 국내 / AI 요약
 ========================= */
 function NewsTabsSection() {
+  function withinDays(iso, days = 5) {
+    try {
+      const d = new Date(iso || "");
+      if (isNaN(d.getTime())) return false;
+      const now = new Date();
+      const diff = (now - d) / (1000 * 60 * 60 * 24);
+      return diff <= days && diff >= 0;
+    } catch { return false; }
+  }
+
   const [activeTab, setActiveTab] = useState("overseas"); // overseas | korea
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -797,14 +807,14 @@ function NewsTabsSection() {
         // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
         url = "/api/news-daily";
       } else {
-        url = "/api/news-kr-daily";
+        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "5", limit: "200" }).toString();
       }
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
 
       if (tab === "overseas") {
         if (!r.ok) throw new Error(data?.error || "해외 뉴스 캐시 로드 실패");
-        const items = (data.items || []).map((n) => {
+        const items = (data.items || []).filter(n => withinDays(n.publishedAt || n.pubDate)).map((n) => {
           const urlStr = n.url || n.link || "";
           let host = "";
           try {
@@ -821,10 +831,10 @@ function NewsTabsSection() {
         setLastUpdated(data.updatedAtKST || ""); // ← KST 문자열 그대로 사용
         setGuideMsg(data.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
       } else {
-        const arr = (data && data.items) || [];
-        setLastUpdated(data?.updatedAtKST || "");
-        setGuideMsg(data?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
-        const items = (arr || []).map((n) => {
+        const arr = Array.isArray(data) ? data : []; // live RSS returns array
+        setLastUpdated(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
+        setGuideMsg("실시간 RSS 읽기");
+        const items = (arr || []).filter(n => withinDays(n.publishedAt || n.pubDate || n.date)).map((n) => {
           const urlStr = n.url || n.link || "";
           let host = "";
           try {
