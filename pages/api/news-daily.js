@@ -1,241 +1,178 @@
 // pages/api/news-daily.js
-import fs from "fs";
-const fsp = fs.promises;
-
 /**
- * 뉴스는 매일 한국시간 22:00에 갱신되도록 설계.
+ * 해외 산업 뉴스(BoF, Just-Style)를 Google News RSS로 수집해
+ * 매일 22:00 KST 기준으로 캐시하여 제공합니다.
  * - 캐시 파일: /tmp/news_daily_cache.json
- * - 소스: businessoffashion.com, just-style.com
- * - 최대 20개 병합/중복제거 후 최신순 반환
+ * - 응답: { ok, guide, updatedAtISO, updatedAtKST, items[], stale }
  */
-
+ 
 const CACHE_PATH = "/tmp/news_daily_cache.json";
 const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
 
-// KST 유틸 (UTC+9)
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const nowUTC = () => new Date();
-const nowKST = () => new Date(Date.now() + KST_OFFSET_MS);
-const fmtKST = (d) =>
-  new Date(d).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-
-// 오늘 KST 기준 22:00(=UTC 13:00) 컷오프(UTC 시각) 계산
-function todayCutoffUTC() {
-  const kst = nowKST();
-  const y = kst.getUTCFullYear();
-  const m = kst.getUTCMonth();
-  const d = kst.getUTCDate();
-  // 22:00 KST == 13:00 UTC
-  return new Date(Date.UTC(y, m, d, 13, 0, 0, 0));
+// Simple fetch-with-retry
+async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
+  for (let i=0;i<=retry;i++) {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { ...init, signal: ctrl.signal });
+      clearTimeout(id);
+      if (r.ok) return await r.text();
+    } catch (e) {
+      clearTimeout(id);
+      if (i === retry) throw e;
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
 }
 
-// 캐시 읽기/쓰기
+// Minimal RSS parser (title/link/pubDate)
+function parseRSS(xml="") {
+  const items = [];
+  const blocks = xml.split(/<item[\s>]/i).slice(1).map(b => "<item " + b);
+  for (const b of blocks) {
+    const title = pick(b, "title");
+    const link = pick(b, "link");
+    const pub = pick(b, "pubDate") || pick(b, "updated") || pick(b, "dc:date");
+    items.push({
+      title: unescapeXml(title),
+      link: unescapeXml(link),
+      pubDate: pub ? new Date(pub) : null,
+    });
+  }
+  return items;
+}
+function pick(block, tag) {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  return m ? m[1].trim() : null;
+}
+function unescapeXml(s) {
+  if (!s) return s;
+  return s
+    .replace(/<!\\[CDATA\\[(.*?)\\]\\]>/gs, "$1")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+}
+function hostOf(u="") { try { return new URL(u).host; } catch { return ""; } }
+
+// KST helpers
+function nowKST() {
+  const now = new Date();
+  const kstOffset = 9 * 60; // minutes
+  const localOffset = now.getTimezoneOffset(); // minutes
+  const diffMs = (kstOffset + localOffset) * 60 * 1000;
+  return new Date(now.getTime() + diffMs);
+}
+function formatKST(d) {
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    }).format(d);
+  } catch { return d?.toISOString() || ""; }
+}
+
 async function readCache() {
   try {
-    const buf = await fsp.readFile(CACHE_PATH, "utf8");
-    return JSON.parse(buf);
-  } catch {
-    return null;
-  }
+    const fs = await import("fs");
+    if (!fs.existsSync(CACHE_PATH)) return null;
+    const raw = fs.readFileSync(CACHE_PATH, "utf8");
+    return JSON.parse(raw);
+  } catch { return null; }
 }
-async function writeCache(payload) {
+async function writeCache(data) {
   try {
-    await fsp.writeFile(CACHE_PATH, JSON.stringify(payload), "utf8");
-  } catch {
-    // 서버리스 환경에 따라 쓰기 실패할 수 있음(무시)
-  }
+    const fs = await import("fs");
+    fs.writeFileSync(CACHE_PATH, JSON.stringify(data));
+  } catch {}
 }
 
-// 현재 호스트 기준 내부 /api/news 호출 URL 생성
-function buildInternalUrl(req, qsObj) {
-  const proto =
-    req.headers["x-forwarded-proto"] ||
-    (process.env.VERCEL || process.env.NETLIFY ? "https" : "http");
-  const host = req.headers.host || "localhost:3000";
-  const base = `${proto}://${host}`;
-  const qs = new URLSearchParams(qsObj).toString();
-  return `${base}/api/news?${qs}`;
-}
-
-// /api/news를 도메인 단위로 호출 (실패해도 빈 배열 반환)
-async function fetchDomain(req, domainsCSV, limit = 40, days = 14) {
-  const url = buildInternalUrl(req, {
-    language: "en",
-    days: String(days),
-    limit: String(limit),
-    domains: domainsCSV,
-  });
-  try {
-    const r = await fetch(url, { headers: { "x-internal": "1" } });
-    if (!r.ok) {
-      // 에러 메시지 추출 시도
-      let msg = `${r.status}`;
-      try {
-        const j = await r.json();
-        if (j?.error) msg = `${r.status} ${j.error}`;
-      } catch {}
-      throw new Error(msg);
-    }
-    const arr = await r.json();
-    if (!Array.isArray(arr)) return [];
-    return arr.map((n) => ({
-      title: n.title,
-      url: n.url || n.link || "",
-      publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
-      source:
-        typeof n.source === "string"
-          ? n.source
-          : n.source?.name || n.source?.id || "",
-    }));
-  } catch (e) {
-    console.warn("[news-daily] fetchDomain error:", domainsCSV, String(e));
-    return [];
-  }
-}
-
-// 중복 제거(우선 url로, 없으면 제목으로)
-function dedupe(items) {
-  const seen = new Set();
-  const out = [];
-  for (const it of items) {
-    const key =
-      (it.url && it.url.toLowerCase()) ||
-      `t:${(it.title || "").trim().toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(it);
-  }
-  return out;
-}
-
-// 날짜 내림차순
-function sortByDateDesc(items) {
-  return items
-    .slice()
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt || 0).getTime() -
-        new Date(a.publishedAt || 0).getTime()
-    );
-}
-
-// 호스트명 보정
-function hostFromUrl(u) {
-  try {
-    return new URL(u).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
+// Determine whether we should refresh (after 22:00 KST daily, or ?refresh=1)
+function shouldRefresh(cache) {
+  const urlParams = new URLSearchParams();
+  // Can't access req here; we'll allow manual ?refresh=1 in handler logic.
+  if (!cache) return true;
+  // If cache is older than 24h, refresh.
+  const last = new Date(cache.updatedAtISO);
+  const ageMs = Date.now() - (last?.getTime() || 0);
+  if (ageMs > 22 * 60 * 60 * 1000) return true;
+  // same-day usage: keep unless manual refresh
+  return false;
 }
 
 export default async function handler(req, res) {
   try {
-    // 1) 캐시 읽기
-    const cache = await readCache();
+    const refresh = String(req.query.refresh || "0") === "1";
+    let cache = await readCache();
 
-    // 2) 캐시 신선도 판단 (오늘 KST 22:00 이후로 갱신됐는지)
-    let isFresh = false;
-    if (cache?.updatedAtISO) {
-      const updatedUTC = new Date(cache.updatedAtISO);
-      const cutoffUTC = todayCutoffUTC();
-      isFresh = updatedUTC >= cutoffUTC && (cache.items || []).length > 0;
-    }
+    if (!cache || shouldRefresh(cache) || refresh) {
+      // Build Google News RSS "site:" queries for each domain
+      const feeds = [
+        "https://news.google.com/rss/search?q=site:businessoffashion.com&hl=en-US&gl=US&ceid=US:en",
+        "https://news.google.com/rss/search?q=site:just-style.com&hl=en-US&gl=US&ceid=US:en"
+      ];
 
-    // 3) 신선하면 캐시 그대로 반환
-    if (isFresh) {
-      return res.status(200).json({
-        ok: true,
-        guide: cache.guide || GUIDE_TEXT,
-        updatedAt: cache.updatedAtISO,
-        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
-        items: cache.items || [],
-        stale: false,
+      const xmls = await Promise.allSettled(
+        feeds.map(u => fetchWithRetry(u, { headers: { "User-Agent": "MarketTrend-Dashboard/1.0 (+news-foreign)" } }, 2, 8000))
+      );
+      let items = [];
+      for (let i=0;i<feeds.length;i++) {
+        const r = xmls[i];
+        if (r.status === "fulfilled" && r.value) {
+          const parsed = parseRSS(r.value);
+          for (const it of parsed) {
+            items.push({
+              title: it.title || "",
+              url: it.link || "",
+              publishedAt: it.pubDate ? it.pubDate.toISOString() : null,
+              source: hostOf(feeds[i]).includes("google") ? hostOf(it.link || "") : hostOf(feeds[i])
+            });
+          }
+        }
+      }
+      // Deduplicate by URL/title
+      const seen = new Set();
+      items = items.filter(it => {
+        const key = (it.url || it.title).trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
-    }
+      // Sort by date desc
+      items.sort((a,b) => (new Date(b.publishedAt||0)).getTime() - (new Date(a.publishedAt||0)).getTime());
+      // Trim to 80
+      items = items.slice(0, 80);
 
-    // 4) 갱신 필요 → BoF/Just-Style 각각 최소 호출로 수집
-    const bof = await fetchDomain(
-      req,
-      "businessoffashion.com,www.businessoffashion.com",
-      40,
-      14
-    );
-    const js = await fetchDomain(
-      req,
-      "just-style.com,www.just-style.com",
-      40,
-      14
-    );
-
-    // 5) 병합/정제/정렬/상한
-    let items = dedupe([...bof, ...js]).map((n) => {
-      const host = hostFromUrl(n.url);
-      return {
-        title: n.title,
-        url: n.url,
-        publishedAt: n.publishedAt,
-        source: n.source || host || "",
+      const now = new Date();
+      const payload = {
+        ok: true,
+        guide: GUIDE_TEXT,
+        updatedAtISO: now.toISOString(),
+        updatedAtKST: formatKST(now),
+        items,
+        stale: false
       };
-    });
-    items = sortByDateDesc(items).slice(0, 20);
-
-    const now = nowUTC();
-    const payload = {
-      ok: true,
-      guide: GUIDE_TEXT,
-      updatedAtISO: now.toISOString(),
-      updatedAtKST: fmtKST(now),
-      items,
-    };
-
-    // 6) 캐시 저장 (성공/부분성공 모두 저장)
-    if (items.length > 0) {
       await writeCache(payload);
+      cache = payload;
     }
 
-    // 7) 응답 (아이템이 하나도 없으면 캐시 폴백 시도)
-    if (items.length === 0 && cache?.items?.length > 0) {
-      return res.status(200).json({
-        ok: true,
-        guide: cache.guide || GUIDE_TEXT,
-        updatedAt: cache.updatedAtISO,
-        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
-        items: cache.items,
-        stale: true,
-        note: "신규 수집 실패로 캐시를 반환했습니다.",
-      });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      guide: GUIDE_TEXT,
-      updatedAt: payload.updatedAtISO,
-      updatedAtKST: payload.updatedAtKST,
-      items,
-      stale: false,
-    });
+    // Serve
+    return res.status(200).json(cache);
   } catch (e) {
-    // 최후: 캐시라도 내려주기
-    const cache = await readCache();
-    if (cache?.items?.length) {
-      return res.status(200).json({
-        ok: true,
-        guide: cache.guide || GUIDE_TEXT,
-        updatedAt: cache.updatedAtISO,
-        updatedAtKST: cache.updatedAtKST || fmtKST(cache.updatedAtISO),
-        items: cache.items,
-        stale: true,
-        note: "오류로 캐시를 반환했습니다.",
-        error: String(e),
-      });
-    }
+    // Last resort: try to serve cache if available
+    try {
+      const cache = await readCache();
+      if (cache) {
+        cache.stale = true;
+        cache.note = "오류로 캐시를 반환했습니다.";
+        cache.error = String(e);
+        return res.status(200).json(cache);
+      }
+    } catch {}
     return res.status(500).json({ ok: false, error: String(e) });
   }
 }
 
-// CDN 캐시 힌트(선택)
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+export const config = { api: { bodyParser: true } };

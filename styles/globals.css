@@ -282,3 +282,9 @@ body {
   z-index: 9999;
   font-size: 16px; font-weight: 800; color: var(--text);
 }
+
+/* AI Summary typography tweaks (unify overseas/domestic look) */
+.ai-col-body h4, .ai-col-section-title { font-weight: 800; }
+.ai-col-body strong { font-weight: 800; color: var(--text); }
+.ai-col-body ul, .ai-col-body ol { margin: 8px 0 8px 18px; }
+.ai-col-body li { margin: 4px 0; }

@@ -2,25 +2,17 @@
 import { geminiComplete } from "../../lib/gemini";
 
 export default async function handler(req, res) {
-  const DOMAINS = process.env.FOREIGN_NEWS_DOMAINS || "businessoffashion.com,just-style.com";
   try {
     const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
-    const r = await fetch(`${base}/api/news?` + new URLSearchParams({
-      domains: DOMAINS,
-      industry: "apparel|textile|garment",
-      must: "industry",
-      exclude: "football,soccer,celebrity,cosmetics,beauty,automotive,film,movie",
-      language: "en",
-      days: String(req.query.days || 7),
-      limit: String(req.query.limit || 40),
-    }).toString(), { cache: "no-store" });
+    // 해외 뉴스는 캐시된 daily 소스에서 그대로 받아 요약 (키워드 필터 제거)
+    const r = await fetch(`${base}/api/news-daily`, { cache: "no-store" });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.error || "해외 뉴스 로드 실패");
 
-    const arr = r.ok ? await r.json() : [];
-    const items = (arr || []).slice(0, Number(req.query.limit || 40)).map((n) => ({
-      title: n.title,
-      link: n.url,
-      pubDate: n.published_at || n.publishedAt || null,
-      source: (typeof n.source === 'string' ? n.source : (n.source && n.source.name ? n.source.name : '')) || ""
+    const items = (j?.items || []).map(n => ({
+      title: n.title || "",
+      link: n.url || n.link || "",
+      source: n.source || ""
     }));
 
     const system = "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 글로벌 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
@@ -43,16 +35,11 @@ export default async function handler(req, res) {
       ...items.map((it, i) => `${i+1}. ${it.title}\n   - ${it.link}`)
     ].join("\n");
 
-    let summary = await geminiComplete({
-      system,
-      user,
-      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
-      temperature: 0.25,
-      maxOutputTokens: 900,
-    });
+    let summary = await geminiComplete({ system, user });
     if (!summary || summary.trim().length < 5) {
       summary = (items || []).slice(0, 8).map((n, i) => `• ${n.title || n.source || "뉴스"} (${n.source || ""})`).join("\n");
     }
+
     res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,

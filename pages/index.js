@@ -960,14 +960,17 @@ function NewsTabsSection() {
                     })}`
                   : "GEMINI 2.5"}
               </div>
-              <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
-                {aiLoading ? "요약 중..." : "다시 요약"}
-              </button>
+              <div className="btn-group" style={{display:"flex", gap:8}}>
+                <button onClick={() => setAiOpen(o=>!o)} className="btn btn-secondary">{aiOpen ? "접기" : "펼치기"}</button>
+                <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
+                  {aiLoading ? "요약 중..." : "다시 요약"}
+                </button>
+              </div>
             </div>
           </div>
 
           {aiErr && <div className="text-danger">에러: {aiErr}</div>}
-          {!aiErr && (
+          {!aiErr && aiOpen && (
             <div className="grid grid-2">
               <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
               <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />
