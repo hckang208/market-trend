@@ -1,34 +1,61 @@
 // pages/api/news-foreign-industry.js
-// Business of Fashion + Just-Style via RSS (no NewsAPI dependency)
-const FEEDS = [
-  // Business of Fashion candidates
-  "https://www.businessoffashion.com/feed/",
-  "https://www.businessoffashion.com/category/news/feed/",
-  // Just-Style candidates
-  "https://www.just-style.com/feed/",
-  "https://www.just-style.com/news/feed/"
+// Google News RSS only (site:businessoffashion.com + site:just-style.com)
+// No NewsAPI keys required. Strictly filters to the two domains.
+
+const ALLOWED_HOSTS = new Set([
+  "businessoffashion.com",
+  "www.businessoffashion.com",
+  "just-style.com",
+  "www.just-style.com",
+]);
+
+const GN_RSS = [
+  "https://news.google.com/rss/search?q=site:businessoffashion.com&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=site:just-style.com&hl=en-US&gl=US&ceid=US:en",
 ];
 
 const CACHE_PATH = "/tmp/news_foreign_industry_cache.json";
 
-async function fetchWithRetry(url, init = {}, retry = 2, timeoutMs = 8000) {
+function extractOriginalUrl(googleLink = "") {
+  try {
+    // Many GN links are like https://news.google.com/rss/articles/....?hl=...&gl=...&ceid=... 
+    // Sometimes they include "url=" query param with the original URL.
+    const u = new URL(googleLink);
+    const urlParam = u.searchParams.get("url");
+    if (urlParam) {
+      const decoded = decodeURIComponent(urlParam);
+      return decoded;
+    }
+    // Some GN links are amp or redirectors without url=; fall back to the GN link
+    return googleLink;
+  } catch { return googleLink; }
+}
+
+async function fetchWithRetry(url, init = {}, retry = 2, timeoutMs = 10000) {
   for (let i = 0; i <= retry; i++) {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const r = await fetch(url, { ...init, signal: ctrl.signal, headers: { "user-agent": "Mozilla/5.0" } });
+      const r = await fetch(url, {
+        ...init,
+        signal: ctrl.signal,
+        headers: {
+          "user-agent": "Mozilla/5.0 (compatible; DashboardBot/1.0)",
+          "accept": "application/rss+xml, application/xml, text/xml, text/html, */*",
+        },
+      });
       clearTimeout(id);
       if (r.ok) return await r.text();
       if (i === retry) throw new Error(`${url} ${r.status}`);
     } catch (e) {
       clearTimeout(id);
       if (i === retry) throw e;
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
 }
 
-function decode(s = "") {
+function decodeEntities(s = "") {
   return s
     .replace(/<!\[CDATA\[/g, "")
     .replace(/\]\]>/g, "")
@@ -43,24 +70,36 @@ function pick(xml = "", tag = "") {
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
   const m = xml.match(re);
   if (!m) return "";
-  return decode((m[1] || "").trim());
+  return decodeEntities((m[1] || "").trim());
 }
 
 function parseRSS(xml = "") {
   const out = [];
-  const chunks = xml.split(/<item[\s>]/i).slice(1);
-  for (const c0 of chunks) {
-    const c = "<item " + c0;
+  const items = xml.includes("<item")
+    ? xml.split(/<item[\s>]/i).slice(1).map((x) => "<item " + x)
+    : xml.split(/<entry[\s>]/i).slice(1).map((x) => "<entry " + x);
+  for (const c of items) {
     const title = pick(c, "title");
-    const link = pick(c, "link") || pick(c, "guid");
-    const pub = pick(c, "pubDate") || pick(c, "updated") || pick(c, "dc:date") || pick(c, "date");
+    // RSS: <link>...</link>, Atom: <link href="..."/>
+    let link = pick(c, "link") || pick(c, "guid");
+    const alt = (c.match(/<link[^>]*href="([^"]+)"/i) || [])[1] || "";
+    link = (link && link.startsWith("http")) ? link : (alt || link);
+    if (link && link.includes("news.google.com")) {
+      link = extractOriginalUrl(link);
+    }
+    const pub = pick(c, "pubDate") || pick(c, "published") || pick(c, "updated") || pick(c, "dc:date") || pick(c, "date");
     if (!title || !link) continue;
     let iso = "";
     try { iso = new Date(pub).toISOString(); } catch {}
-    // derive hostname
     let host = "";
-    try { host = new URL(link).host.replace(/^www\./, ""); } catch {}
-    out.push({ title, url: link, publishedAtISO: iso || null, source: host || "" });
+    try { host = new URL(link).host; } catch {}
+    out.push({
+      title,
+      url: link,
+      publishedAtISO: iso || null,
+      source: host.replace(/^www\./, ""),
+      host,
+    });
   }
   return out;
 }
@@ -98,6 +137,9 @@ function writeCache(data) {
 export default async function handler(req, res) {
   try {
     const { days = "7", limit = "40", refresh = "0" } = req.query || {};
+    const d = Math.max(1, Math.min(30, Number(days) || 7));
+    const lim = Math.max(1, Math.min(100, Number(limit) || 40));
+
     const cache = readCache();
     const need = refresh === "1" || !cache || ((Date.now() - new Date(cache.updatedAtISO).getTime()) > 2 * 3600 * 1000);
     if (!need) {
@@ -105,7 +147,7 @@ export default async function handler(req, res) {
     }
 
     let items = [];
-    for (const feed of FEEDS) {
+    for (const feed of GN_RSS) {
       try {
         const xml = await fetchWithRetry(feed);
         items.push(...parseRSS(xml));
@@ -114,20 +156,21 @@ export default async function handler(req, res) {
       }
     }
 
-    const d = Math.max(1, Math.min(30, Number(days) || 7));
-    items = items.filter(it => withinDays(it.publishedAtISO, d))
-      .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
-    items = dedupeByTitle(items);
+    // Strictly allow only BoF / Just-Style hosts
+    items = items.filter(it => it && it.url && it.host && ALLOWED_HOSTS.has(it.host));
 
-    const lim = Math.max(1, Math.min(100, Number(limit) || 40));
-    items = items.slice(0, lim);
+    items = items
+      .filter((it) => withinDays(it.publishedAtISO, d))
+      .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
+
+    items = dedupeByTitle(items).slice(0, lim);
 
     const payload = {
       updatedAtISO: new Date().toISOString(),
-      guide: "출처: The Business of Fashion, Just-Style (RSS)",
+      guide: "출처: The Business of Fashion, Just-Style (Google News RSS only)",
       items,
       count: items.length,
-      sources: "businessoffashion.com, just-style.com"
+      sources: "businessoffashion.com, just-style.com",
     };
     writeCache(payload);
     return res.status(200).json(payload);
