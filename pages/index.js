@@ -761,7 +761,8 @@ function NewsTabsSection() {
     } catch { return false; }
   }
 
-  const [activeTab, setActiveTab] = useState("overseas"); // overseas | korea
+  const [activeTab, setActiveTab] = useState("overseas");
+  const [newsOpen, setNewsOpen] = useState(false); // overseas | korea
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsErr, setNewsErr] = useState("");
@@ -849,7 +850,7 @@ function NewsTabsSection() {
                 : n.source && (n.source.name || n.source.id)
                 ? String(n.source.name || n.source.id)
                 : "") || host || "한국섬유산업신문",
-            publishedAt: n.published_at || n.publishedAt || n.pubDate || "",
+            publishedAt: n.published_at || n.publishedAt || n.pubDate || n.date || "",
           };
         });
         setNewsItems(items);
@@ -892,7 +893,8 @@ function NewsTabsSection() {
           <h2 className="section-title">산업뉴스</h2>
           <p className="section-subtitle">{sourceLine}</p>
         </div>
-        <div className="tab-nav">
+        {newsOpen && (
+          <div className="tab-nav">
           <button
             onClick={() => {
               if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
@@ -917,11 +919,11 @@ function NewsTabsSection() {
           </button>
           <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
           <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
+              <button onClick={()=>setNewsOpen(o=>!o)} className="btn btn-outline" style={{ marginLeft: 8 }}>
+                {newsOpen ? "접기" : "자세히보기"}
+              </button>
           {` `}
-          <a href={`/news?tab=${activeTab}`} className="btn btn-outline" style={{ marginLeft: 8 }}>
-            전체 보기
-          </a>
-        </div>
+          </div>
       </div>
 
       <div className="card">
