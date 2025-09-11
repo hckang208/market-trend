@@ -830,7 +830,7 @@ function NewsTabsSection() {
             (n.source && (n.source.name || n.source.id)) ||
             host ||
             (tab === "overseas" ? "World" : "한국섬유산업신문"),
-          publishedAt: n.published_at || n.publishedAt || n.publishedAtISO || n.publishedAtIso || n.publishedAtiso || n.publishedAtISO || n.publishedAt || n.pubDate || n.date || "",
+          publishedAt: n.published_at || n.publishedAt || n.publishedAtISO || n.pubDate || n.date || "",
         };
       });
 
@@ -843,67 +843,7 @@ function NewsTabsSection() {
     } finally {
       setNewsLoading(false);
     }
-  }).toString();
-      }
-      const r = await fetch(url, { cache: "no-store" });
-      const data = r.ok ? await r.json() : null;
-
-      if (tab === "overseas") {
-        if (!r.ok) throw new Error(data?.error || "해외 뉴스 캐시 로드 실패");
-        const items = (data.items || []).filter(n => withinDays(n.publishedAt || n.pubDate)).map((n) => {
-          const urlStr = n.url || n.link || "";
-          let host = "";
-          try {
-            host = new URL(urlStr).hostname.replace(/^www\./, "");
-          } catch {}
-          return {
-            title: n.title,
-            url: urlStr,
-            source: n.source || host || "businessoffashion.com / just-style.com",
-            publishedAt: n.publishedAt || n.pubDate || "",
-          };
-        });
-        setNewsItems(items);
-        setLastUpdated(data.updatedAtKST || ""); // ← KST 문자열 그대로 사용
-        setGuideMsg(data.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
-      } else {
-        const arr = Array.isArray(data) ? data : (data && data.items ? data.items : []);
-        setLastUpdated(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
-        setGuideMsg("실시간 RSS 읽기");
-        const items = (arr || []).filter(n => withinDays(n.publishedAt || n.pubDate || n.date)).map((n) => {
-          const urlStr = n.url || n.link || "";
-          let host = "";
-          try {
-            host = new URL(urlStr).hostname.replace(/^www\./, "");
-          } catch {}
-          return {
-            title: n.title,
-            url: urlStr,
-            source:
-              (typeof n.source === "string"
-                ? n.source
-                : n.source && (n.source.name || n.source.id)
-                ? String(n.source.name || n.source.id)
-                : "") || host || "한국섬유산업신문",
-            publishedAt: n.published_at || n.publishedAt || n.pubDate || n.date || "",
-          };
-        });
-        setNewsItems(items);
-        /* 국내도 캐시 안내/시간 표시 */
-      }
-
-      setCollapsed(true);
-    } catch (e) {
-      setNewsErr(String(e));
-    } finally {
-      setNewsLoading(false);
-    }
   }
-
-  useEffect(() => {
-    load("overseas");
-  }, []);
-
   const defaultLimit = activeTab === "overseas" ? 15 : 10;
   const rendered = collapsed ? newsItems.slice(0, defaultLimit) : newsItems;
 
