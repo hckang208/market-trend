@@ -805,10 +805,45 @@ function NewsTabsSection() {
       setNewsItems([]);
       let url = "";
       if (tab === "overseas") {
-        // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
+        // 해외 뉴스: /api/news-daily (ET 전일만, 캐시됨)
         url = "/api/news-daily";
       } else {
-        url = "/api/news-kr-rss?" + new URLSearchParams({ feeds: "http://www.ktnews.com/rss/allArticle.xml", days: "5", limit: "200" }).toString();
+        // 국내 뉴스: /api/news-kr-daily (KTNews 캐시)
+        url = "/api/news-kr-daily";
+      }
+      const r = await fetch(url, { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "뉴스 로드 실패");
+
+      const items = (j?.items || []).map((n) => {
+        const host = (() => {
+          try {
+            const u = new URL(n.url || n.link || "");
+            return u.host.replace(/^www\./, "");
+          } catch { return ""; }
+        })();
+        return {
+          title: n.title || "",
+          url: n.url || n.link || "",
+          source:
+            n.source ||
+            (n.source && (n.source.name || n.source.id)) ||
+            host ||
+            (tab === "overseas" ? "World" : "한국섬유산업신문"),
+          publishedAt: n.published_at || n.publishedAt || n.publishedAtISO || n.publishedAtIso || n.publishedAtiso || n.publishedAtISO || n.publishedAt || n.pubDate || n.date || "",
+        };
+      });
+
+      setNewsItems(items);
+      setGuideMsg(j?.guide || "");
+      setLastUpdated(j?.updatedAtISO || "");
+      setCollapsed(true);
+    } catch (e) {
+      setNewsErr(String(e));
+    } finally {
+      setNewsLoading(false);
+    }
+  }).toString();
       }
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
