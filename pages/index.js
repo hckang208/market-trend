@@ -970,25 +970,6 @@ function NewsTabsSection() {
     </>
   )}
 </section>
-            ))}
-          </div>
-          <aside className="ai-col-aside">
-            <h5 className="ai-col-aside-title">참조 뉴스</h5>
-            <ol className="ai-col-refs">
-              {(data.items || []).slice(0, 20).map((it, i) => (
-                <li id={`ref-${i + 1}`} key={i} className="ai-col-ref">
-                  <a href={it.link} target="_blank" rel="noreferrer" className="news-title">
-                    {it.title}
-                  </a>
-                  {it.pubDate ? <div className="news-meta">{it.pubDate}</div> : null}
-                  <div className="news-meta source">{it.source || ""}</div>
-                </li>
-              ))}
-            </ol>
-          </aside>
-        </div>
-      )}
-    </div>
   );
 }
 
