@@ -1,14 +1,15 @@
 // pages/api/news-kr-daily.js
 /**
- * 한국섬유신문(ktnews) RSS를 매일 22:00 KST 기준으로 캐시하여 제공합니다.
+ * KTNEWS RSS (한국섬유신문) 일일 캐시 API
+ * - 소스: http://www.ktnews.com/rss/allArticle.xml
  * - 캐시 파일: /tmp/news_kr_daily_cache.json
- * - 응답: { ok, guide, updatedAtISO, updatedAtKST, items[], stale }
+ * - 강제 새로고침: /api/news-kr-daily?refresh=1
  */
 const CACHE_PATH = "/tmp/news_kr_daily_cache.json";
 const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
-const FEED_URL = "http://www.ktnews.com/rss/allArticle.xml";
+const FEEDS = ["http://www.ktnews.com/rss/allArticle.xml", "https://www.ktnews.com/rss/allArticle.xml"];
 
-// fetch with retry & timeout
+// fetch with retry + timeout
 async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
   for (let i=0;i<=retry;i++) {
     const ctrl = new AbortController();
@@ -21,12 +22,11 @@ async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
       clearTimeout(id);
       if (i === retry) throw e;
     }
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 250));
   }
   return null;
 }
 
-// KST helpers
 function formatKST(d) {
   try {
     return new Intl.DateTimeFormat("ko-KR", {
@@ -41,28 +41,26 @@ async function readCache() {
   try {
     const fs = await import("fs");
     if (!fs.existsSync(CACHE_PATH)) return null;
-    const raw = fs.readFileSync(CACHE_PATH, "utf8");
-    return JSON.parse(raw);
+    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8"));
   } catch { return null; }
 }
-async function writeCache(data) {
+async function writeCache(obj) {
   try {
     const fs = await import("fs");
-    fs.writeFileSync(CACHE_PATH, JSON.stringify(data));
+    fs.writeFileSync(CACHE_PATH, JSON.stringify(obj));
   } catch {}
 }
 
 function shouldRefresh(cache) {
   if (!cache) return true;
   const last = new Date(cache.updatedAtISO);
-  const ageMs = Date.now() - (last?.getTime() || 0);
-  // 22시간 이상 지났으면 갱신
-  return ageMs > 22 * 60 * 60 * 1000;
+  const age = Date.now() - (last?.getTime() || 0);
+  return age > 22 * 60 * 60 * 1000; // ~22h
 }
 
 function hostOf(u="") { try { return new URL(u).host; } catch { return ""; } }
 
-// RSS parsing (title, link, pubDate, description)
+// Simple RSS parser
 function parseRSS(xml="") {
   const items = [];
   const blocks = xml.split(/<item[\s>]/i).slice(1).map(b => "<item " + b);
@@ -102,22 +100,27 @@ export default async function handler(req, res) {
     let cache = await readCache();
 
     if (!cache || shouldRefresh(cache) || refresh) {
-      const xml = await fetchWithRetry(FEED_URL, {
-        headers: { "User-Agent": "MarketTrend-Dashboard/1.0 (+news-kr)" }
-      }, 2, 8000);
+      let xml = null;
+      // Try http, then https
+      for (const u of FEEDS) {
+        try {
+          xml = await fetchWithRetry(u, { headers: { "User-Agent": "MarketTrend/1.0 (+news-kr-daily)" }, cache: "no-store" }, 2, 8000);
+          if (xml) break;
+        } catch {}
+      }
       if (!xml) throw new Error("KTNEWS RSS 로드 실패");
 
       let items = parseRSS(xml).map(it => ({
         title: it.title || "",
         url: it.link || "",
         publishedAt: it.pubDate ? it.pubDate.toISOString() : null,
-        source: hostOf(it.link || FEED_URL) || "ktnews.com",
+        source: hostOf(it.link || "") || "ktnews.com",
         description: it.description || ""
       }));
 
-      // 최신순 정렬 & 상한
-      items.sort((a,b) => (new Date(b.publishedAt||0)).getTime() - (new Date(a.publishedAt||0)).getTime());
-      items = items.slice(0, 120);
+      // sort desc, cap
+      items.sort((a,b) => (new Date(b.publishedAt||0)) - (new Date(a.publishedAt||0)));
+      items = items.slice(0, 150);
 
       const now = new Date();
       cache = {

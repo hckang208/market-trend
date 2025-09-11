@@ -1,9 +1,6 @@
 // pages/api/indicators.js
 export default async function handler(req, res) {
-  const FRED_KEY = process.env.FRED_API_KEY;
-  if (!FRED_KEY) {
-    return res.status(500).json({ error: "FRED_API_KEY not set" });
-  }
+  const FRED_KEY = process.env.FRED_API_KEY || ""; // proceed without hard fail; we will skip FRED fetches if missing
 
   // Preferred series (Fed Funds = Target Upper by default)
   const series = {
@@ -54,7 +51,38 @@ export default async function handler(req, res) {
   }
 
   // EIA WTI daily (needs API key). If missing, fallback to FRED
-  async function fetchEIA() {
+  
+  // Yahoo generic price series (e.g., WTI futures CL=F)
+  async function fetchYahooSeries(symbol = "CL=F", range="1y", interval="1d") {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+    const r = await fetch(url, { headers: { "User-Agent": "MarketTrend-Dashboard/1.0" }, cache: "no-store" });
+    if (!r.ok) throw new Error("Yahoo series error");
+    const j = await r.json();
+    const result = j?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const closes = (result?.indicators?.quote?.[0]?.close || []).map(v => (v==null? null : Number(v)));
+    const pairs = [];
+    for (let i=0;i<timestamps.length;i++) {
+      const t = timestamps[i];
+      const v = closes[i];
+      if (t && v!=null && isFinite(v)) {
+        const d = new Date(t*1000).toISOString().slice(0,10);
+        pairs.push({ date: d, value: v });
+      }
+    }
+    const hist = pairs.map(p => p.value);
+    const last = hist.length ? hist[hist.length-1] : null;
+    const prev = hist.length >= 2 ? hist[hist.length-2] : null;
+    const changePercent = (last!=null && prev!=null && prev!==0) ? ((last-prev)/prev)*100 : null;
+    let yoyPercent = null;
+    if (hist.length >= 252) { // ~1y of daily trading data
+      const yago = hist[hist.length-252];
+      if (isFinite(yago) && yago !== 0 && isFinite(last)) yoyPercent = ((last - yago) / yago) * 100;
+    }
+    const lastDate = pairs.length ? pairs[pairs.length-1].date : null;
+    return { value: last, history: hist.slice(-180), changePercent, lastDate, yoyPercent, source: "yahoo" };
+  }
+async function fetchEIA() {
     const EIA_KEY = process.env.EIA_API_KEY;
     if (!EIA_KEY) throw new Error("no EIA key");
     const url = `https://api.eia.gov/series/?api_key=${EIA_KEY}&series_id=PET.RWTC.D`;
@@ -117,13 +145,17 @@ export default async function handler(req, res) {
 
   try {
     const out = {};
-    // Fetch FRED series first (fast parallel)
+    // Fetch FRED series first (fast parallel) if key exists
     const fredKeys = Object.keys(series);
-    await Promise.all(fredKeys.map(async (k) => {
-      try {
-        out[k] = await fetchFred(series[k]);
-      } catch { out[k] = { value: null, history: [], changePercent: null, lastDate: null, yoyPercent: null }; }
-    }));
+    if (FRED_KEY) {
+      await Promise.all(fredKeys.map(async (k) => {
+        try {
+          out[k] = await fetchFred(series[k]);
+        } catch { out[k] = { value: null, history: [], changePercent: null, lastDate: null, yoyPercent: null }; }
+      }));
+    } else {
+      fredKeys.forEach(k => { out[k] = { value: null, history: [], changePercent: null, lastDate: null, yoyPercent: null }; });
+    }
 
     // Improve freshness
     // FX: prefer Yahoo spot if enabled
@@ -132,6 +164,8 @@ export default async function handler(req, res) {
     }
     // WTI: prefer EIA if key provided
     try { const eia = await fetchEIA(); if (eia) out.wti = eia; } catch {}
+    // Fallback to Yahoo CL=F if missing/empty
+    try { if (!out.wti || out.wti.value == null) { out.wti = await fetchYahooSeries("CL=F", "1y", "1d"); } } catch {}
 
     // ISM retail (optional)
     try { const ism = await fetchIsmRetail(); if (ism) out.ism_retail = ism; } catch {}

@@ -57,8 +57,8 @@ function AIBox({ block, payload }) {
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
-      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-        let s = j.summary || "";
+              if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
+let s = j.summary || "";
         s = s
           .replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gim, "")
           .replace(/(전략기획부|임원)[^\n]*\n?/g, "");
@@ -488,8 +488,8 @@ function IndicatorsSection() {
         const r = await fetch("/api/indicators", { cache: "no-store" });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "지표 API 오류");
-      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-        setState({ loading: false, data: j, error: "" });
+              if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
+setState({ loading: false, data: j, error: "" });
         setLastUpdated(
           j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
         );
@@ -651,8 +651,8 @@ function StocksSection() {
               });
               const j = await r.json();
               if (!r.ok) throw new Error(j?.error || "stocks api error");
-      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-              const name = j.longName || j.name || NAME_MAP[s] || s;
+                    if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
+const name = j.longName || j.name || NAME_MAP[s] || s;
               const price =
                 j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
@@ -958,16 +958,14 @@ function NewsTabsSection() {
                   : "GEMINI 2.5"}
               </div>
               <div className="btn-group" style={{display:"flex", gap:8}}>
-                <button onClick={() => setAiOpen(o=>!o)} className="btn btn-secondary">{aiOpen ? "접기" : "펼치기"}</button>
-                <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
-                  {aiLoading ? "요약 중..." : "다시 요약"}
-                </button>
+                <a href="/ai/foreign" className="btn btn-secondary">해외뉴스분석AI</a>
+                <a href="/ai/korea" className="btn btn-ghost">국내뉴스분석AI</a>
               </div>
             </div>
           </div>
 
           {aiErr && <div className="text-danger">에러: {aiErr}</div>}
-          {!aiErr && aiOpen && (
+          {false && (!aiErr) && aiOpen && (
             <div className="grid grid-2">
               <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
               <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />
