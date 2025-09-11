@@ -1012,14 +1012,16 @@ export default function Home() {
 }
 
 
+
 function WorldDailyNewsSection() {
+  const [open, setOpen] = React.useState(false); // 자세히보기/접기
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState("");
   const [guide, setGuide] = React.useState("");
   const [last, setLast] = React.useState("");
   const [targetEt, setTargetEt] = React.useState("");
-  const [collapsed, setCollapsed] = React.useState(true);
+  const [collapsed, setCollapsed] = React.useState(true); // 리스트 더보기/접기
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiSummary, setAiSummary] = React.useState("");
 
@@ -1094,48 +1096,61 @@ function WorldDailyNewsSection() {
           <p className="section-subtitle">{sourceLine}</p>
         </div>
         <div>
-          <button className="btn btn-secondary" onClick={handleAi} disabled={aiBusy}>
-            {aiBusy ? "AI 요약 중…" : "AI 요약"}
+          <button
+            onClick={() => setOpen(v => !v)}
+            className="btn btn-outline"
+            style={{ marginLeft: 8 }}
+          >
+            {open ? "접기" : "자세히보기"}
           </button>
         </div>
       </div>
 
-      <div className="card">
-        {loading && <div className="muted">불러오는 중…</div>}
-        {err && <div className="text-danger">에러: {err}</div>}
+      {open && (
+        <div className="card">
+          {loading && <div className="muted">불러오는 중…</div>}
+          {err && <div className="text-danger">에러: {err}</div>}
 
-        {!loading && !err && (
-          <>
-            {aiSummary && (
-              <div className="ai-summary" style={{ background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:8, padding:12, marginBottom:12, whiteSpace:"pre-wrap" }}>
-                {aiSummary}
-              </div>
-            )}
-
-            <ul className="news-list" style={{ listStyle:"none", padding:0, margin:0 }}>
-              {list.map((n, i) => (
-                <li key={i} className="news-item" style={{ padding:"8px 0", borderBottom:"1px solid #eee" }}>
-                  <a href={n.url} target="_blank" rel="noreferrer" className="link">
-                    {n.title}
-                  </a>
-                  <div className="muted" style={{ fontSize:12, marginTop:4 }}>
-                    {n.source || "World"} {n.publishedAtISO ? `• ${toKstString(n.publishedAtISO)}` : ""}
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {items.length > defaultLimit && (
-              <div className="actions" style={{ marginTop:12 }}>
-                <button className="btn btn-outline" onClick={() => setCollapsed(v => !v)}>
-                  {collapsed ? `더보기 (${items.length - defaultLimit}개 더)` : "접기"}
+          {!loading && !err && (
+            <>
+              <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+                <button className="btn btn-secondary" onClick={handleAi} disabled={aiBusy}>
+                  {aiBusy ? "AI 요약 중…" : "AI 요약"}
                 </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {aiSummary && (
+                <div className="ai-summary" style={{ background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:8, padding:12, marginBottom:12, whiteSpace:"pre-wrap" }}>
+                  {aiSummary}
+                </div>
+              )}
+
+              <ul className="news-list" style={{ listStyle:"none", padding:0, margin:0 }}>
+                {list.map((n, i) => (
+                  <li key={i} className="news-item" style={{ padding:"8px 0", borderBottom:"1px solid #eee" }}>
+                    <a href={n.url} target="_blank" rel="noreferrer" className="link">
+                      {n.title}
+                    </a>
+                    <div className="muted" style={{ fontSize:12, marginTop:4 }}>
+                      {n.source || "World"} {n.publishedAtISO ? `• ${toKstString(n.publishedAtISO)}` : ""}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {items.length > defaultLimit && (
+                <div className="actions" style={{ marginTop:12 }}>
+                  <button className="btn btn-outline" onClick={() => setCollapsed(v => !v)}>
+                    {collapsed ? `더보기 (${items.length - defaultLimit}개 더)` : "접기"}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }
+
 
