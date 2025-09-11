@@ -57,6 +57,7 @@ function AIBox({ block, payload }) {
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
+      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
         let s = j.summary || "";
         s = s
           .replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gim, "")
@@ -487,6 +488,7 @@ function IndicatorsSection() {
         const r = await fetch("/api/indicators", { cache: "no-store" });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "지표 API 오류");
+      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
         setState({ loading: false, data: j, error: "" });
         setLastUpdated(
           j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
@@ -649,6 +651,7 @@ function StocksSection() {
               });
               const j = await r.json();
               if (!r.ok) throw new Error(j?.error || "stocks api error");
+      if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
               const name = j.longName || j.name || NAME_MAP[s] || s;
               const price =
                 j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
@@ -797,13 +800,7 @@ function NewsTabsSection() {
         // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
         url = "/api/news-daily";
       } else {
-        url =
-          "/api/news-kr-rss?" +
-          new URLSearchParams({
-            feeds: "http://www.ktnews.com/rss/allArticle.xml",
-            days: "1",
-            limit: "200",
-          }).toString();
+        url = "/api/news-kr-daily";.toString();
       }
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
