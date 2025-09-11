@@ -1042,7 +1042,8 @@ function AISummaryColumn({ title, data }) {
                       .replace(/\n/g, "<br/>"),
                   }}
                 />
-              </section>
+              )}
+</section>
             ))}
           </div>
           <aside className="ai-col-aside">
