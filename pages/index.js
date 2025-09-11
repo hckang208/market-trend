@@ -831,7 +831,7 @@ function NewsTabsSection() {
         setLastUpdated(data.updatedAtKST || ""); // ← KST 문자열 그대로 사용
         setGuideMsg(data.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
       } else {
-        const arr = Array.isArray(data) ? data : []; // live RSS returns array
+        const arr = Array.isArray(data) ? data : (data && data.items ? data.items : []);
         setLastUpdated(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
         setGuideMsg("실시간 RSS 읽기");
         const items = (arr || []).filter(n => withinDays(n.publishedAt || n.pubDate || n.date)).map((n) => {
@@ -917,6 +917,10 @@ function NewsTabsSection() {
           </button>
           <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
           <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
+          {` `}
+          <a href={`/news?tab=${activeTab}`} className="btn btn-outline" style={{ marginLeft: 8 }}>
+            전체 보기
+          </a>
         </div>
       </div>
 
