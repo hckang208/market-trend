@@ -1,56 +1,34 @@
-# Market Trend — Next.js Pro Dashboard
+# 구매시황 Dashboard — 매일 오전 9시(KST) 정적 갱신 버전
 
-## Scripts
-- `npm run dev` — local dev
-- `npm run build` — prod build
-- `npm start` — run production
+## 구조
+- `/public/data/*.json` : 매일 1회(09:00 KST) 생성되는 정적 데이터
+- `/scripts/daily_refresh.mjs` : 데이터 수집 + AI 요약(해외/국내 각 1회)
+- `.github/workflows/daily-refresh.yml` : GitHub Actions로 00:00 UTC에 스크립트 실행 → 변경사항 커밋 → Netlify 자동배포
+- 프론트는 **항상 `/data/*.json`** 을 읽어옵니다 (실패/레이트리밋 X).
 
-## Environment Variables (Vercel)
-- `RAPIDAPI_KEY` — RapidAPI key for Yahoo Finance + Contextual Web Search
-- `FRED_API_KEY` — FRED key for macro indicators
-- `OPENAI_API_KEY` — optional, for /api/analysis summarization
-
-## Endpoints
-- `/api/stocks?symbol=WMT`
-- `/api/news?q=Walmart`
-- `/api/indicators`
-- `/api/analysis` (POST: { items: [{title, url}, ...] })
-
-## Notes
-- News endpoint caches for 5 minutes in-memory per lambda.
-- Retailer news is only fetched on hover to avoid 429 throttling.
-
-
-## One-click Hosting (Vercel 대안)
-### Netlify
-1) GitHub 레포 연결 → **Environment variables**에 다음 3개 추가
-   - `RAPIDAPI_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY`
-2) 그대로 Deploy (플러그인 `@netlify/plugin-nextjs`가 SSR/API 자동 처리)
-3) 헬스체크: `/api/ok`
-
-### Render
-1) 대시보드 → New → Web Service → GitHub 레포 선택
-2) Build Command: `npm install && npm run build`
-3) Start Command: `npm run start`
-4) Node Version: `18`
-5) Environment → `RAPIDAPI_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY` 추가
-6) 배포 후 헬스체크: `/api/ok`
-
-> Cloudflare Pages/Workers도 가능하지만, `@cloudflare/next-on-pages` 어댑터 설정이 필요합니다.
-
-
-## Netlify deployment notes
-- Ensure `package.json` includes `@netlify/plugin-nextjs` in devDependencies (already added).
-- Ensure `netlify.toml` is in repo root (already added).
-- `.nvmrc` forces Node 18 (already added).
-- In Netlify, set Environment Variables: RAPIDAPI_KEY, FRED_API_KEY, OPENAI_API_KEY.
-- Then trigger "Clear cache and deploy site".
-- Check build logs: should see "Detected Next.js" and "@netlify/plugin-nextjs".
-- Test at /api/ok for API health.
-
-
-### Overseas News Domain Whitelist
-Set `.env.local` or deployment env:
+## 빠른 시작
+```bash
+npm i
+npm run dev
 ```
-FOREIGN_NEWS_DOMAINS=businessoffashion.com,just-style.com
+
+## 수동 갱신(로컬)
+```bash
+FRED_API_KEY=... GEMINI_API_KEY=... npm run refresh
 ```
+
+## CI(권장)
+1. GitHub → Settings → Secrets and variables → Actions
+   - `FRED_API_KEY` 추가
+   - `GEMINI_API_KEY` 추가(요약 비용 최소: 해외/국내 각 1회)
+2. Actions 스케줄은 UTC 기준 `0 0 * * *` → 한국 시간 **오전 9시**와 동일
+3. 이 워크플로가 `public/data` 변경을 커밋하면 Netlify가 자동 재배포합니다.
+
+## 페이지
+- `/` : 주요지표 + 주요 리테일러 주가
+- `/news` : 해외/국내 뉴스 목록
+- `/ai` : AI 요약(해외/국내)
+
+## 메모
+- Yahoo/FRED/RSS에서 일시적으로 실패할 수 있어도, 이전 데이터가 유지됩니다.
+- `public/data/*.json`은 언제나 우선 사용되므로, 500/HTML 파싱 오류가 사라집니다.

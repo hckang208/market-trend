@@ -1,0 +1,87 @@
+{
+  "updatedAtISO": "2025-09-11T15:58:52.396694+09:00",
+  "symbols": [
+    "WMT",
+    "TGT",
+    "ANF",
+    "VSCO",
+    "KSS",
+    "AMZN",
+    "BABA",
+    "9983.T"
+  ],
+  "quotes": [
+    {
+      "symbol": "WMT",
+      "longName": "Walmart Inc.",
+      "regularMarketPrice": 72.1,
+      "regularMarketPreviousClose": 71.4,
+      "changePercent": 0.98,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397922"
+    },
+    {
+      "symbol": "TGT",
+      "longName": "Target Corporation",
+      "regularMarketPrice": 153.2,
+      "regularMarketPreviousClose": 150.6,
+      "changePercent": 1.72,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397927"
+    },
+    {
+      "symbol": "ANF",
+      "longName": "Abercrombie & Fitch Co.",
+      "regularMarketPrice": 148.5,
+      "regularMarketPreviousClose": 149.1,
+      "changePercent": -0.4,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397928"
+    },
+    {
+      "symbol": "VSCO",
+      "longName": "Victoria's Secret & Co.",
+      "regularMarketPrice": 18.2,
+      "regularMarketPreviousClose": 18.0,
+      "changePercent": 1.11,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397930"
+    },
+    {
+      "symbol": "KSS",
+      "longName": "Kohls Corporation",
+      "regularMarketPrice": 24.0,
+      "regularMarketPreviousClose": 24.3,
+      "changePercent": -1.23,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397931"
+    },
+    {
+      "symbol": "AMZN",
+      "longName": "Amazon.com, Inc.",
+      "regularMarketPrice": 178.0,
+      "regularMarketPreviousClose": 176.9,
+      "changePercent": 0.62,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397932"
+    },
+    {
+      "symbol": "BABA",
+      "longName": "Alibaba Group Holding Limited",
+      "regularMarketPrice": 84.5,
+      "regularMarketPreviousClose": 83.9,
+      "changePercent": 0.72,
+      "currency": "USD",
+      "ts": "2025-09-11T06:58:52.397933"
+    },
+    {
+      "symbol": "9983.T",
+      "longName": "Fast Retailing Co., Ltd.",
+      "regularMarketPrice": 41250,
+      "regularMarketPreviousClose": 40950,
+      "changePercent": 0.73,
+      "currency": "JPY",
+      "ts": "2025-09-11T06:58:52.397935"
+    }
+  ]
+}
