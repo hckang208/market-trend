@@ -1,6 +1,7 @@
 // pages/index.js
 import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
+import { getOverseasNews, getKoreaNews } from "../lib/newsClient";
 
 const FOREIGN_DOMAINS =
   process.env.NEXT_PUBLIC_FOREIGN_NEWS_DOMAINS ||
@@ -751,83 +752,30 @@ function StocksSection() {
    4) 뉴스 탭 — 해외 / 국내 / AI 요약
 ========================= */
 function NewsTabsSection() {
-  function withinDays(iso, days = 5) {
-    try {
-      const d = new Date(iso || "");
-      if (isNaN(d.getTime())) return false;
-      const now = new Date();
-      const diff = (now - d) / (1000 * 60 * 60 * 24);
-      return diff <= days && diff >= 0;
-    } catch { return false; }
-  }
-
-  const [activeTab, setActiveTab] = useState("overseas");
-  const [newsOpen, setNewsOpen] = useState(false); // overseas | korea
+  const [activeTab, setActiveTab] = useState("overseas"); // overseas | korea
+  const [newsOpen, setNewsOpen] = useState(false);
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsErr, setNewsErr] = useState("");
   const [collapsed, setCollapsed] = useState(true);
-
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiErr, setAiErr] = useState("");
-  const [aiForeign, setAiForeign] = useState(null);
-  const [aiKorea, setAiKorea] = useState(null);
-
   const [lastUpdated, setLastUpdated] = useState("");
   const [guideMsg, setGuideMsg] = useState("");
 
-  async function loadAISummary() {
+  const toKst = (iso) => {
     try {
-      setAiLoading(true);
-      setAiErr("");
-      setAiForeign(null);
-      setAiKorea(null);
-      setAiOpen(true);
-      const [rf, rk] = await Promise.all([fetch("/api/ai-news-foreign"), fetch("/api/ai-news-korea")]);
-      const jf = await rf.json();
-      const jk = await rk.json();
-      if (!rf.ok) throw new Error(jf?.error || "AI 해외요약 실패");
-      if (!rk.ok) throw new Error(jk?.error || "AI 국내요약 실패");
-      setAiForeign(jf);
-      setAiKorea(jk);
-    } catch (e) {
-      setAiErr(String(e));
-    } finally {
-      setAiLoading(false);
-    }
-  }
+      return new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+    } catch { return ""; }
+  };
 
-  
-
-async function load(tab = activeTab) {
+  async function load(tab = activeTab) {
     try {
       setNewsLoading(true);
       setNewsErr("");
       setNewsItems([]);
-      let url = "";
-      if (tab === "overseas") {
-        // 해외 산업뉴스: BoF + Just-Style (Google News RSS 전용)
-        url = "/api/news-foreign-industry?days=7&limit=40";
-      } else {
-        // 국내 산업뉴스: 캐시형
-        url = "/api/news-kr-daily";
-      }
-      const r = await fetch(url, { cache: "no-store", headers: { accept: "application/json" } });
-      let data = null;
-      let txt = "";
-      try {
-        txt = await r.text();
-        data = txt ? JSON.parse(txt) : null;
-      } catch (e) {
-        throw new Error("뉴스 응답 파싱 실패: " + String(e) + (txt ? " | body: " + txt.slice(0, 140) : ""));
-      }
-      if (!r.ok) {
-        const msg = (data && (data.error || data.message)) || txt || ("HTTP " + r.status);
-        throw new Error(msg);
-      }
 
+      const data = tab === "overseas" ? await getOverseasNews() : await getKoreaNews();
       const raw = Array.isArray(data) ? data : (data?.items || []);
+
       const items = raw.map((n) => {
         const host = (() => {
           try {
@@ -844,11 +792,13 @@ async function load(tab = activeTab) {
             host || (tab === "overseas" ? "" : "한국섬유산업신문"),
           publishedAt: n.published_at || n.publishedAt || n.publishedAtISO || n.pubDate || n.date || "",
         };
-      });
+      }).filter((n) => n.title && n.url);
+
+      items.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
       setNewsItems(items);
-      setGuideMsg(data?.guide || "");
-      setLastUpdated(data?.updatedAtISO || "");
+      setGuideMsg((Array.isArray(data) ? "" : (data?.sources || data?.guide || "")) || "");
+      setLastUpdated((Array.isArray(data) ? "" : data?.updatedAtISO) || "");
       setCollapsed(true);
     } catch (e) {
       setNewsErr(String(e));
@@ -860,106 +810,103 @@ async function load(tab = activeTab) {
   const defaultLimit = activeTab === "overseas" ? 15 : 10;
   const rendered = collapsed ? newsItems.slice(0, defaultLimit) : newsItems;
 
-  // 동적 출처 라인 + 업데이트 안내
   const sourceLine = useMemo(() => {
     const base =
       activeTab === "overseas"
         ? "출처: businessoffashion.com, just-style.com"
         : "출처: 한국섬유산업신문 외";
-    const guide = guideMsg ? ` · ${guideMsg}` : " · 뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
-    const last =
-      activeTab === "overseas" && lastUpdated
-        ? ` · 마지막 갱신: ${lastUpdated}`
-        : "";
+    const guide = " · 갱신: 매일 오전 9시(한국시간)";
+    const last = lastUpdated ? ` · 마지막 빌드: ${toKst(lastUpdated)}` : "";
     return base + guide + last;
-  }, [activeTab, lastUpdated, guideMsg]);
+  }, [activeTab, lastUpdated]);
 
   return (
     <section className="section">
-  <div className="section-header">
-    <div>
-      <h2 className="section-title">산업뉴스</h2>
-      <p className="section-subtitle">{sourceLine}</p>
-    </div>
-    <div>
-      <button
-        onClick={()=>setNewsOpen(o=>!o)}
-        className="btn btn-outline"
-        style={{ marginLeft: 8 }}
-      >
-        {newsOpen ? "접기" : "자세히보기"}
-      </button>
-    </div>
-  </div>
-
-  {newsOpen && (
-    <>
-      <div className="tab-nav">
-        <button
-          onClick={() => {
-            if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
-            setActiveTab("overseas");
-            setCollapsed(true);
-            load("overseas");
-          }}
-          className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
-        >
-          해외뉴스
-        </button>
-        <button
-          onClick={() => {
-            if (activeTab === "korea") { setCollapsed(v=>!v); return; }
-            setActiveTab("korea");
-            setCollapsed(true);
-            load("korea");
-          }}
-          className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
-        >
-          국내뉴스
-        </button>
-        <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
-        <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">산업뉴스</h2>
+          <p className="section-subtitle">{sourceLine}</p>
+        </div>
+        <div>
+          <button
+            onClick={()=>setNewsOpen(o=>!o)}
+            className="btn btn-outline"
+            style={{ marginLeft: 8 }}
+          >
+            {newsOpen ? "접기" : "자세히보기"}
+          </button>
+        </div>
       </div>
 
-      <div className="card">
-        {newsLoading && <div className="muted">불러오는 중…</div>}
-        {newsErr && <div className="text-danger">에러: {newsErr}</div>}
-        {!newsLoading && !newsErr && (
-          <>
-            {rendered.length === 0 ? (
-              <div className="muted">관련 기사가 아직 없어요.</div>
-            ) : (
-              <ol className="news-list">
-                {rendered.map((it, i) => (
-                  <li key={i} className="news-item">
-                    <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
-                      {it.title}
-                    </a>
-                    {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
-                    <div className="news-meta source">{it.source}</div>
-                  </li>
-                ))}
-              </ol>
-            )}
+      {newsOpen && (
+        <>
+          <div className="tab-nav">
+            <button
+              onClick={() => {
+                if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
+                setActiveTab("overseas");
+                setCollapsed(true);
+                load("overseas");
+              }}
+              className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
+            >
+              해외뉴스
+            </button>
+            <button
+              onClick={() => {
+                if (activeTab === "korea") { setCollapsed(v=>!v); return; }
+                setActiveTab("korea");
+                setCollapsed(true);
+                load("korea");
+              }}
+              className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
+            >
+              국내뉴스
+            </button>
+            <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
+            <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
+          </div>
 
-            {newsItems.length > defaultLimit && (
-              <div className="actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setCollapsed((v) => !v)}
-                >
-                  {collapsed ? `더보기 (${newsItems.length - defaultLimit}개 더)` : "접기"}
-                </button>
-              </div>
+          <div className="card">
+            {newsLoading && <div className="muted">불러오는 중…</div>}
+            {newsErr && <div className="text-danger">에러: {newsErr}</div>}
+            {!newsLoading && !newsErr && (
+              <>
+                {rendered.length === 0 ? (
+                  <div className="muted">관련 기사가 아직 없어요.</div>
+                ) : (
+                  <ol className="news-list">
+                    {rendered.map((it, i) => (
+                      <li key={i} className="news-item">
+                        <a href={it.url} target="_blank" rel="noreferrer" className="news-title">
+                          {it.title}
+                        </a>
+                        {it.publishedAt ? <div className="news-meta">{it.publishedAt}</div> : null}
+                        <div className="news-meta source">{it.source}</div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {newsItems.length > defaultLimit && (
+                  <div className="actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setCollapsed((v) => !v)}
+                    >
+                      {collapsed ? `더보기 (${newsItems.length - defaultLimit}개 더)` : "접기"}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-    </>
-  )}
-</section>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
+
 
 /* =========================
    페이지
