@@ -800,7 +800,7 @@ function NewsTabsSection() {
         // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
         url = "/api/news-daily";
       } else {
-        url = "/api/news-kr-daily";.toString();
+        url = "/api/news-kr-daily";
       }
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
