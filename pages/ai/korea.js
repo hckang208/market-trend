@@ -51,7 +51,7 @@ export default function Page() {
   return (
     <main style={{ maxWidth:1100, margin:"24px auto", padding:"0 16px", fontFamily:"'SUIT Variable','Pretendard','Inter',system-ui,sans-serif" }}>
       <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-        <h1 style={{ fontSize:20, fontWeight:900 }}>"국내뉴스분석AI"</h1>
+        <h1 style={{ fontSize:20, fontWeight:900 }}>"국내뉴스AI요약"</h1>
         <Link href="/" legacyBehavior><a style={{ color:"#111827", textDecoration:"underline" }}>← 대시보드로 돌아가기</a></Link>
       </header>
 

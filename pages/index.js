@@ -57,8 +57,7 @@ function AIBox({ block, payload }) {
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
-              if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-let s = j.summary || "";
+        let s = j.summary || "";
         s = s
           .replace(/^(?:##\s*)?(?:한솔섬유)?\s*(?:임원보고)?\s*$/gim, "")
           .replace(/(전략기획부|임원)[^\n]*\n?/g, "");
@@ -488,8 +487,7 @@ function IndicatorsSection() {
         const r = await fetch("/api/indicators", { cache: "no-store" });
         const j = await r.json();
         if (!r.ok) throw new Error(j?.error || "지표 API 오류");
-              if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-setState({ loading: false, data: j, error: "" });
+        setState({ loading: false, data: j, error: "" });
         setLastUpdated(
           j.lastUpdated || j.updatedAt || j.ts || new Date().toISOString()
         );
@@ -651,8 +649,7 @@ function StocksSection() {
               });
               const j = await r.json();
               if (!r.ok) throw new Error(j?.error || "stocks api error");
-                    if (tab === "korea") { setGuideMsg(j?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다."); setLastUpdated(j?.updatedAtKST || ""); }
-const name = j.longName || j.name || NAME_MAP[s] || s;
+              const name = j.longName || j.name || NAME_MAP[s] || s;
               const price =
                 j.regularMarketPrice ?? j.price ?? j.close ?? j.last ?? j.regular ?? null;
               const prevClose = j.regularMarketPreviousClose ?? j.previousClose ?? null;
@@ -791,12 +788,13 @@ function NewsTabsSection() {
   }
 
   async function load(tab = activeTab) {
+    const currentTab = (typeof tab === 'string' ? tab : activeTab);
     try {
       setNewsLoading(true);
       setNewsErr("");
       setNewsItems([]);
       let url = "";
-      if (tab === "overseas") {
+      if (currentTab === "overseas") {
         // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
         url = "/api/news-daily";
       } else {
@@ -805,7 +803,7 @@ function NewsTabsSection() {
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
 
-      if (tab === "overseas") {
+      if (currentTab === "overseas") {
         if (!r.ok) throw new Error(data?.error || "해외 뉴스 캐시 로드 실패");
         const items = (data.items || []).map((n) => {
           const urlStr = n.url || n.link || "";
@@ -902,15 +900,14 @@ function NewsTabsSection() {
           >
             국내뉴스
           </button>
-          <button
-            onClick={loadAISummary}
-            className="btn btn-secondary"
-            disabled={aiLoading}
-            style={{ marginLeft: 8 }}
-            title="AI 요약 열기"
-          >
-            {aiLoading ? "AI 요약 중…" : "AI 요약 보기"}
-          </button>
+
+          <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>
+            해외뉴스AI요약
+          </a>
+          <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>
+            국내뉴스AI요약
+          </a>
+
         </div>
       </div>
 
@@ -945,7 +942,7 @@ function NewsTabsSection() {
         )}
       </div>
 
-      {aiOpen && (
+      {false && aiOpen && (
         <div id="aiNewsSection" className="ai-panel">
           <div className="ai-panel-header">
             <h3>뉴스 AI 분석</h3>
@@ -958,14 +955,14 @@ function NewsTabsSection() {
                   : "GEMINI 2.5"}
               </div>
               <div className="btn-group" style={{display:"flex", gap:8}}>
-                <a href="/ai/foreign" className="btn btn-secondary">해외뉴스분석AI</a>
-                <a href="/ai/korea" className="btn btn-ghost">국내뉴스분석AI</a>
+                <a href="/ai/foreign" className="btn btn-secondary">해외뉴스AI요약</a>
+                <a href="/ai/korea" className="btn btn-ghost">국내뉴스AI요약</a>
               </div>
             </div>
           </div>
 
           {aiErr && <div className="text-danger">에러: {aiErr}</div>}
-          {false && (!aiErr) && aiOpen && (
+          {!aiErr && aiOpen && (
             <div className="grid grid-2">
               <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
               <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />

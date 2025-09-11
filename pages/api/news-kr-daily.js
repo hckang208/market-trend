@@ -1,15 +1,8 @@
 // pages/api/news-kr-daily.js
-/**
- * KTNEWS RSS (한국섬유신문) 일일 캐시 API
- * - 소스: http://www.ktnews.com/rss/allArticle.xml
- * - 캐시 파일: /tmp/news_kr_daily_cache.json
- * - 강제 새로고침: /api/news-kr-daily?refresh=1
- */
 const CACHE_PATH = "/tmp/news_kr_daily_cache.json";
 const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
 const FEEDS = ["http://www.ktnews.com/rss/allArticle.xml", "https://www.ktnews.com/rss/allArticle.xml"];
 
-// fetch with retry + timeout
 async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
   for (let i=0;i<=retry;i++) {
     const ctrl = new AbortController();
@@ -22,7 +15,7 @@ async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
       clearTimeout(id);
       if (i === retry) throw e;
     }
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 300));
   }
   return null;
 }
@@ -50,20 +43,17 @@ async function writeCache(obj) {
     fs.writeFileSync(CACHE_PATH, JSON.stringify(obj));
   } catch {}
 }
-
 function shouldRefresh(cache) {
   if (!cache) return true;
   const last = new Date(cache.updatedAtISO);
   const age = Date.now() - (last?.getTime() || 0);
-  return age > 22 * 60 * 60 * 1000; // ~22h
+  return age > 22 * 60 * 60 * 1000;
 }
-
 function hostOf(u="") { try { return new URL(u).host; } catch { return ""; } }
 
-// Simple RSS parser
 function parseRSS(xml="") {
   const items = [];
-  const blocks = xml.split(/<item[\s>]/i).slice(1).map(b => "<item " + b);
+  const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
   for (const b of blocks) {
     const title = pick(b, "title");
     const link = pick(b, "link");
@@ -79,19 +69,18 @@ function parseRSS(xml="") {
   return items;
 }
 function pick(block, tag) {
-  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i"));
   return m ? m[1].trim() : null;
 }
 function unescapeXml(s) {
   if (!s) return s;
-  return s
-    .replace(/<!\\[CDATA\\[(.*?)\\]\\]>/gs, "$1")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+  return s.replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
 }
 function cleanDesc(s) {
   if (!s) return s;
-  return s.replace(/<[^>]*>/g, "").replace(/\\s+/g, " ").trim();
+  return s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
 export default async function handler(req, res) {
@@ -101,7 +90,6 @@ export default async function handler(req, res) {
 
     if (!cache || shouldRefresh(cache) || refresh) {
       let xml = null;
-      // Try http, then https
       for (const u of FEEDS) {
         try {
           xml = await fetchWithRetry(u, { headers: { "User-Agent": "MarketTrend/1.0 (+news-kr-daily)" }, cache: "no-store" }, 2, 8000);
@@ -118,7 +106,6 @@ export default async function handler(req, res) {
         description: it.description || ""
       }));
 
-      // sort desc, cap
       items.sort((a,b) => (new Date(b.publishedAt||0)) - (new Date(a.publishedAt||0)));
       items = items.slice(0, 150);
 
