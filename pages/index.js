@@ -1001,6 +1001,7 @@ export default function Home() {
         <IndicatorsSection />
         <StocksSection />
         <NewsTabsSection />
+<WorldDailyNewsSection />
       </main>
 
       <footer className="footer">
@@ -1009,3 +1010,132 @@ export default function Home() {
     </>
   );
 }
+
+
+function WorldDailyNewsSection() {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [guide, setGuide] = React.useState("");
+  const [last, setLast] = React.useState("");
+  const [targetEt, setTargetEt] = React.useState("");
+  const [collapsed, setCollapsed] = React.useState(true);
+  const [aiBusy, setAiBusy] = React.useState(false);
+  const [aiSummary, setAiSummary] = React.useState("");
+
+  const defaultLimit = 10;
+
+  const toKstString = (iso) => {
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      const y = k.getUTCFullYear();
+      const m = String(k.getUTCMonth()+1).padStart(2,"0");
+      const dd = String(k.getUTCDate()).padStart(2,"0");
+      const hh = String(k.getUTCHours()).padStart(2,"0");
+      const mm = String(k.getUTCMinutes()).padStart(2,"0");
+      return `${y}-${m}-${dd} ${hh}:${mm} KST`;
+    } catch { return ""; }
+  };
+
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const r = await fetch("/api/news-daily", { cache: "no-store" });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j?.error || "로드 실패");
+        if (!isMounted) return;
+        setItems(j.items || []);
+        setGuide(j.guide || "");
+        setLast(j.updatedAtISO || "");
+        setTargetEt(j.targetEtDate || "");
+      } catch (e) {
+        setErr(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleAi = async () => {
+    try {
+      setAiBusy(true);
+      setAiSummary("");
+      const r = await fetch("/api/ai-news-foreign", { method: "POST" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "AI 요약 실패");
+      setAiSummary(j.summary || "");
+    } catch (e) {
+      setAiSummary("요약 실패");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const sourceLine = React.useMemo(() => {
+    const base = "Reuters · NYTimes";
+    const g = guide ? ` — ${guide}` : "";
+    const u = last ? ` — 마지막 업데이트: ${toKstString(last)}` : "";
+    const t = targetEt ? ` — 기준일(ET): ${targetEt}` : "";
+    return base + g + u + t;
+  }, [guide, last, targetEt]);
+
+  const list = collapsed ? (items || []).slice(0, defaultLimit) : (items || []);
+
+  return (
+    <section className="section">
+      <div className="section-header">
+        <div>
+          <h2 className="section-title">Daily 세계 주요뉴스</h2>
+          <p className="section-subtitle">{sourceLine}</p>
+        </div>
+        <div>
+          <button className="btn btn-secondary" onClick={handleAi} disabled={aiBusy}>
+            {aiBusy ? "AI 요약 중…" : "AI 요약"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        {loading && <div className="muted">불러오는 중…</div>}
+        {err && <div className="text-danger">에러: {err}</div>}
+
+        {!loading && !err && (
+          <>
+            {aiSummary && (
+              <div className="ai-summary" style={{ background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:8, padding:12, marginBottom:12, whiteSpace:"pre-wrap" }}>
+                {aiSummary}
+              </div>
+            )}
+
+            <ul className="news-list" style={{ listStyle:"none", padding:0, margin:0 }}>
+              {list.map((n, i) => (
+                <li key={i} className="news-item" style={{ padding:"8px 0", borderBottom:"1px solid #eee" }}>
+                  <a href={n.url} target="_blank" rel="noreferrer" className="link">
+                    {n.title}
+                  </a>
+                  <div className="muted" style={{ fontSize:12, marginTop:4 }}>
+                    {n.source || "World"} {n.publishedAtISO ? `• ${toKstString(n.publishedAtISO)}` : ""}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {items.length > defaultLimit && (
+              <div className="actions" style={{ marginTop:12 }}>
+                <button className="btn btn-outline" onClick={() => setCollapsed(v => !v)}>
+                  {collapsed ? `더보기 (${items.length - defaultLimit}개 더)` : "접기"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+

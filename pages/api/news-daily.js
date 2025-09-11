@@ -1,178 +1,172 @@
 // pages/api/news-daily.js
-/**
- * 해외 산업 뉴스(BoF, Just-Style)를 Google News RSS로 수집해
- * 매일 22:00 KST 기준으로 캐시하여 제공합니다.
- * - 캐시 파일: /tmp/news_daily_cache.json
- * - 응답: { ok, guide, updatedAtISO, updatedAtKST, items[], stale }
- */
- 
+// Reuters & NYT RSS → Daily 세계(미국 중심) 주요 뉴스 (ET '어제'만 필터)
 const CACHE_PATH = "/tmp/news_daily_cache.json";
-const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
+const GUIDE_TEXT = "미국/세계 주요 경제 뉴스는 매일 오전 7~9시(한국시간) 기준으로 전일(ET) 뉴스로 요약·표시됩니다.";
+const FEEDS = [
+  "https://feeds.reuters.com/reuters/businessNews",
+  "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+  "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml",
+];
 
-// Simple fetch-with-retry
-async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
-  for (let i=0;i<=retry;i++) {
+// ---------- utils ----------
+async function fetchWithRetry(url, init = {}, retry = 2, timeoutMs = 8000) {
+  for (let i = 0; i <= retry; i++) {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const r = await fetch(url, { ...init, signal: ctrl.signal });
       clearTimeout(id);
       if (r.ok) return await r.text();
+      if (i === retry) throw new Error(`${url} ${r.status}`);
     } catch (e) {
       clearTimeout(id);
       if (i === retry) throw e;
+      await new Promise(r => setTimeout(r, 300));
     }
-    await new Promise(r => setTimeout(r, 300));
   }
-  return null;
 }
 
-// Minimal RSS parser (title/link/pubDate)
-function parseRSS(xml="") {
-  const items = [];
-  const blocks = xml.split(/<item[\s>]/i).slice(1).map(b => "<item " + b);
+function decode(s = "") {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function pick(xml = "", tag = "") {
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const m = xml.match(re);
+  if (!m) return "";
+  return decode((m[1] || "").replace(/<!\\[CDATA\\[|\\]\\]>/g, "").trim());
+}
+
+// Minimal RSS item parse
+function parseRSS(xml = "", sourceLabel = "") {
+  const out = [];
+  const blocks = xml.split(/<item[\\s>]/i).slice(1).map(b => "<item " + b);
   for (const b of blocks) {
     const title = pick(b, "title");
-    const link = pick(b, "link");
-    const pub = pick(b, "pubDate") || pick(b, "updated") || pick(b, "dc:date");
-    items.push({
-      title: unescapeXml(title),
-      link: unescapeXml(link),
-      pubDate: pub ? new Date(pub) : null,
+    const link = pick(b, "link") || pick(b, "guid");
+    const pub =
+      pick(b, "pubDate") ||
+      pick(b, "updated") ||
+      pick(b, "dc:date") ||
+      pick(b, "date");
+    if (!title || !link) continue;
+    let iso = "";
+    try { iso = new Date(pub).toISOString(); } catch {}
+    out.push({
+      title,
+      url: link,
+      publishedAtISO: iso || null,
+      source: sourceLabel,
     });
   }
-  return items;
+  return out;
 }
-function pick(block, tag) {
-  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
-  return m ? m[1].trim() : null;
-}
-function unescapeXml(s) {
-  if (!s) return s;
-  return s
-    .replace(/<!\\[CDATA\\[(.*?)\\]\\]>/gs, "$1")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-}
-function hostOf(u="") { try { return new URL(u).host; } catch { return ""; } }
 
-// KST helpers
-function nowKST() {
+function etDateStr(d = new Date()) {
+  // Return 'YYYY-MM-DD' in America/New_York for a given Date
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  });
+  return fmt.format(d); // 'YYYY-MM-DD'
+}
+
+function getYesterdayET() {
+  // Yesterday relative to current ET date
   const now = new Date();
-  const kstOffset = 9 * 60; // minutes
-  const localOffset = now.getTimezoneOffset(); // minutes
-  const diffMs = (kstOffset + localOffset) * 60 * 1000;
-  return new Date(now.getTime() + diffMs);
-}
-function formatKST(d) {
-  try {
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit"
-    }).format(d);
-  } catch { return d?.toISOString() || ""; }
+  // Compute ET now by formatting then reconstructing start-of-day; simpler: subtract 24h then format
+  const y = new Date(now.getTime() - 24 * 3600 * 1000);
+  return etDateStr(y);
 }
 
-async function readCache() {
-  try {
-    const fs = await import("fs");
-    if (!fs.existsSync(CACHE_PATH)) return null;
-    const raw = fs.readFileSync(CACHE_PATH, "utf8");
-    return JSON.parse(raw);
-  } catch { return null; }
-}
-async function writeCache(data) {
-  try {
-    const fs = await import("fs");
-    fs.writeFileSync(CACHE_PATH, JSON.stringify(data));
-  } catch {}
+function filterToETDate(items = [], targetEtDate = "") {
+  if (!targetEtDate) return items;
+  return items.filter(it => {
+    if (!it.publishedAtISO) return false;
+    const d = new Date(it.publishedAtISO);
+    if (!d || isNaN(d.getTime())) return false;
+    const et = etDateStr(d);
+    return et === targetEtDate;
+  });
 }
 
-// Determine whether we should refresh (after 22:00 KST daily, or ?refresh=1)
-function shouldRefresh(cache) {
-  const urlParams = new URLSearchParams();
-  // Can't access req here; we'll allow manual ?refresh=1 in handler logic.
+function dedupeByTitle(items = []) {
+  const seen = new Set();
+  const out = [];
+  for (const it of items) {
+    const key = (it.title || "").trim().toLowerCase().replace(/\\s+/g, " ");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(it);
+  }
+  return out;
+}
+
+function shouldRefresh(cache, targetEtDate) {
   if (!cache) return true;
-  // If cache is older than 24h, refresh.
+  if (cache.targetEtDate !== targetEtDate) return true; // crossing to next day
   const last = new Date(cache.updatedAtISO);
-  const ageMs = Date.now() - (last?.getTime() || 0);
-  if (ageMs > 22 * 60 * 60 * 1000) return true;
-  // same-day usage: keep unless manual refresh
-  return false;
+  if (!last || isNaN(last.getTime())) return true;
+  const ageMs = Date.now() - last.getTime();
+  return ageMs > 22 * 60 * 60 * 1000; // 22h TTL
 }
 
+function readCache() {
+  try { return JSON.parse(require("fs").readFileSync(CACHE_PATH, "utf8")); }
+  catch { return null; }
+}
+
+function writeCache(data) {
+  try { require("fs").writeFileSync(CACHE_PATH, JSON.stringify(data)); }
+  catch {}
+}
+
+// ---------- handler ----------
 export default async function handler(req, res) {
   try {
-    const refresh = String(req.query.refresh || "0") === "1";
-    let cache = await readCache();
+    const force = (req.query.refresh === "1");
+    const targetEtDate = req.query.et || getYesterdayET(); // allow manual ?et=YYYY-MM-DD
+    let cache = readCache();
 
-    if (!cache || shouldRefresh(cache) || refresh) {
-      // Build Google News RSS "site:" queries for each domain
-      const feeds = [
-        "https://news.google.com/rss/search?q=site:businessoffashion.com&hl=en-US&gl=US&ceid=US:en",
-        "https://news.google.com/rss/search?q=site:just-style.com&hl=en-US&gl=US&ceid=US:en"
-      ];
-
-      const xmls = await Promise.allSettled(
-        feeds.map(u => fetchWithRetry(u, { headers: { "User-Agent": "MarketTrend-Dashboard/1.0 (+news-foreign)" } }, 2, 8000))
-      );
+    if (force || shouldRefresh(cache, targetEtDate)) {
       let items = [];
-      for (let i=0;i<feeds.length;i++) {
-        const r = xmls[i];
-        if (r.status === "fulfilled" && r.value) {
-          const parsed = parseRSS(r.value);
-          for (const it of parsed) {
-            items.push({
-              title: it.title || "",
-              url: it.link || "",
-              publishedAt: it.pubDate ? it.pubDate.toISOString() : null,
-              source: hostOf(feeds[i]).includes("google") ? hostOf(it.link || "") : hostOf(feeds[i])
-            });
-          }
+      for (const feed of FEEDS) {
+        try {
+          const xml = await fetchWithRetry(feed);
+          const label = /reuters/i.test(feed) ? "Reuters" : "NYTimes";
+          items.push(...parseRSS(xml, label));
+        } catch (e) {
+          // ignore single feed failure
         }
       }
-      // Deduplicate by URL/title
-      const seen = new Set();
-      items = items.filter(it => {
-        const key = (it.url || it.title).trim().toLowerCase();
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      // Sort by date desc
-      items.sort((a,b) => (new Date(b.publishedAt||0)).getTime() - (new Date(a.publishedAt||0)).getTime());
-      // Trim to 80
-      items = items.slice(0, 80);
+      // Filter to ET 'yesterday' (or requested et=)
+      items = filterToETDate(items, targetEtDate)
+        .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
+      items = dedupeByTitle(items).slice(0, 50);
 
-      const now = new Date();
-      const payload = {
-        ok: true,
+      cache = {
+        updatedAtISO: new Date().toISOString(),
         guide: GUIDE_TEXT,
-        updatedAtISO: now.toISOString(),
-        updatedAtKST: formatKST(now),
+        targetEtDate,
         items,
-        stale: false
       };
-      await writeCache(payload);
-      cache = payload;
+      writeCache(cache);
     }
 
-    // Serve
-    return res.status(200).json(cache);
+    return res.status(200).json({
+      updatedAtISO: cache.updatedAtISO,
+      guide: cache.guide || GUIDE_TEXT,
+      targetEtDate: cache.targetEtDate,
+      items: cache.items || [],
+      count: (cache.items || []).length,
+      sources: "Reuters, NYTimes RSS (ET yesterday only)",
+    });
   } catch (e) {
-    // Last resort: try to serve cache if available
-    try {
-      const cache = await readCache();
-      if (cache) {
-        cache.stale = true;
-        cache.note = "오류로 캐시를 반환했습니다.";
-        cache.error = String(e);
-        return res.status(200).json(cache);
-      }
-    } catch {}
-    return res.status(500).json({ ok: false, error: String(e) });
+    return res.status(500).json({ error: String(e) });
   }
 }
-
-export const config = { api: { bodyParser: true } };
