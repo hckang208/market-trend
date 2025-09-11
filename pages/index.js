@@ -863,8 +863,8 @@ function NewsTabsSection() {
             >
               국내뉴스
             </button>
-            <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
-            <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
+            <a href="/ai/foreign"  className="btn btn-secondary btn-pro" style={{ border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:800 }} style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
+            <a href="/ai/korea"  className="btn btn-secondary btn-pro" style={{ border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:800 }} style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
           </div>
 
           <div className="card">
@@ -1049,7 +1049,7 @@ function WorldDailyNewsSection() {
           {!loading && !err && (
             <>
               <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
-                <button className="btn btn-secondary" onClick={handleAi} disabled={aiBusy}>
+                <button onClick={handleAi} className="btn btn-secondary btn-pro" style={{ border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:800 }}>
                   {aiBusy ? "AI 요약 중…" : "AI 요약"}
                 </button>
               </div>
