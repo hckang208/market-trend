@@ -798,24 +798,31 @@ function NewsTabsSection() {
     }
   }
 
-  async function load(tab = activeTab) {
+  
+async function load(tab = activeTab) {
     try {
       setNewsLoading(true);
       setNewsErr("");
       setNewsItems([]);
       let url = "";
       if (tab === "overseas") {
-        // 해외 뉴스: /api/news-daily (ET 전일만, 캐시됨)
-        url = "/api/news-daily";
+        // 해외 산업뉴스: 특정 도메인(BoF, Just-Style)만
+        url = "/api/news?" + new URLSearchParams({
+          industry: "retail apparel fashion textile garment",
+          days: "7",
+          limit: "40",
+          domains: FOREIGN_DOMAINS
+        }).toString();
       } else {
-        // 국내 뉴스: /api/news-kr-daily (KTNews 캐시)
+        // 국내 산업뉴스: 캐시형
         url = "/api/news-kr-daily";
       }
       const r = await fetch(url, { cache: "no-store" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "뉴스 로드 실패");
+      const data = await r.json();
+      if (!r.ok) throw new Error((data && data.error) || "뉴스 로드 실패");
 
-      const items = (j?.items || []).map((n) => {
+      const raw = (tab === "overseas") ? (Array.isArray(data) ? data : []) : (data?.items || []);
+      const items = raw.map((n) => {
         const host = (() => {
           try {
             const u = new URL(n.url || n.link || "");
@@ -826,17 +833,16 @@ function NewsTabsSection() {
           title: n.title || "",
           url: n.url || n.link || "",
           source:
-            n.source ||
+            (typeof n.source === "string" && n.source) ||
             (n.source && (n.source.name || n.source.id)) ||
-            host ||
-            (tab === "overseas" ? "World" : "한국섬유산업신문"),
+            host || (tab === "overseas" ? "" : "한국섬유산업신문"),
           publishedAt: n.published_at || n.publishedAt || n.publishedAtISO || n.pubDate || n.date || "",
         };
       });
 
       setNewsItems(items);
-      setGuideMsg(j?.guide || "");
-      setLastUpdated(j?.updatedAtISO || "");
+      setGuideMsg(tab === "overseas" ? "" : (data?.guide || ""));
+      setLastUpdated(tab === "overseas" ? "" : (data?.updatedAtISO || ""));
       setCollapsed(true);
     } catch (e) {
       setNewsErr(String(e));
@@ -1103,7 +1109,7 @@ function WorldDailyNewsSection() {
               <ul className="news-list" style={{ listStyle:"none", padding:0, margin:0 }}>
                 {list.map((n, i) => (
                   <li key={i} className="news-item" style={{ padding:"8px 0", borderBottom:"1px solid #eee" }}>
-                    <a href={n.url} target="_blank" rel="noreferrer" className="link">
+                    <a href={n.url} target="_blank" rel="noreferrer" className="link" style={{ color: "var(--ink)" }}>
                       {n.title}
                     </a>
                     <div className="muted" style={{ fontSize:12, marginTop:4 }}>
