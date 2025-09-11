@@ -156,7 +156,7 @@ function writeCache(data) {
   try { require("fs").writeFileSync(CACHE_PATH, JSON.stringify(data)); }
   catch {}
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     const { days = "7", limit = "40", refresh = "0" } = req.query || {};
     const d = Math.max(1, Math.min(30, Number(days) || 7));
@@ -193,3 +193,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: String(e) });
   }
 }
+
+module.exports = handler;
