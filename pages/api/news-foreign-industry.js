@@ -1,6 +1,6 @@
 // pages/api/news-foreign-industry.js
 // Google News RSS only (site:businessoffashion.com + site:just-style.com)
-// Accept items whose <source url> host is one of the allowed hosts, even if link host is news.google.com
+// CommonJS export for Netlify Functions (no ESM syntax)
 
 const ALLOWED_HOSTS = new Set([
   "businessoffashion.com",
@@ -20,9 +20,13 @@ function extractOriginalUrl(googleLink = "") {
   try {
     const u = new URL(googleLink);
     const urlParam = u.searchParams.get("url");
-    if (urlParam) return decodeURIComponent(urlParam);
-    return googleLink; // fallback to GN link
-  } catch { return googleLink; }
+    if (urlParam) {
+      return decodeURIComponent(urlParam);
+    }
+    return googleLink;
+  } catch (e) {
+    return googleLink;
+  }
 }
 
 async function fetchWithRetry(url, init = {}, retry = 2, timeoutMs = 10000) {
@@ -39,14 +43,21 @@ async function fetchWithRetry(url, init = {}, retry = 2, timeoutMs = 10000) {
         },
       });
       clearTimeout(id);
-      if (r.ok) return await r.text();
-      if (i === retry) throw new Error(`${url} ${r.status}`);
+      if (r.ok) {
+        return await r.text();
+      }
+      if (i === retry) {
+        throw new Error(`${url} ${r.status}`);
+      }
     } catch (e) {
       clearTimeout(id);
-      if (i === retry) throw e;
-      await new Promise((r) => setTimeout(r, 300));
+      if (i === retry) {
+        throw e;
+      }
+      await new Promise((res) => setTimeout(res, 300));
     }
   }
+  return "";
 }
 
 function decodeEntities(s = "") {
@@ -61,22 +72,29 @@ function decodeEntities(s = "") {
 }
 
 function pick(xml = "", tag = "") {
-  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i");
   const m = xml.match(re);
   if (!m) return "";
   return decodeEntities((m[1] || "").trim());
 }
 
 function attr(xml = "", tag = "", attrName = "") {
-  const re = new RegExp(`<${tag}[^>]*\\b${attrName}="([^"]+)"[^>]*>`, "i");
+  const re = new RegExp(`<${tag}[^>]*\b${attrName}="([^"]+)"[^>]*>`, "i");
   const m = xml.match(re);
   return m ? decodeEntities(m[1]) : "";
 }
 
 function hostOf(url = "") {
-  try { return new URL(url).host; } catch { return ""; }
+  try {
+    return new URL(url).host;
+  } catch (e) {
+    return "";
+  }
 }
-function normHost(h = "") { return (h || "").replace(/^www\./, ""); }
+
+function normHost(h = "") {
+  return (h || "").replace(/^www\./, "");
+}
 
 function mapSourceName(text = "") {
   const t = (text || "").toLowerCase();
@@ -88,8 +106,10 @@ function mapSourceName(text = "") {
 function parseRSS(xml = "") {
   const out = [];
   const isRSS = xml.includes("<item");
-  const items = isRSS ? xml.split(/<item[\\s>]/i).slice(1).map((x) => "<item " + x)
-                      : xml.split(/<entry[\\s>]/i).slice(1).map((x) => "<entry " + x);
+  const items = isRSS
+    ? xml.split(/<item[\s>]/i).slice(1).map((x) => "<item " + x)
+    : xml.split(/<entry[\s>]/i).slice(1).map((x) => "<entry " + x);
+
   for (const c of items) {
     const title = pick(c, "title");
     let link = pick(c, "link") || pick(c, "guid");
@@ -109,12 +129,12 @@ function parseRSS(xml = "") {
       link = maybe || link;
     }
 
-    let linkHost = normHost(hostOf(link));
+    const linkHost = normHost(hostOf(link));
     const allowed = ALLOWED_HOSTS.has(linkHost) || ALLOWED_HOSTS.has(sourceHost);
     if (!allowed) continue;
 
     let iso = "";
-    try { iso = new Date(pub).toISOString(); } catch {}
+    try { iso = new Date(pub).toISOString(); } catch (e) {}
 
     out.push({
       title,
@@ -131,7 +151,7 @@ function dedupeByTitle(items = []) {
   const seen = new Set();
   const res = [];
   for (const it of items) {
-    const key = (it.title || "").trim().toLowerCase().replace(/\\s+/g, " ");
+    const key = (it.title || "").trim().toLowerCase().replace(/\s+/g, " ");
     if (seen.has(key)) continue;
     seen.add(key);
     res.push(it);
@@ -145,16 +165,24 @@ function withinDays(iso, days = 7) {
     if (isNaN(d.getTime())) return true;
     const diff = (Date.now() - d.getTime()) / 86400000;
     return diff <= days && diff >= 0;
-  } catch { return true; }
+  } catch (e) {
+    return true;
+  }
 }
 
 function readCache() {
-  try { return JSON.parse(require("fs").readFileSync(CACHE_PATH, "utf8")); }
-  catch { return null; }
+  try {
+    return JSON.parse(require("fs").readFileSync(CACHE_PATH, "utf8"));
+  } catch (e) {
+    return null;
+  }
 }
+
 function writeCache(data) {
-  try { require("fs").writeFileSync(CACHE_PATH, JSON.stringify(data)); }
-  catch {}
+  try {
+    require("fs").writeFileSync(CACHE_PATH, JSON.stringify(data));
+  } catch (e) {}
+}
 
 async function handler(req, res) {
   try {
@@ -163,20 +191,24 @@ async function handler(req, res) {
     const lim = Math.max(1, Math.min(100, Number(limit) || 40));
 
     const cache = readCache();
-    const need = refresh === "1" || !cache || ((Date.now() - new Date(cache.updatedAtISO).getTime()) > 2 * 3600 * 1000);
-    if (!need) return res.status(200).json(cache);
+    const need = (refresh === "1") || !cache || ((Date.now() - new Date(cache.updatedAtISO).getTime()) > 2 * 3600 * 1000);
+    if (!need) {
+      return res.status(200).json(cache);
+    }
 
     let items = [];
     for (const feed of GN_RSS) {
       try {
         const xml = await fetchWithRetry(feed);
         items.push(...parseRSS(xml));
-      } catch (e) {}
+      } catch (e) {
+        // continue on fetch error
+      }
     }
 
     items = items
-      .filter(it => it && it.url && it.source)
-      .filter(it => withinDays(it.publishedAtISO, d))
+      .filter((it) => it && it.url && it.source)
+      .filter((it) => withinDays(it.publishedAtISO, d))
       .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
     items = dedupeByTitle(items).slice(0, lim);
 
