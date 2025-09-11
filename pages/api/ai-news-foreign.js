@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const j = await r.json();
     if (!r.ok) throw new Error(j?.error || "해외 뉴스 로드 실패");
 
-    const items = (j?.items || []).map(n => ({
+    const items = (j?.items || []).slice(0, 10).map(n => ({
       title: n.title || "",
       link: n.url || n.link || "",
       source: n.source || ""

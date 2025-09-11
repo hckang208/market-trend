@@ -4,14 +4,10 @@ import { geminiComplete } from "../../lib/gemini";
 export default async function handler(req, res) {
   try {
     const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
-    const r = await fetch(`${base}/api/news-kr-rss?` + new URLSearchParams({
-      feeds: "http://www.ktnews.com/rss/allArticle.xml",
-      days: String(req.query.days || 1),
-      limit: String(req.query.limit || 200),
-    }).toString(), { cache: "no-store" });
+    const r = await fetch(`${base}/api/news-kr-daily`, { cache: "no-store" }));
 
-    const arr = r.ok ? await r.json() : [];
-    const items = (arr || []).slice(0, Number(req.query.limit || 60)).map((n) => ({
+    const j = r.ok ? await r.json() : { items: [] };
+    const items = (j?.items || []).slice(0, 10).map((n) => ({
       title: n.title,
       link: n.url,
       pubDate: n.published_at || n.publishedAt || null,

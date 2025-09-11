@@ -788,13 +788,12 @@ function NewsTabsSection() {
   }
 
   async function load(tab = activeTab) {
-    const currentTab = (typeof tab === 'string' ? tab : activeTab);
     try {
       setNewsLoading(true);
       setNewsErr("");
       setNewsItems([]);
       let url = "";
-      if (currentTab === "overseas") {
+      if (tab === "overseas") {
         // ✅ 캐시된 해외 뉴스 읽기 (매일 22:00 KST 갱신)
         url = "/api/news-daily";
       } else {
@@ -803,7 +802,7 @@ function NewsTabsSection() {
       const r = await fetch(url, { cache: "no-store" });
       const data = r.ok ? await r.json() : null;
 
-      if (currentTab === "overseas") {
+      if (tab === "overseas") {
         if (!r.ok) throw new Error(data?.error || "해외 뉴스 캐시 로드 실패");
         const items = (data.items || []).map((n) => {
           const urlStr = n.url || n.link || "";
@@ -822,7 +821,9 @@ function NewsTabsSection() {
         setLastUpdated(data.updatedAtKST || ""); // ← KST 문자열 그대로 사용
         setGuideMsg(data.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
       } else {
-        const arr = data || [];
+        const arr = (data && data.items) || [];
+        setLastUpdated(data?.updatedAtKST || "");
+        setGuideMsg(data?.guide || "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.");
         const items = (arr || []).map((n) => {
           const urlStr = n.url || n.link || "";
           let host = "";
@@ -842,8 +843,7 @@ function NewsTabsSection() {
           };
         });
         setNewsItems(items);
-        setLastUpdated("");
-        setGuideMsg(""); // 국내는 고정 가이드 생략
+        /* 국내도 캐시 안내/시간 표시 */
       }
 
       setCollapsed(true);
@@ -858,7 +858,8 @@ function NewsTabsSection() {
     load("overseas");
   }, []);
 
-  const rendered = collapsed ? newsItems.slice(0, 10) : newsItems;
+  const defaultLimit = activeTab === "overseas" ? 15 : 10;
+  const rendered = collapsed ? newsItems.slice(0, defaultLimit) : newsItems;
 
   // 동적 출처 라인 + 업데이트 안내
   const sourceLine = useMemo(() => {
@@ -884,7 +885,9 @@ function NewsTabsSection() {
         <div className="tab-nav">
           <button
             onClick={() => {
+              if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
               setActiveTab("overseas");
+              setCollapsed(true);
               load("overseas");
             }}
             className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
@@ -893,21 +896,17 @@ function NewsTabsSection() {
           </button>
           <button
             onClick={() => {
+              if (activeTab === "korea") { setCollapsed(v=>!v); return; }
               setActiveTab("korea");
+              setCollapsed(true);
               load("korea");
             }}
             className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
           >
             국내뉴스
           </button>
-
-          <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>
-            해외뉴스AI요약
-          </a>
-          <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>
-            국내뉴스AI요약
-          </a>
-
+          <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
+          <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
         </div>
       </div>
 
@@ -931,7 +930,7 @@ function NewsTabsSection() {
                 ))}
               </ol>
             )}
-            {newsItems.length > 10 && (
+            {newsItems.length > defaultLimit && (
               <div className="more-row">
                 <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
                   {collapsed ? "더보기" : "접기"}
@@ -942,7 +941,7 @@ function NewsTabsSection() {
         )}
       </div>
 
-      {false && aiOpen && (
+      {aiOpen && (
         <div id="aiNewsSection" className="ai-panel">
           <div className="ai-panel-header">
             <h3>뉴스 AI 분석</h3>
@@ -955,8 +954,10 @@ function NewsTabsSection() {
                   : "GEMINI 2.5"}
               </div>
               <div className="btn-group" style={{display:"flex", gap:8}}>
-                <a href="/ai/foreign" className="btn btn-secondary">해외뉴스AI요약</a>
-                <a href="/ai/korea" className="btn btn-ghost">국내뉴스AI요약</a>
+                <button onClick={() => setAiOpen(o=>!o)} className="btn btn-secondary">{aiOpen ? "접기" : "펼치기"}</button>
+                <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
+                  {aiLoading ? "요약 중..." : "다시 요약"}
+                </button>
               </div>
             </div>
           </div>
