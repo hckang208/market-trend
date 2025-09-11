@@ -4,7 +4,7 @@ import { geminiComplete } from "../../lib/gemini";
 export default async function handler(req, res) {
   try {
     const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
-    const r = await fetch(`${base}/api/news-kr-daily`, { cache: "no-store" }));
+    const r = await fetch(`${base}/api/news-kr-daily`, { cache: "no-store" });
 
     const j = r.ok ? await r.json() : { items: [] };
     const items = (j?.items || []).slice(0, 10).map((n) => ({
