@@ -919,7 +919,7 @@ function NewsTabsSection() {
           </button>
           <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
           <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
-              <button onClick={()=>setNewsOpen(o=>!o)} className="btn btn-outline" style={{ marginLeft: 8 }}>
+              <button onClick={()=>setNewsOpen(o=>!o className="btn btn-outline" style={{ marginLeft: 8 }}>
                 {newsOpen ? "접기" : "자세히보기"}
               </button>
           </div>
@@ -986,7 +986,8 @@ function NewsTabsSection() {
           )}
         </div>
       )}
-    </section>
+    </)}
+section>
   );
 }
 
