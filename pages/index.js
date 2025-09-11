@@ -888,41 +888,49 @@ function NewsTabsSection() {
 
   return (
     <section className="section">
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">산업뉴스</h2>
-          <p className="section-subtitle">{sourceLine}</p>
-        </div>
-        {newsOpen && (
-          <div className="tab-nav">
-          <button
-            onClick={() => {
-              if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
-              setActiveTab("overseas");
-              setCollapsed(true);
-              load("overseas");
-            }}
-            className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
-          >
-            해외뉴스
-          </button>
-          <button
-            onClick={() => {
-              if (activeTab === "korea") { setCollapsed(v=>!v); return; }
-              setActiveTab("korea");
-              setCollapsed(true);
-              load("korea");
-            }}
-            className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
-          >
-            국내뉴스
-          </button>
-          <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
-          <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
-              <button onClick={()=>setNewsOpen(o=>!o)} className="btn btn-outline" style={{ marginLeft: 8 }}>
-                {newsOpen ? "접기" : "자세히보기"}
-              </button>
-          </div>
+  <div className="section-header">
+    <div>
+      <h2 className="section-title">산업뉴스</h2>
+      <p className="section-subtitle">{sourceLine}</p>
+    </div>
+    <div>
+      <button
+        onClick={()=>setNewsOpen(o=>!o)}
+        className="btn btn-outline"
+        style={{ marginLeft: 8 }}
+      >
+        {newsOpen ? "접기" : "자세히보기"}
+      </button>
+    </div>
+  </div>
+
+  {newsOpen && (
+    <>
+      <div className="tab-nav">
+        <button
+          onClick={() => {
+            if (activeTab === "overseas") { setCollapsed(v=>!v); return; }
+            setActiveTab("overseas");
+            setCollapsed(true);
+            load("overseas");
+          }}
+          className={`tab-btn ${activeTab === "overseas" ? "active" : ""}`}
+        >
+          해외뉴스
+        </button>
+        <button
+          onClick={() => {
+            if (activeTab === "korea") { setCollapsed(v=>!v); return; }
+            setActiveTab("korea");
+            setCollapsed(true);
+            load("korea");
+          }}
+          className={`tab-btn ${activeTab === "korea" ? "active" : ""}`}
+        >
+          국내뉴스
+        </button>
+        <a href="/ai/foreign" className="btn btn-secondary" style={{ marginLeft: 8 }}>해외뉴스AI요약</a>
+        <a href="/ai/korea" className="btn btn-ghost" style={{ marginLeft: 8 }}>국내뉴스AI요약</a>
       </div>
 
       <div className="card">
@@ -945,104 +953,22 @@ function NewsTabsSection() {
                 ))}
               </ol>
             )}
+
             {newsItems.length > defaultLimit && (
-              <div className="more-row">
-                <button onClick={() => setCollapsed((v) => !v)} className="btn btn-ghost">
-                  {collapsed ? "더보기" : "접기"}
+              <div className="actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setCollapsed((v) => !v)}
+                >
+                  {collapsed ? `더보기 (${newsItems.length - defaultLimit}개 더)` : "접기"}
                 </button>
               </div>
             )}
           </>
         )}
       </div>
-
-      {aiOpen && (
-        <div id="aiNewsSection" className="ai-panel">
-          <div className="ai-panel-header">
-            <h3>뉴스 AI 분석</h3>
-            <div className="ai-panel-actions">
-              <div className="ai-meta">
-                {aiForeign?.generatedAt
-                  ? `GEMINI 2.5 · ${new Date(aiForeign.generatedAt).toLocaleString("ko-KR", {
-                      timeZone: "Asia/Seoul",
-                    })}`
-                  : "GEMINI 2.5"}
-              </div>
-              <div className="btn-group" style={{display:"flex", gap:8}}>
-                <button onClick={() => setAiOpen(o=>!o)} className="btn btn-secondary">{aiOpen ? "접기" : "펼치기"}</button>
-                <button onClick={loadAISummary} disabled={aiLoading} className="btn btn-ghost">
-                  {aiLoading ? "요약 중..." : "다시 요약"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {aiErr && <div className="text-danger">에러: {aiErr}</div>}
-          {!aiErr && aiOpen && (
-            <div className="grid grid-2">
-              <AISummaryColumn title="해외뉴스분석(AI)" data={aiForeign} />
-              <AISummaryColumn title="국내뉴스분석(AI)" data={aiKorea} />
-            </div>
-          )}
-        </div>
-      )}
-    </)}
-section>
-  );
-}
-
-function LinkifyCitations(text = "") {
-  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
-    const id = String(grp).split("-")[0];
-    return `<a href="#ref-${id}" class="ref">[${grp}]</a>`;
-  });
-}
-function splitSections(md = "") {
-  const lines = String(md).split(/\r?\n/);
-  const out = [];
-  let title = null,
-    buf = [];
-  const push = () => {
-    if (title || buf.length) out.push({ title: title || "", body: buf.join("\n") });
-  };
-  for (const ln of lines) {
-    if (/^###\s+/.test(ln)) {
-      push();
-      title = ln.replace(/^###\s+/, "").trim();
-      buf = [];
-    } else buf.push(ln);
-  }
-  push();
-  return out;
-}
-function AISummaryColumn({ title, data }) {
-  const sections = React.useMemo(() => splitSections(data?.summary || ""), [data?.summary]);
-  return (
-    <div className="card">
-      <h4 className="ai-col-title">{title}</h4>
-      {!data ? (
-        <div className="muted">요약을 불러오는 중…</div>
-      ) : (
-        <div className="ai-col">
-          <div className="ai-col-body">
-            {sections.map((sec, idx) => (
-              <section key={idx} className="ai-col-section">
-                {sec.title ? (
-                  <h5 className="ai-col-section-title">
-                    {sec.title === "Implications for Hansoll"
-                      ? "한솔섬유 전략에 미치는 시사점"
-                      : sec.title}
-                  </h5>
-                ) : null}
-                <div
-                  className="ai-col-section-text"
-                  dangerouslySetInnerHTML={{
-                    __html: LinkifyCitations(sec.body)
-                      .replace(/^-\s+/gm, "• ")
-                      .replace(/\n/g, "<br/>"),
-                  }}
-                />
-              )}
+    </>
+  )}
 </section>
             ))}
           </div>
