@@ -1,1 +1,43 @@
-{"updatedAtISO": null, "items": [], "sources": ""}
+{
+  "updatedAtISO": "2025-09-11T09:00:00+09:00",
+  "guide": "매일 09:00 KST 스냅샷",
+  "sources": "한국섬유산업신문",
+  "items": [
+    {
+      "title": "국내 의류업, 가을 성수기 앞두고 재고관리 강화",
+      "url": "https://news.example.com/ktnews-inventory-autumn",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T17:30:00+09:00"
+    },
+    {
+      "title": "탄소배출 규제 대응…섬유업계 공정 효율화 투자 확대",
+      "url": "https://news.example.com/ktnews-carbon-regulation",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T14:15:00+09:00"
+    },
+    {
+      "title": "국내 면사 가격 보합…환율 영향 관망세",
+      "url": "https://news.example.com/ktnews-cottonyarn-fx",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T12:00:00+09:00"
+    },
+    {
+      "title": "글로벌 바이어, 친환경 소재 요구 확대…국내 업체 수주 기회",
+      "url": "https://news.example.com/ktnews-green-materials-oppty",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T10:10:00+09:00"
+    },
+    {
+      "title": "의류 수출 물류비 완화…납기 안정성 개선 기대",
+      "url": "https://news.example.com/ktnews-logistics-easing",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T08:20:00+09:00"
+    },
+    {
+      "title": "섬유기계 업그레이드 지원사업 공고",
+      "url": "https://news.example.com/ktnews-machine-upgrade",
+      "source": "한국섬유산업신문",
+      "publishedAt": "2025-09-10T07:05:00+09:00"
+    }
+  ]
+}

@@ -1,1 +1,55 @@
-{"updatedAtISO": null, "items": [], "sources": ""}
+{
+  "updatedAtISO": "2025-09-11T09:00:00+09:00",
+  "guide": "매일 09:00 KST 스냅샷",
+  "sources": "BoF, Just-Style",
+  "items": [
+    {
+      "title": "US Retailers Shift Inventory Strategy Ahead of Holiday Season",
+      "url": "https://news.example.com/bof-holiday-inventory",
+      "source": "Business of Fashion",
+      "publishedAt": "2025-09-10T18:20:00+09:00"
+    },
+    {
+      "title": "Bangladesh Garment Orders Rebound as Buyers Seek Price Stability",
+      "url": "https://news.example.com/just-style-bangladesh-rebound",
+      "source": "Just-Style",
+      "publishedAt": "2025-09-10T15:05:00+09:00"
+    },
+    {
+      "title": "Sustainable Materials: Brands Pilot Next-Gen Fibres in Mass Market",
+      "url": "https://news.example.com/bof-next-gen-fibres",
+      "source": "Business of Fashion",
+      "publishedAt": "2025-09-10T11:40:00+09:00"
+    },
+    {
+      "title": "Vietnam Apparel Exports: Logistics Costs Easing into Q4",
+      "url": "https://news.example.com/just-style-vietnam-logistics",
+      "source": "Just-Style",
+      "publishedAt": "2025-09-10T09:10:00+09:00"
+    },
+    {
+      "title": "Retail Margin Watch: Promotional Cadence Normalizing vs 2024",
+      "url": "https://news.example.com/bof-margin-watch",
+      "source": "Business of Fashion",
+      "publishedAt": "2025-09-10T07:55:00+09:00"
+    },
+    {
+      "title": "US Cotton Outlook: Prices Soft but Input Costs Still Elevated",
+      "url": "https://news.example.com/just-style-us-cotton-outlook",
+      "source": "Just-Style",
+      "publishedAt": "2025-09-10T06:35:00+09:00"
+    },
+    {
+      "title": "EU Supply Chain Due Diligence: What Mid-Tier Brands Must Prepare",
+      "url": "https://news.example.com/bof-csddd-prep",
+      "source": "Business of Fashion",
+      "publishedAt": "2025-09-10T05:10:00+09:00"
+    },
+    {
+      "title": "Nearshoring Update: Mexico Capacity Adds Lead Time Relief",
+      "url": "https://news.example.com/just-style-nearshoring-mexico",
+      "source": "Just-Style",
+      "publishedAt": "2025-09-10T02:45:00+09:00"
+    }
+  ]
+}
