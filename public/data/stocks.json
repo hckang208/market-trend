@@ -1,5 +1,5 @@
 {
-  "updatedAtISO": "2025-09-11T15:58:52.396694+09:00",
+  "updatedAtISO": "2025-09-11T16:26:27.442338+09:00",
   "symbols": [
     "WMT",
     "TGT",
@@ -18,7 +18,7 @@
       "regularMarketPreviousClose": 71.4,
       "changePercent": 0.98,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397922"
+      "ts": "2025-09-11T07:26:27.443209"
     },
     {
       "symbol": "TGT",
@@ -27,7 +27,7 @@
       "regularMarketPreviousClose": 150.6,
       "changePercent": 1.72,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397927"
+      "ts": "2025-09-11T07:26:27.443216"
     },
     {
       "symbol": "ANF",
@@ -36,7 +36,7 @@
       "regularMarketPreviousClose": 149.1,
       "changePercent": -0.4,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397928"
+      "ts": "2025-09-11T07:26:27.443218"
     },
     {
       "symbol": "VSCO",
@@ -45,7 +45,7 @@
       "regularMarketPreviousClose": 18.0,
       "changePercent": 1.11,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397930"
+      "ts": "2025-09-11T07:26:27.443219"
     },
     {
       "symbol": "KSS",
@@ -54,7 +54,7 @@
       "regularMarketPreviousClose": 24.3,
       "changePercent": -1.23,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397931"
+      "ts": "2025-09-11T07:26:27.443220"
     },
     {
       "symbol": "AMZN",
@@ -63,7 +63,7 @@
       "regularMarketPreviousClose": 176.9,
       "changePercent": 0.62,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397932"
+      "ts": "2025-09-11T07:26:27.443221"
     },
     {
       "symbol": "BABA",
@@ -72,7 +72,7 @@
       "regularMarketPreviousClose": 83.9,
       "changePercent": 0.72,
       "currency": "USD",
-      "ts": "2025-09-11T06:58:52.397933"
+      "ts": "2025-09-11T07:26:27.443223"
     },
     {
       "symbol": "9983.T",
@@ -81,7 +81,7 @@
       "regularMarketPreviousClose": 40950,
       "changePercent": 0.73,
       "currency": "JPY",
-      "ts": "2025-09-11T06:58:52.397935"
+      "ts": "2025-09-11T07:26:27.443224"
     }
   ]
 }

@@ -1,21 +1,21 @@
 {
-  "updatedAtISO": "2025-09-11T15:58:52.396694+09:00",
+  "updatedAtISO": "2025-09-11T16:26:27.442338+09:00",
   "count": 3,
   "items": [
     {
       "title": "Retail sales edge higher amid resilient consumer spending",
       "url": "https://example.com/retail-sales",
-      "publishedAt": "2025-09-11T06:58:52.398292"
+      "publishedAt": "2025-09-11T07:26:27.443738"
     },
     {
       "title": "Oil steadies as markets weigh supply outlook",
       "url": "https://example.com/oil-steady",
-      "publishedAt": "2025-09-11T06:58:52.398295"
+      "publishedAt": "2025-09-11T07:26:27.443743"
     },
     {
       "title": "Apparel makers shift sourcing strategies",
       "url": "https://example.com/apparel-sourcing",
-      "publishedAt": "2025-09-11T06:58:52.398297"
+      "publishedAt": "2025-09-11T07:26:27.443745"
     }
   ]
 }

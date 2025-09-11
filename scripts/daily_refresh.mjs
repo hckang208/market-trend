@@ -117,7 +117,7 @@ const meta = { updatedAtISO: now(), timezone: "Asia/Seoul" };
 
 // 저장
 writeJson("indicators.json", ind);
-writeJson("stocks.json", { updatedAtISO: now(), symbols: SYMBOLS, quotes });
+writeJson("stocks.json", { updatedAtISO: now(), symbols: ["WMT","TGT","ANF","VSCO","KSS","AMZN","BABA","9983.T"], quotes });
 writeJson("news_overseas.json", ov);
 writeJson("news_korea.json", kr);
 writeJson("ai_summary.json", ai);

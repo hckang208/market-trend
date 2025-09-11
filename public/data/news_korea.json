@@ -1,21 +1,21 @@
 {
-  "updatedAtISO": "2025-09-11T15:58:52.396694+09:00",
+  "updatedAtISO": "2025-09-11T16:26:27.442338+09:00",
   "count": 3,
   "items": [
     {
       "title": "국내 유통업, 하반기 판촉 강화",
       "url": "https://example.com/kr-retail",
-      "publishedAt": "2025-09-11T06:58:52.398534"
+      "publishedAt": "2025-09-11T07:26:27.444034"
     },
     {
       "title": "섬유업계, 원가관리 초점 이동",
       "url": "https://example.com/kr-textile",
-      "publishedAt": "2025-09-11T06:58:52.398537"
+      "publishedAt": "2025-09-11T07:26:27.444037"
     },
     {
       "title": "수출입 물류비 완만한 안정세",
       "url": "https://example.com/kr-logistics",
-      "publishedAt": "2025-09-11T06:58:52.398538"
+      "publishedAt": "2025-09-11T07:26:27.444039"
     }
   ]
 }
