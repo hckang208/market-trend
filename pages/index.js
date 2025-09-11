@@ -922,7 +922,6 @@ function NewsTabsSection() {
               <button onClick={()=>setNewsOpen(o=>!o)} className="btn btn-outline" style={{ marginLeft: 8 }}>
                 {newsOpen ? "접기" : "자세히보기"}
               </button>
-          {` `}
           </div>
       </div>
 
