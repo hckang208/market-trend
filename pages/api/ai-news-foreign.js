@@ -1,53 +1,78 @@
 // pages/api/ai-news-foreign.js
 import { geminiComplete } from "../../lib/gemini";
 
+const FEEDS = [
+  "https://news.google.com/rss/search?q=site:businessoffashion.com&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=site:just-style.com&hl=en-US&gl=US&ceid=US:en",
+];
+const ALLOWED = new Set(["businessoffashion.com","www.businessoffashion.com","just-style.com","www.just-style.com"]);
+
+function hostOf(u) { try { return new URL(u).host; } catch { return ""; } }
+function norm(h) { return (h||"").replace(/^www\./,""); }
+function pick(block, tag) { const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i")); return m ? m[1].trim() : null; }
+function attr(block, tag, name) { const m = block.match(new RegExp(`<${tag}([^>]*)>`, "i")); if (!m) return ""; const a = m[1]||""; const mm=a.match(new RegExp(name+`="([^"]+)"`,"i")); return mm?mm[1]:""; }
+function unescapeXml(s) { if (!s) return s; return s.replace(/<!\[CDATA\[(.*?)\]\]>/gs,"$1").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#039;/g,"'"); }
+function extractOriginalUrl(gn) { try { const u = new URL(gn); const url = u.searchParams.get("url"); return url || gn; } catch { return gn; } }
+async function fetchText(url) { try { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) return null; return await r.text(); } catch { return null; } }
+function parseFeed(xml) {
+  if (!xml) return [];
+  const chunks = xml.match(new RegExp("<item[\\s\\S]*?</item>","gi")) || xml.match(new RegExp("<entry[\\s\\S]*?</entry>","gi")) || [];
+  const out = [];
+  for (const c of chunks) {
+    const title = unescapeXml(pick(c,"title")||"");
+    let link = pick(c,"link") || pick(c,"guid") || "";
+    const linkAttr = (c.match(new RegExp('<link[^>]*href="([^"]+)"',"i"))||[])[1]||"";
+    if (!/^https?:/i.test(link)) link = linkAttr || link;
+    if (!link) continue;
+    if (link.includes("news.google.com")) link = extractOriginalUrl(link);
+    const host = norm(hostOf(link));
+    if (!ALLOWED.has(host)) continue;
+    const pub = pick(c,"pubDate") || pick(c,"published") || pick(c,"updated") || "";
+    let publishedAtISO = null; try { publishedAtISO = new Date(pub).toISOString(); } catch {}
+    out.push({ title, link, source: host, publishedAtISO });
+  }
+  return out.sort((a,b)=> (new Date(b.publishedAtISO||0)) - (new Date(a.publishedAtISO||0)));
+}
+
 export default async function handler(req, res) {
   try {
-    const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
-    // 해외 뉴스는 캐시된 daily 소스에서 그대로 받아 요약 (키워드 필터 제거)
-    const r = await fetch(`${base}/api/news-foreign-industry?days=7&limit=30`, { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j?.error || "해외 뉴스 로드 실패");
+    // 1) Try internal API first (if it fails/HTML, fallback to direct feed)
+    let items = [];
+    try {
+      const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
+      const r = await fetch(`${base}/api/news-foreign-industry?days=7&limit=30`, { cache: "no-store" });
+      const txt = await r.text();
+      let j = null;
+      try { j = txt ? JSON.parse(txt) : null; } catch { j = null; }
+      const arr = Array.isArray(j) ? j : (j?.items || []);
+      if (Array.isArray(arr) && arr.length) {
+        items = arr.map(n => ({ title: n.title||"", link: n.link||n.url||"", source: n.source||n.sourceHost||n.linkHost||"", publishedAtISO: n.publishedAtISO||n.pubDate||n.date||null }));
+      }
+    } catch { /* ignore, fallback */ }
 
-    const items = ((j?.items || j || [])).slice(0, 12).map(n => ({
-      title: n.title || "",
-      link: n.link || n.url || "",
-      source: n.source || n.sourceHost || n.linkHost || ""
-    }));
-
-    const system = "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 글로벌 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
-    const user = [
-      `아래는 해외(영문) 패션/의류/가먼트/텍스타일 관련 최근 뉴스 ${items.length}건입니다.`,
-      "",
-      "출력(마크다운):",
-      "### 전략 요약 (5개 불릿)",
-      "- 수요/가격/재고/고객 변화 중심, 숫자·추세 포함",
-      "",
-      "### 당사 전략에 미치는 시사점 (3줄)",
-      "",
-      "### Actions (1~2주) (3개 불릿)",
-      "- 구체적 실행",
-      "",
-      "### Risks & Assumptions (2줄)",
-      "- 각 불릿/문장 끝에 관련 기사 번호를 [n] 형식으로 표기. 범위는 [2-3] 허용. 관련 기사 없으면 생략",
-      "",
-      "뉴스 목록:",
-      ...items.map((it, i) => `${i+1}. ${it.title}\n   - ${it.link}`)
-    ].join("\n");
-
-    let summary = await geminiComplete({ system, user });
-    if (!summary || summary.trim().length < 5) {
-      summary = (items || []).slice(0, 8).map((n, i) => `• ${n.title || n.source || "뉴스"} (${n.source || ""})`).join("\n");
+    // 2) Fallback: fetch Google News RSS directly
+    if (!items.length) {
+      for (const u of FEEDS) {
+        const xml = await fetchText(u);
+        const parsed = parseFeed(xml);
+        items.push(...parsed);
+      }
+      // Dedup by link
+      const seen = new Set(); items = items.filter(x => (x.link && !seen.has(x.link) && seen.add(x.link)));
     }
 
-    res.status(200).json({
-      generatedAt: new Date().toISOString(),
-      count: items.length,
-      items,
-      summary,
-      scope: "overseas"
-    });
+    const top = items.slice(0, 12);
+    let summary = "";
+    try {
+      const prompt = `너는 패션/리테일 산업 애널리스트다. 아래 Business of Fashion / Just-Style 기사만 요약해 핵심 인사이트 5개를 bullet로:\n\n${top.map((n,i)=>`(${i+1}) [${n.source}] ${n.title}`).join("\n")}`;
+      summary = await geminiComplete(prompt, 1100);
+    } catch (e) {
+      summary = top.map(n => `• ${n.title} (${n.source})`).join("\n");
+    }
+
+    return res.status(200).json({ generatedAt: new Date().toISOString(), count: top.length, items: top, summary, scope: "overseas" });
   } catch (e) {
-    return res.status(500).json({ error: String(e) });
+    const payload = { error: String(e), items: [], summary: "", generatedAt: new Date().toISOString(), scope: "overseas" };
+    try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
   }
 }

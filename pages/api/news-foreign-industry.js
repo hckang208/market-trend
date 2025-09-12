@@ -110,6 +110,7 @@ function withinDays(iso, days) {
 }
 
 async function handler(req, res) {
+  try {
   const q = req.query || {};
   const days = Math.max(1, Math.min(30, Number(q.days) || 7));
   const limit = Math.max(1, Math.min(100, Number(q.limit) || 40));
@@ -150,3 +151,8 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
+  } catch (e) {
+    const payload = { updatedAtISO: new Date().toISOString(), items: [], error: String(e), ok: false };
+    try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
+  }
+}
