@@ -3,7 +3,9 @@ const CACHE_PATH = "/tmp/news_kr_daily_cache.json";
 const GUIDE_TEXT = "뉴스는 매일 오후 10시(한국시간)에 갱신됩니다.";
 const FEEDS = ["http://www.ktnews.com/rss/allArticle.xml", "https://www.ktnews.com/rss/allArticle.xml"];
 
-async function fetchWithRetry(url, init={}, retry=2, timeoutMs=8000) {
+function timeLeft(start, hard) { return Math.max(0, hard - (Date.now() - start)); }
+
+async function fetchWithRetry(url, init={}, retry=1, timeoutMs=2200) {
   for (let i=0;i<=retry;i++) {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -84,6 +86,8 @@ function cleanDesc(s) {
 }
 
 export default async function handler(req, res) {
+  const hardDeadlineMs = 6500;
+  const start = Date.now();
   try {
     const refresh = String(req.query.refresh || "0") === "1";
     let cache = await readCache();

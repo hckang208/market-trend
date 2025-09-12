@@ -4,7 +4,7 @@
 export default async function handler(req, res) {
   try {
     const url = process.env.PROCURE_SHEET_CSV_URL;
-    if (!url) return res.status(400).json({ error: "PROCURE_SHEET_CSV_URL not set" });
+    if (!url) return res.status(200).json({ ok:false, data:null, error:"PROCURE_SHEET_CSV_URL not set", guide:"Set Netlify env PROCURE_SHEET_CSV_URL to a published CSV URL." });
 
     const r = await fetch(url, { headers: { "User-Agent": "MarketTrend-Dashboard/1.0" }, cache: "no-store" });
     if (!r.ok) throw new Error(`CSV fetch error: ${r.status}`);
