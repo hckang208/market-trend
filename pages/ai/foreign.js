@@ -1,6 +1,9 @@
 // pages/ai/foreign.js
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import SiteHeader from "../../components/SiteHeader";
+import SiteFooter from "../../components/SiteFooter";
+import LoadingOverlay from "../../components/LoadingOverlay";
 import AnalysisView from "../../components/AnalysisView";
 
 async function fetchJSON(url, init) {
@@ -8,9 +11,18 @@ async function fetchJSON(url, init) {
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
     const body = await res.text();
-    throw new Error(`API did not return JSON (status ${res.status}). body: ${body.slice(0, 200)}...`);
+    throw new Error(`API did not return JSON (${res.status}). body: ${body.slice(0, 200)}...`);
   }
   return res.json();
+}
+function deriveBulletsFromSummary(text, max = 6) {
+  const t = String(text || "").trim();
+  if (!t) return [];
+  const lines = t.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  const bullets = lines.filter((ln) => /^[-•\*]\s+/.test(ln)).map((ln) => ln.replace(/^[-•\*]\s+/, ""));
+  if (bullets.length) return bullets.slice(0, max);
+  const sentences = t.split(/(?<=[.!?…])\s+/).filter((s) => s.length > 10);
+  return sentences.slice(0, max);
 }
 
 export default function IndustryAIForeignPage() {
@@ -18,86 +30,67 @@ export default function IndustryAIForeignPage() {
   const days  = useMemo(() => Number(router.query.days ?? 7), [router.query.days]);
   const limit = useMemo(() => Number(router.query.limit ?? 30), [router.query.limit]);
 
-  const [state, setState] = useState({
-    loading: true,
-    error: null,
-    summary: "",
-    bullets: [],
-    model: null,
-    articlesUsed: 0,
-  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [summary, setSummary] = useState("");
+  const [bullets, setBullets] = useState([]);
+  const [model, setModel] = useState(null);
+  const [articlesUsed, setArticlesUsed] = useState(0);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        setState((s) => ({ ...s, loading: true, error: null }));
+        setLoading(true); setError(null);
         const data = await fetchJSON(`/api/ai-news-foreign?days=${days}&limit=${limit}`);
         if (!alive) return;
         if (!data?.ok) {
-          setState({
-            loading: false,
-            error: data?._meta?.error || "AI 요약 생성 실패",
-            summary: data?.summary || "",
-            bullets: data?.bullets || [],
-            model: data?.model || "unknown",
-            articlesUsed: data?.articlesUsed || 0,
-          });
-          return;
+          setError(data?._meta?.error || "AI 요약 생성 실패");
         }
-        setState({
-          loading: false,
-          error: null,
-          summary: data.summary || "",
-          bullets: Array.isArray(data.bullets) ? data.bullets : [],
-          model: data.model || null,
-          articlesUsed: data.articlesUsed || 0,
-        });
+        setSummary(data?.summary || "");
+        setBullets(Array.isArray(data?.bullets) && data.bullets.length ? data.bullets : deriveBulletsFromSummary(data?.summary));
+        setModel(data?.model || "unknown");
+        setArticlesUsed(data?.articlesUsed || 0);
       } catch (e) {
         if (!alive) return;
-        setState({
-          loading: false,
-          error: e.message || "요약 요청 중 오류",
-          summary: "",
-          bullets: [],
-          model: "unknown",
-          articlesUsed: 0,
-        });
+        setError(e.message || "요약 요청 오류");
+        setSummary("");
+        setBullets([]);
+        setModel("unknown");
+        setArticlesUsed(0);
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
   }, [days, limit]);
 
-  if (state.loading) {
-    return (
+  return (
+    <>
+      <SiteHeader />
+      {loading && <LoadingOverlay text="AI Analysis • GEMINI 2.5 분석중입니다" />}
+
       <AnalysisView
         pageTitle="Industry AI Analysis — Hansol MI"
         title="산업뉴스 AI 분석 (해외)"
         subtitle={`기간: 최근 ${days}일 · 기사 상한: ${limit}건`}
-        bullets={[]}
-        summary="불러오는 중..."
-        meta={{ model: state.model || "loading", articlesUsed: state.articlesUsed, lastUpdated: new Date().toISOString() }}
+        bullets={bullets}
+        summary={summary}
+        meta={{
+          model: model || "unknown",
+          articlesUsed,
+          lastUpdated: new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
+          note: error ? `오류: ${error}` : null,
+        }}
         backHref="/"
+        rightSlot={
+          <button onClick={() => router.replace(router.asPath)} className="btn ghost">
+            새로고침
+          </button>
+        }
       />
-    );
-  }
 
-  const errNote = state.error ? `오류: ${state.error}` : null;
-
-  return (
-    <AnalysisView
-      pageTitle="Industry AI Analysis — Hansol MI"
-      title="산업뉴스 AI 분석 (해외)"
-      subtitle={`기간: 최근 ${days}일 · 기사 상한: ${limit}건`}
-      bullets={state.bullets}
-      summary={state.summary}
-      meta={{
-        model: state.model || "unknown",
-        articlesUsed: state.articlesUsed,
-        lastUpdated: new Date().toISOString(),
-        note: errNote,
-      }}
-      backHref="/"
-    />
+      <SiteFooter />
+    </>
   );
 }
