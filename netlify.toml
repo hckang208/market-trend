@@ -12,13 +12,3 @@
 [[scheduled.functions]]
   name = "trigger_build"
   cron = "0 0 * * *"
-[build]
-  command = "npm run build"
-  publish = ".next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
-[functions]
-  node_bundler = "esbuild"
-  included_files = ["public/data/**"]  # ← JSON/CSV 등 정적 데이터 포함
