@@ -816,7 +816,7 @@ function NewsTabsSection() {
         ? "출처: businessoffashion.com, just-style.com"
         : "출처: 한국섬유산업신문 외";
     const guide = " · 갱신: 매일 오전 9시(한국시간)";
-    const last = lastUpdated ? ` · 마지막 빌드: ${toKst(lastUpdated)}` : "";
+    const last = lastUpdated ? ` · 마지막 업데이트: ${toKst(lastUpdated)}` : "";
     return base + guide + last;
   }, [activeTab, lastUpdated]);
 
