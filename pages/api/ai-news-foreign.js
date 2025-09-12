@@ -5,14 +5,14 @@ export default async function handler(req, res) {
   try {
     const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
     // 해외 뉴스는 캐시된 daily 소스에서 그대로 받아 요약 (키워드 필터 제거)
-    const r = await fetch(`${base}/api/news-daily`, { cache: "no-store" });
+    const r = await fetch(`${base}/api/news-foreign-industry?days=7&limit=30`, { cache: "no-store" });
     const j = await r.json();
     if (!r.ok) throw new Error(j?.error || "해외 뉴스 로드 실패");
 
-    const items = (j?.items || []).slice(0, 10).map(n => ({
+    const items = ((j?.items || j || [])).slice(0, 12).map(n => ({
       title: n.title || "",
-      link: n.url || n.link || "",
-      source: n.source || ""
+      link: n.link || n.url || "",
+      source: n.source || n.sourceHost || n.linkHost || ""
     }));
 
     const system = "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 글로벌 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
