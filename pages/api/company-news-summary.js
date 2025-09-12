@@ -100,20 +100,49 @@ export default async function handler(req, res) {
     });
   }
 
+  // 3.5) 아이템이 아예 없으면(뉴스 없음) 키가 있어도 폴백 반환
+  if (!items.length) {
+    return res.status(200).json({
+      symbol,
+      generatedAt: new Date().toISOString(),
+      items,
+      summary: fallbackSummary,
+      fallback: true,
+      source: "fallback-only"
+    });
+  }
+
   // 4) 키가 있으면 요약 시도 → 실패시에도 200 + 불릿
   try {
+    // 🔹 컨설팅 톤 프롬프트 적용 (기업용)
+    const system =
+      "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 기업 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 및 투자 자문/매매 권유 금지.";
+
+    const numbered = items.map((it, idx) => `[${idx + 1}] ${it.title}${it.source ? ` (${it.source})` : ""}`);
     const user = [
-      `티커 ${symbol} 관련 최신 뉴스 목록입니다. 한국어로 5~8줄 핵심만 요약하세요.`,
-      "숫자/기업명/날짜는 유지하고, 투자조언은 하지 마세요.",
+      `아래는 티커 ${symbol} 관련 최근 뉴스 ${items.length}건입니다.`,
       "",
-      JSON.stringify(items, null, 2)
+      "출력(마크다운):",
+      "### 전략 요약 (5개 불릿)",
+      "- 수요/가격/재고/가이던스/밸류체인 영향 중심, 숫자·추세 포함",
+      "",
+      "### 당사(기업) 전략에 미치는 시사점 (3줄)",
+      "",
+      "### Actions (1~2주) (3개 불릿)",
+      "- 구체적 실행",
+      "",
+      "### Risks & Assumptions (2줄)",
+      "- 각 불릿/문장 끝에 관련 기사 번호를 [n] 형식으로 표기. 범위는 [2-3] 허용. 관련 기사 없으면 생략",
+      "",
+      "뉴스 목록:",
+      ...numbered
     ].join("\n");
 
     let summary = await geminiComplete({
-      system: "당신은 기업 뉴스의 의미를 간결히 정리하는 애널리스트입니다.",
+      system,
       user,
-      temperature: 0.25,
-      maxOutputTokens: 900
+      temperature: 0.3,
+      maxOutputTokens: 1200
     });
 
     if (!summary || summary.trim().length < 5) summary = fallbackSummary;
