@@ -84,7 +84,6 @@ export default function AISummaryPage() {
 
         <div style={styles.layout}>
           <AnalysisPanel
-            title="해외 산업뉴스 AI분석"
             loading={loading}
             error={err}
             summary={data?.summary || ""}
