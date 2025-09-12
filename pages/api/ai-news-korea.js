@@ -9,7 +9,7 @@ function bulletsFromItems(items, max = 8) {
 }
 
 export default async function handler(req, res) {
-  const proto = (req.headers["x-forwarded-proto"] || "https");
+  const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers.host;
   const base = `${proto}://${host}`;
 
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     const r = await fetch(`${base}/api/news-kr-daily`, { cache: "no-store" });
     const j = r.ok ? await r.json() : { items: [] };
-    items = (j?.items || []).slice(0, 10).map(n => ({
+    items = (j?.items || []).slice(0, 10).map((n) => ({
       title: n.title,
       link: n.link,
       pubDate: n.publishedAtISO || n.pubDate || null,
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     items = [];
   }
 
+  // API 키 없거나 쿼터 초과 → fallback
   if (!process.env.GEMINI_API_KEY) {
     const summary = bulletsFromItems(items);
     return res.status(200).json({
@@ -40,18 +41,34 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 🔹 컨설팅 톤 프롬프트 적용
+    const system =
+      "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 국내 산업 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
+
     const user = [
-      "아래 국내 패션/리테일 관련 기사 목록을 보고 5~8줄 한국어 불릿 요약을 작성해줘.",
-      "숫자/날짜/기업명을 보존.",
+      `아래는 국내(한글) 패션/의류/가먼트/텍스타일 관련 최근 뉴스 ${items.length}건입니다.`,
       "",
-      JSON.stringify(items, null, 2)
+      "출력(마크다운):",
+      "### 전략 요약 (5개 불릿)",
+      "- 수요/가격/재고/고객 변화 중심, 숫자·추세 포함",
+      "",
+      "### 당사 전략에 미치는 시사점 (3줄)",
+      "",
+      "### Actions (1~2주) (3개 불릿)",
+      "- 구체적 실행",
+      "",
+      "### Risks & Assumptions (2줄)",
+      "- 각 불릿/문장 끝에 관련 기사 번호를 [n] 형식으로 표기. 범위는 [2-3] 허용. 관련 기사 없으면 생략",
+      "",
+      "뉴스 목록:",
+      ...items.map((it, idx) => `[${idx + 1}] ${it.title} (${it.source})`)
     ].join("\n");
 
     let summary = await geminiComplete({
-      system: "당신은 한국어로 간결하게 비즈니스 뉴스를 요약하는 애널리스트입니다.",
+      system,
       user,
       temperature: 0.3,
-      maxOutputTokens: 800
+      maxOutputTokens: 1200
     });
 
     if (!summary || summary.trim().length < 5) {
