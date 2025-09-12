@@ -1049,9 +1049,13 @@ function WorldDailyNewsSection() {
           {!loading && !err && (
             <>
               <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
-                <button onClick={handleAi} className="btn btn-secondary btn-pro" style={{ border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:800 }}>
-                  {aiBusy ? "AI 요약 중…" : "AI 요약"}
-                </button>
+             <a
+  href="/ai/world-daily"
+  className="btn btn-secondary btn-pro"
+  style={{ border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:800 }}
+>
+  AI 요약
+</a>
               </div>
 
               {aiSummary && (
