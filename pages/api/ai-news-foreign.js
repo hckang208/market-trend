@@ -1,57 +1,120 @@
-// pages/api/ai-news-foreign.js
-import { geminiComplete } from "../../lib/gemini";
+// pages/ai/foreign.js
+import React from "react";
+import Head from "next/head";
+import AnalysisPanel from "../../components/AnalysisPanel";
 
-export default async function handler(req, res) {
-  try {
-    const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}`;
-    const r = await fetch(`${base}/api/news-foreign-industry`, { cache: "no-store" });
+/* ───────── 상단 공통 Header/하단 Footer (index.js와 동일 톤) ───────── */
+function HeaderBar() {
+  return (
+    <header className="header">
+      <div className="header-inner">
+        <div className="logo">
+          <div className="logo-mark">H</div>
+          <div>
+            <div className="logo-text">Hansoll Market Intelligence</div>
+            <div className="logo-subtitle">Executive Dashboard</div>
+          </div>
+        </div>
+        <div className="live-status">
+          <span className="pulse" />
+          <span className="live-label">Live Data</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+function FooterBar() {
+  return (
+    <footer className="footer">
+      <p className="footer-text">© Hansoll Textile — Market Intelligence Dashboard</p>
+    </footer>
+  );
+}
 
-    const j = r.ok ? await r.json() : { items: [] };
-    const items = (j?.items || []).slice(0, 10).map((n) => ({
-      title: n.title,
-      link: n.link,
-      pubDate: n.publishedAtISO || null,
-      source: n.source || n.sourceHost || ""
-    }));
+/* ───────── 페이지 레이아웃 ───────── */
+const styles = {
+  page: { maxWidth: 1080, margin: "20px auto", padding: "0 16px" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  layout: { display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, alignItems: "start" },
+  right: { position: "sticky", top: 16, alignSelf: "start" },
+  list: { listStyle: "none", margin: 0, padding: 0 },
+  li: { padding: "8px 0", borderBottom: "1px solid #f1f5f9" },
+  refTitle: { fontWeight: 700, lineHeight: 1.45 },
+  refMeta: { color: "#6b7280", fontSize: 12 },
+};
 
-    const system = "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 해외 산업 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
-    const user = [
-      `아래는 Google News RSS 기반 해외 패션/산업 뉴스 최근 ${items.length}건입니다 (일간).`,
-      "",
-      "출력(마크다운):",
-      "### 전략 요약 (5개 불릿)",
-      "- 글로벌 패션/섬유 산업 동향, 수출입, 공급망, 주요 정책·원가 변화 포함",
-      "",
-      "### 당사 전략에 미치는 시사점 (3줄)",
-      "",
-      "### Actions (1~2주) (3개 불릿)",
-      "- 구체적 실행",
-      "",
-      "### Risks & Assumptions (2줄)",
-      "- 각 불릿/문장 끝에 관련 기사 번호를 [n] 형식으로 표기. 범위는 [2-3] 허용. 관련 기사 없으면 생략",
-      "",
-      "뉴스 목록:",
-      ...items.map((it, i) => `${i+1}. ${it.title}\n   - ${it.link}`)
-    ].join("\n");
+export default function AISummaryPage() {
+  const [loading, setLoading] = React.useState(true);
+  const [data, setData] = React.useState(null);
+  const [err, setErr] = React.useState("");
 
-    let summary = await geminiComplete({
-      system,
-      user,
-      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
-      temperature: 0.25,
-      maxOutputTokens: 900,
-    });
-    if (!summary || summary.trim().length < 5) {
-      summary = (items || []).slice(0, 8).map((n, i) => `• ${n.title || n.source || "뉴스"} (${n.source || ""})`).join("\n");
+  async function load() {
+    try {
+      setLoading(true); setErr(""); setData(null);
+      const r = await fetch("/api/ai-news-foreign");
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || "Failed");
+      setData(j);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
     }
-    res.status(200).json({
-      generatedAt: new Date().toISOString(),
-      count: items.length,
-      items,
-      summary,
-      scope: "foreign"
-    });
-  } catch (e) {
-    return res.status(500).json({ error: String(e) });
   }
+  React.useEffect(() => { load(); }, []);
+
+  const updated = data?.generatedAt || data?.updatedAtISO || data?.ts || "";
+
+  return (
+    <>
+      <Head><title>AI 요약 · 해외 산업뉴스</title></Head>
+
+      <HeaderBar />
+
+      <main style={styles.page}>
+        <div className="section-header">
+          <div>
+            <h2 className="section-title">해외 산업뉴스 · AI요약</h2>
+            <p className="section-subtitle">Google News · BoF / Just-Style 기반 추출</p>
+          </div>
+          <div>
+            <a href="/" className="btn btn-secondary">대시보드로 돌아가기</a>
+          </div>
+        </div>
+
+        <div style={styles.layout}>
+          <AnalysisPanel
+            title="해외 산업뉴스 AI분석"
+            loading={loading}
+            error={err}
+            summary={data?.summary || ""}
+            updatedAt={updated}
+            onBack={() => { window.location.href = "/"; }}
+          />
+
+          <aside style={styles.right}>
+            <div className="card">
+              <h4 className="text-[13px] font-extrabold mb-2">참조 뉴스</h4>
+              <ol style={styles.list}>
+                {(data?.items || []).slice(0, 24).map((it, i) => (
+                  <li key={i} style={styles.li} id={`ref-${i+1}`}>
+                    <div style={styles.refTitle}>
+                      <a href={it.link} target="_blank" rel="noreferrer" style={{ color:"#111827", textDecoration:"none" }}>{it.title}</a>
+                    </div>
+                    {it.pubDate ? <div style={styles.refMeta}>{it.pubDate}</div> : null}
+                    <div style={{ ...styles.refMeta, fontSize:11 }}>{it.source || ""}</div>
+                  </li>
+                ))}
+                {(!data?.items || data?.items?.length === 0) && (
+                  <li style={{ ...styles.li, color:"#6b7280" }}>참조 뉴스가 없습니다.</li>
+                )}
+              </ol>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <FooterBar />
+    </>
+  );
 }
