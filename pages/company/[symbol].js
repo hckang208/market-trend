@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import AnalysisView from "@/components/AnalysisView";
+import AnalysisView from "../../components/AnalysisView";
 
 export default function CompanyAnalysisPage() {
   const router = useRouter();
