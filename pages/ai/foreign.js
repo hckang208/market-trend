@@ -1,7 +1,7 @@
 // pages/ai/foreign.js
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
-import AnalysisView from "@/components/AnalysisView";
+import AnalysisView from "../../components/AnalysisView";
 
 async function fetchJSON(url, init) {
   const res = await fetch(url, { ...init, headers: { Accept: "application/json", ...(init?.headers || {}) }});
