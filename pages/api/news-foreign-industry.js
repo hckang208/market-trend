@@ -117,7 +117,7 @@ export default async function handler(req, res) {
     }
 
     const payload = { ok: true, updatedAtISO: nowISO, guide: "Google News RSS (BoF + Just-Style)", items: final };
-    if (debug) payload.debug = stats;    // ?debug=1로 호출하면 어떤 피드가 몇 건 파싱됐는지 확인 가능
+    if (debug) payload.debug = stats;    // ?debug=1: which URLs returned what
     try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
   } catch (e) {
     const payload = { ok: false, updatedAtISO: nowISO, items: [], error: String(e) };
