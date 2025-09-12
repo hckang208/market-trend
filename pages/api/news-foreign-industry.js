@@ -1,158 +1,111 @@
 // pages/api/news-foreign-industry.js
-// Google News RSS only (BoF + Just-Style). Minimal CJS, no fs/cache/AbortController, no regex literals.
-
-const ALLOWED = new Set([
-  "businessoffashion.com", "www.businessoffashion.com",
-  "just-style.com", "www.just-style.com",
-]);
+// Source of truth for "산업 → 해외뉴스": Google News RSS (Business of Fashion, Just-Style only).
+// Always returns JSON (even on error).
 
 const FEEDS = [
   "https://news.google.com/rss/search?q=site:businessoffashion.com&hl=en-US&gl=US&ceid=US:en",
   "https://news.google.com/rss/search?q=site:just-style.com&hl=en-US&gl=US&ceid=US:en",
 ];
+const ALLOWED = new Set([
+  "businessoffashion.com","www.businessoffashion.com",
+  "just-style.com","www.just-style.com"
+]);
 
-function hostOf(u) { try { return new URL(u).host; } catch (e) { return ""; } }
-function norm(h) { return (h || "").replace(/^www\./, ""); }
-function decode(s) {
-  return String(s || "")
-    .replace(/<!\[CDATA\[/g, "")
-    .replace(/\]\]>/g, "")
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+function hostOf(u) { try { return new URL(u).host; } catch { return ""; } }
+function norm(h) { return (h||"").replace(/^www\./,""); }
+function pick(block, tag) {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
+  return m ? m[1].trim() : null;
 }
-function pick(xml, tag) {
-  const re = new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\/" + tag + ">", "i");
-  const m = (xml || "").match(re);
-  return m ? decode(m[1]).trim() : "";
+function unescapeXml(s) {
+  if (!s) return s;
+  return s
+    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
 }
-function attr(xml, tag, attrName) {
-  const re = new RegExp("<" + tag + "[^>]*\b" + attrName + "=\"([^\"]+)\"[^>]*>", "i");
-  const m = (xml || "").match(re);
-  return m ? decode(m[1]) : "";
-}
-function extractOriginalUrl(gnLink) {
+function extractOriginalUrl(gn) {
   try {
-    const u = new URL(gnLink || "");
-    const q = u.searchParams.get("url");
-    return q ? decodeURIComponent(q) : (gnLink || "");
-  } catch (e) { return gnLink || ""; }
+    const u = new URL(gn);
+    const url = u.searchParams.get("url");
+    return url || gn;
+  } catch { return gn; }
 }
-
-async function getText(url) {
+async function fetchText(url) {
   try {
-    const r = await fetch(url, {
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; DashboardBot/1.0)",
-        "accept": "application/rss+xml, application/xml, text/xml, text/html, */*",
-      },
-    });
+    const r = await fetch(url, { cache: "no-store", headers: { "accept": "application/rss+xml,text/xml;q=0.9,*/*;q=0.8" } });
     if (!r.ok) return null;
     return await r.text();
-  } catch (e) { return null; }
+  } catch { return null; }
 }
-
-function parseItems(xml) {
+function parseFeed(xml) {
   if (!xml) return [];
-  const itemRe = new RegExp("<item[\\s\\S]*?<\/item>", "gi");
-  const entryRe = new RegExp("<entry[\\s\\S]*?<\/entry>", "gi");
-  const chunks = (xml.match(itemRe) || xml.match(entryRe) || []);
+  const chunks = xml.match(/<item[\s\S]*?<\/item>/gi) || xml.match(/<entry[\s\S]*?<\/entry>/gi) || [];
   const out = [];
   for (const c of chunks) {
-    const title = pick(c, "title");
-    let link = pick(c, "link") || pick(c, "guid");
-    const linkAttr = (c.match(new RegExp("<link[^>]*href=\"([^\"]+)\"", "i")) || [])[1] || "";
-    if (!link || !/^https?:/i.test(link)) link = linkAttr || link;
-    if (!title || !link) continue;
-
-    // GN -> original
+    const rawTitle = pick(c, "title") || "";
+    const title = unescapeXml(rawTitle);
+    let link = pick(c, "link") || pick(c, "guid") || "";
+    const linkAttr = (c.match(/<link[^>]*href="([^"]+)"/i) || [])[1] || "";
+    if (!/^https?:/i.test(link)) link = linkAttr || link;
+    if (!link) continue;
     if (link.includes("news.google.com")) link = extractOriginalUrl(link);
+    const host = norm(hostOf(link));
+    if (!ALLOWED.has(host)) continue;
 
-    const pub = pick(c, "pubDate") || pick(c, "published") || pick(c, "updated") || pick(c, "dc:date") || pick(c, "date");
-    let publishedAtISO = null;
-    try { publishedAtISO = new Date(pub).toISOString(); } catch (e) {}
-
-    const sourceText = pick(c, "source");
-    const sourceUrl = attr(c, "source", "url");
-    const sourceHost = norm(hostOf(sourceUrl));
-    const linkHost = norm(hostOf(link));
-    const allowed = ALLOWED.has(linkHost) || ALLOWED.has(sourceHost);
-    if (!allowed) continue;
-
+    const pub = pick(c,"pubDate") || pick(c,"published") || pick(c,"updated") || "";
+    let publishedAtISO = null; try { publishedAtISO = new Date(pub).toISOString(); } catch {}
     out.push({
       title,
-      url: link,
-      source: sourceText || sourceHost || linkHost,
-      publishedAtISO,
+      link,
+      source: host,
+      sourceHost: host,
+      linkHost: host,
+      publishedAtISO
     });
   }
-  return out;
-}
-
-function dedupeByTitle(arr) {
+  // Sort desc by time
+  out.sort((a,b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
+  // Dedup by link
   const seen = new Set();
-  const out = [];
-  for (const it of arr) {
-    const k = (it.title || "").trim().toLowerCase().replace(/\s+/g, " ");
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(it);
-  }
-  return out;
+  return out.filter(x => (x.link && !seen.has(x.link) && seen.add(x.link)));
 }
 
-function withinDays(iso, days) {
+export default async function handler(req, res) {
+  const nowISO = new Date().toISOString();
   try {
-    const d = new Date(iso || "");
-    if (isNaN(d.getTime())) return true;
-    const diff = (Date.now() - d.getTime()) / 86400000;
-    return diff <= days && diff >= 0;
-  } catch (e) { return true; }
-}
+    const urlDays = parseInt(String(req.query.days || "7"), 10);
+    const days = Number.isFinite(urlDays) && urlDays > 0 ? Math.min(urlDays, 30) : 7;
+    const urlLimit = parseInt(String(req.query.limit || "40"), 10);
+    const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? Math.min(urlLimit, 100) : 40;
 
-async function handler(req, res) {
-  try {
-  const q = req.query || {};
-  const days = Math.max(1, Math.min(30, Number(q.days) || 7));
-  const limit = Math.max(1, Math.min(100, Number(q.limit) || 40));
-  const debug = q.debug === "1";
-
-  const items = [];
-  const errors = [];
-
-  for (const url of FEEDS) {
-    const xml = await getText(url);
-    if (!xml) {
-      errors.push("fetch failed: " + url);
-      continue;
+    let items = [];
+    for (const u of FEEDS) {
+      const xml = await fetchText(u);
+      const parsed = parseFeed(xml);
+      items.push(...parsed);
     }
-    try {
-      items.push(...parseItems(xml));
-    } catch (e) {
-      errors.push("parse failed: " + url + " : " + String(e && e.message || e));
-    }
-  }
+    // Filter by days
+    const cutoff = Date.now() - days * 86400000;
+    items = items.filter(n => {
+      const t = Date.parse(n.publishedAtISO || 0) || 0;
+      return t >= cutoff;
+    });
+    // Limit
+    items = items.slice(0, limit);
 
-  let arr = dedupeByTitle(items)
-    .filter(it => withinDays(it.publishedAtISO, days))
-    .sort((a, b) => (new Date(b.publishedAtISO || 0)) - (new Date(a.publishedAtISO || 0)));
-  arr = arr.slice(0, limit);
-
-  const payload = {
-    updatedAtISO: new Date().toISOString(),
-    items: arr,
-    count: arr.length,
-    sources: "businessoffashion.com, just-style.com",
-    guide: "출처: The Business of Fashion, Just-Style (Google News RSS)",
-  };
-  if (debug) payload._debug = { errors };
-
-  // Always return JSON (no 500 HTML)
-  return res.status(200).json(payload);
-}
-
-module.exports = handler;
+    const payload = {
+      ok: true,
+      updatedAtISO: nowISO,
+      guide: "Source: Google News (Business of Fashion, Just-Style)",
+      items
+    };
+    try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
   } catch (e) {
-    const payload = { updatedAtISO: new Date().toISOString(), items: [], error: String(e), ok: false };
+    const payload = { ok: false, updatedAtISO: nowISO, items: [], error: String(e) };
     try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
   }
 }
