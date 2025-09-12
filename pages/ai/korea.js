@@ -1,123 +1,103 @@
 // pages/ai/korea.js
-import React from "react";
-import Head from "next/head";
+import React, { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/router";
+import AnalysisView from "@/components/AnalysisView";
 
-function LinkifyCitations(text="") {
-  return String(text).replace(/\[(\d+(?:-\d+)?)\]/g, (m, grp) => {
-    const id = String(grp).split('-')[0];
-    return `<a href="#ref-${id}" style="text-decoration: underline;">[${grp}]</a>`;
+async function fetchJSON(url, init) {
+  const res = await fetch(url, { ...init, headers: { Accept: "application/json", ...(init?.headers || {}) }});
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    const body = await res.text();
+    throw new Error(`API did not return JSON (status ${res.status}). body: ${body.slice(0, 200)}...`);
+  }
+  return res.json();
+}
+
+export default function IndustryAIKoreaPage() {
+  const router = useRouter();
+  const days  = useMemo(() => Number(router.query.days ?? 7), [router.query.days]);
+  const limit = useMemo(() => Number(router.query.limit ?? 30), [router.query.limit]);
+
+  const [state, setState] = useState({
+    loading: true,
+    error: null,
+    summary: "",
+    bullets: [],
+    model: null,
+    articlesUsed: 0,
   });
-}
-function splitSections(md="") {
-  const lines = String(md).split(/\r?\n/);
-  const out=[]; let title=null, buf=[];
-  const push=()=>{ if(title||buf.length) out.push({title:title||"", body:buf.join("\n")}); };
-  for(const ln of lines){ if(/^###\s+/.test(ln)){ push(); title=ln.replace(/^###\s+/,"").trim(); buf=[]; } else buf.push(ln); }
-  push(); return out;
-}
 
-const styles = {
-  page: { maxWidth: 1080, margin: "0 auto", padding: "16px 16px 40px" },
-  h1: { fontSize: 22, fontWeight: 800, margin: "6px 0 14px" },
-  sub: { color:"#6b7280", fontSize:12, marginBottom: 12 },
-  row: { display:"grid", gridTemplateColumns:"1fr 320px", gap:16, alignItems:"start" },
-  card: { border:"1px solid #e5e7eb", borderRadius:12, background:"#fff", padding:14 },
-  right: { position:"sticky", top:12 },
-  btnPro: { padding:"8px 12px", borderRadius:8, border:"1px solid #111827", background:"#111827", color:"#fff", fontWeight:700, fontSize:14 },
-  badge: { display:"inline-flex", alignItems:"center", gap:8, padding:"6px 10px", border:"1px solid #e5e7eb", borderRadius:999, background:"#fff", color:"#111827", fontWeight:700 },
-  spinner: { display:"inline-block", width:10, height:10, borderRadius:999, background:"#111827", animation: "pulse 1s ease-in-out infinite" },
-  list: { listStyle:"none", margin:0, padding:0 },
-  li: { padding:"8px 0", borderBottom:"1px solid #f1f5f9" },
-  refTitle: { fontWeight:700 },
-  refMeta: { color:"#6b7280", fontSize:12 }
-};
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setState((s) => ({ ...s, loading: true, error: null }));
+        const data = await fetchJSON(`/api/ai-news-korea?days=${days}&limit=${limit}`);
+        if (!alive) return;
+        if (!data?.ok) {
+          setState({
+            loading: false,
+            error: data?._meta?.error || "AI 요약 생성 실패",
+            summary: data?.summary || "",
+            bullets: data?.bullets || [],
+            model: data?.model || "unknown",
+            articlesUsed: data?.articlesUsed || 0,
+          });
+          return;
+        }
+        setState({
+          loading: false,
+          error: null,
+          summary: data.summary || "",
+          bullets: Array.isArray(data.bullets) ? data.bullets : [],
+          model: data.model || null,
+          articlesUsed: data.articlesUsed || 0,
+        });
+      } catch (e) {
+        if (!alive) return;
+        setState({
+          loading: false,
+          error: e.message || "요약 요청 중 오류",
+          summary: "",
+          bullets: [],
+          model: "unknown",
+          articlesUsed: 0,
+        });
+      }
+    })();
+    return () => { alive = false; };
+  }, [days, limit]);
 
-export default function AISummaryPage() {
-  const [loading, setLoading] = React.useState(true);
-  const [data, setData] = React.useState(null);
-  const [err, setErr] = React.useState("");
-
-  async function load() {
-    try {
-      setLoading(true); setErr(""); setData(null);
-      const r = await fetch("/api/ai-news-korea");
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Failed");
-      setData(j);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setLoading(false);
-    }
+  if (state.loading) {
+    return (
+      <AnalysisView
+        pageTitle="Industry AI Analysis (KR) — Hansol MI"
+        title="산업뉴스 AI 분석 (국내)"
+        subtitle={`기간: 최근 ${days}일 · 기사 상한: ${limit}건`}
+        bullets={[]}
+        summary="불러오는 중..."
+        meta={{ model: state.model || "loading", articlesUsed: state.articlesUsed, lastUpdated: new Date().toISOString() }}
+        backHref="/"
+      />
+    );
   }
 
-  React.useEffect(() => { load(); }, []);
-
-  const sections = React.useMemo(() => splitSections(data?.summary||""), [data?.summary]);
-  const updated = data?.updatedAtISO || data?.ts || "";
+  const errNote = state.error ? `오류: ${state.error}` : null;
 
   return (
-    <>
-      <Head>
-        <title>국내뉴스 | AI 요약</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-      <main style={styles.page}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <h1 style={styles.h1}>국내뉴스 — AI 요약</h1>
-          <button onClick={load} style={styles.btnPro} disabled={loading}>
-            {loading ? "다시 요약 중…" : "다시 요약"}
-          </button>
-        </div>
-        <div style={styles.sub}>
-          <span style={styles.badge}>
-            <span style={styles.spinner} />
-            {loading ? "AI가 분석중입니다" : "AI 분석 완료"}
-          </span>
-          {updated ? <> · 업데이트: {new Date(updated).toLocaleString("ko-KR")}</> : null}
-        </div>
-
-        {err && <div style={{ color:"#b91c1c", marginTop:8 }}>에러: {err}</div>}
-
-        <div style={styles.row}>
-          <div style={styles.card}>
-            {!data && loading && <div>요약을 불러오는 중…</div>}
-            {data && sections.map((sec, idx) => (
-              <section key={idx} style={{ marginTop: idx===0?0:12 }}>
-                {sec.title ? <h3 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px" }}>
-                  {sec.title === "Implications for Hansoll" ? "한솔섬유 전략에 미치는 시사점" : sec.title}
-                </h3> : null}
-                <div
-                  style={{ whiteSpace:"pre-wrap", lineHeight:1.65 }}
-                  dangerouslySetInnerHTML={{ __html: LinkifyCitations(sec.body).replace(/^-\\s+/gm, "• ").replace(/\\n/g, "<br/>") }}
-                />
-              </section>
-            ))}
-          </div>
-
-          <aside style={{ ...styles.card, ...styles.right }}>
-            <h4 style={{ fontWeight:800, margin:"0 0 8px" }}>참조 뉴스</h4>
-            <ol style={styles.list}>
-            {(data?.items || []).slice(0, 24).map((it, i) => (
-              <li key={i} style={styles.li} id={`ref-${i+1}`}>
-                <div style={styles.refTitle}>
-                  <a href={it.link} target="_blank" rel="noreferrer" style={{ color:"#111827", textDecoration:"none" }}>{it.title}</a>
-                </div>
-                {it.pubDate ? <div style={styles.refMeta}>{it.pubDate}</div> : null}
-                <div style={{ ...styles.refMeta, fontSize:11 }}>{it.source || ""}</div>
-              </li>
-            ))}
-            </ol>
-          </aside>
-        </div>
-      </main>
-      <style jsx global>{`
-        @keyframes pulse {{
-          0% {{ opacity: 0.4 }}
-          50% {{ opacity: 1 }}
-          100% {{ opacity: 0.4 }}
-        }}
-      `}</style>
-    </>
+    <AnalysisView
+      pageTitle="Industry AI Analysis (KR) — Hansol MI"
+      title="산업뉴스 AI 분석 (국내)"
+      subtitle={`기간: 최근 ${days}일 · 기사 상한: ${limit}건`}
+      bullets={state.bullets}
+      summary={state.summary}
+      meta={{
+        model: state.model || "unknown",
+        articlesUsed: state.articlesUsed,
+        lastUpdated: new Date().toISOString(),
+        note: errNote,
+      }}
+      backHref="/"
+    />
   );
 }
