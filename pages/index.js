@@ -824,7 +824,7 @@ function NewsTabsSection() {
     <section className="section">
       <div className="section-header">
         <div>
-          <h2 className="section-title">산업뉴스</h2>
+          <h2 className="section-title">산업뉴스 <span className="section-hint">(뉴스가 보이지 않으면 버튼 다시 클릭하세요)</span></h2>
           <p className="section-subtitle">{sourceLine}</p>
         </div>
         <div>
