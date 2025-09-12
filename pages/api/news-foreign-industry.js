@@ -23,7 +23,10 @@ function hostOf(u) { try { return new URL(u).host; } catch { return ""; } }
 function norm(h) { return (h||"").toLowerCase().replace(/^www\./,""); }
 function isAllowedHost(h) {
   const s = norm(h);
-  return s.endsWith("businessoffashion.com") || s.endsWith("just-style.com");
+  // 원문 도메인 외에도 news.google.com 자체도 허용
+  return s.endsWith("businessoffashion.com") ||
+         s.endsWith("just-style.com") ||
+         s.endsWith("news.google.com");
 }
 function pick(block, tag) {
   const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
@@ -37,8 +40,15 @@ function unescapeXml(s) {
     .replace(/&quot;/g,'"').replace(/&#039;/g,"'");
 }
 function extractOriginalUrl(gn) {
-  try { const u = new URL(gn); const url = u.searchParams.get("url"); return url || gn; }
-  catch { return gn; }
+  try {
+    const u = new URL(gn);
+    const url = u.searchParams.get("url");
+    if (url) return url;
+    // url 파라미터 없으면 news.google.com 링크 그대로 리턴
+    return gn;
+  } catch {
+    return gn;
+  }
 }
 async function fetchText(url) {
   try {
@@ -63,7 +73,10 @@ function parseFeed(xml) {
     const linkAttr = (c.match(/<link[^>]*href="([^"]+)"/i) || [])[1] || "";
     if (!/^https?:/i.test(link)) link = linkAttr || link;
     if (!link) continue;
-    if (link.includes("news.google.com")) link = extractOriginalUrl(link);
+
+    if (link.includes("news.google.com")) {
+      link = extractOriginalUrl(link);
+    }
 
     const host = hostOf(link);
     if (!isAllowedHost(host)) continue;
@@ -117,7 +130,7 @@ export default async function handler(req, res) {
     }
 
     const payload = { ok: true, updatedAtISO: nowISO, guide: "Google News RSS (BoF + Just-Style)", items: final };
-    if (debug) payload.debug = stats;    // ?debug=1: which URLs returned what
+    if (debug) payload.debug = stats;
     try { return res.status(200).json(payload); } catch { return res.end(JSON.stringify(payload)); }
   } catch (e) {
     const payload = { ok: false, updatedAtISO: nowISO, items: [], error: String(e) };
