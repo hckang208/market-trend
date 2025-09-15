@@ -1,10 +1,5 @@
-import fs from "fs";
-import path from "path";
+// pages/api/ai-news-korea.js
 import { geminiComplete } from "../../lib/gemini";
-import { getKoreaNews } from "../../lib/newsClient";
-
-const CACHE_FILE = path.join(process.cwd(), "public/data/news_korea.json");
-const MAX_AGE_HOURS = 24;
 
 function bulletsFromItems(items, max = 8) {
   return (items || [])
@@ -13,69 +8,40 @@ function bulletsFromItems(items, max = 8) {
     .join("\n");
 }
 
-async function loadCache() {
-  try {
-    const raw = await fs.promises.readFile(CACHE_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
-
-async function saveCache(data) {
-  await fs.promises.mkdir(path.dirname(CACHE_FILE), { recursive: true });
-  await fs.promises.writeFile(CACHE_FILE, JSON.stringify(data, null, 2), "utf-8");
-}
-
 export default async function handler(req, res) {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers.host;
+  const base = `${proto}://${host}`;
+
   let items = [];
-  let useCache = false;
-
-  // 1. 캐시 확인
-  const cache = await loadCache();
-  if (cache && cache.generatedAt) {
-    const ageHrs = (Date.now() - new Date(cache.generatedAt).getTime()) / 36e5;
-    if (ageHrs < MAX_AGE_HOURS) {
-      items = cache.items || [];
-      useCache = true;
-    }
+  try {
+    const r = await fetch(`${base}/api/news-kr-daily`, { cache: "no-store" });
+    const j = r.ok ? await r.json() : { items: [] };
+    items = (j?.items || []).slice(0, 10).map((n) => ({
+      title: n.title,
+      link: n.link,
+      pubDate: n.publishedAtISO || n.pubDate || null,
+      source: n.source || n.sourceHost || ""
+    }));
+  } catch (_) {
+    items = [];
   }
 
-  // 2. 캐시 없거나 오래됐으면 새로 fetch
-  if (!useCache) {
-    try {
-      const j = await getKoreaNews({ days: 1, limit: 40 });
-      items = (j?.items || []).slice(0, 10).map((n) => ({
-        title: n.title,
-        link: n.link,
-        pubDate: n.publishedAtISO || n.pubDate || null,
-        source: n.source || n.sourceHost || ""
-      }));
-      await saveCache({ generatedAt: new Date().toISOString(), items });
-    } catch (e) {
-      if (cache) {
-        items = cache.items || [];
-      }
-    }
-  }
-
-  // items가 항상 배열 보장
-  if (!Array.isArray(items)) items = [];
-
-  // 3. 요약 처리
+  // API 키 없거나 쿼터 초과 → fallback
   if (!process.env.GEMINI_API_KEY) {
-    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 없음";
+    const summary = bulletsFromItems(items);
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
       items,
-      summary,
+      summary: summary || "• (로컬) 국내 뉴스가 부족합니다.",
       scope: "korea",
       fallback: true
     });
   }
 
   try {
+    // 🔹 컨설팅 톤 프롬프트 적용
     const system =
       "당신은 당사 내부 실무진이 참조할 **컨설팅 수준**의 국내 산업 뉴스 요약을 작성하는 시니어 전략가입니다. 한국어로 간결하고 실행가능하게 작성하세요. 과장/추정 금지.";
 
@@ -106,7 +72,7 @@ export default async function handler(req, res) {
     });
 
     if (!summary || summary.trim().length < 5) {
-      summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 없음";
+      summary = bulletsFromItems(items);
     }
 
     return res.status(200).json({
@@ -117,11 +83,11 @@ export default async function handler(req, res) {
       scope: "korea"
     });
   } catch (e) {
-    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 요약 실패";
+    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 요약에 실패했습니다.";
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
-      items: items || [],
+      items,
       summary,
       scope: "korea",
       fallback: true,
