@@ -53,21 +53,23 @@ export default async function handler(req, res) {
       }));
       await saveCache({ generatedAt: new Date().toISOString(), items });
     } catch (e) {
-      // fetch 실패 시 기존 캐시라도 반환
       if (cache) {
         items = cache.items || [];
       }
     }
   }
 
+  // items가 항상 배열 보장
+  if (!Array.isArray(items)) items = [];
+
   // 3. 요약 처리
   if (!process.env.GEMINI_API_KEY) {
-    const summary = bulletsFromItems(items);
+    const summary = bulletsFromItems(items) || "• (로컬) 해외 산업 뉴스 없음";
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
       items,
-      summary: summary || "• (로컬) 해외 산업 뉴스가 부족합니다.",
+      summary,
       scope: "foreign",
       fallback: true
     });
@@ -104,7 +106,7 @@ export default async function handler(req, res) {
     });
 
     if (!summary || summary.trim().length < 5) {
-      summary = bulletsFromItems(items);
+      summary = bulletsFromItems(items) || "• (로컬) 해외 산업 뉴스 없음";
     }
 
     return res.status(200).json({
@@ -115,11 +117,11 @@ export default async function handler(req, res) {
       scope: "foreign"
     });
   } catch (e) {
-    const summary = bulletsFromItems(items) || "• (로컬) 해외 산업 뉴스 요약에 실패했습니다.";
+    const summary = bulletsFromItems(items) || "• (로컬) 해외 산업 뉴스 요약 실패";
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
-      items,
+      items: items || [],
       summary,
       scope: "foreign",
       fallback: true,
