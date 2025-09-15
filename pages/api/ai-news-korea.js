@@ -59,14 +59,17 @@ export default async function handler(req, res) {
     }
   }
 
+  // items가 항상 배열 보장
+  if (!Array.isArray(items)) items = [];
+
   // 3. 요약 처리
   if (!process.env.GEMINI_API_KEY) {
-    const summary = bulletsFromItems(items);
+    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 없음";
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
       items,
-      summary: summary || "• (로컬) 국내 뉴스가 부족합니다.",
+      summary,
       scope: "korea",
       fallback: true
     });
@@ -103,7 +106,7 @@ export default async function handler(req, res) {
     });
 
     if (!summary || summary.trim().length < 5) {
-      summary = bulletsFromItems(items);
+      summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 없음";
     }
 
     return res.status(200).json({
@@ -114,11 +117,11 @@ export default async function handler(req, res) {
       scope: "korea"
     });
   } catch (e) {
-    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 요약에 실패했습니다.";
+    const summary = bulletsFromItems(items) || "• (로컬) 국내 뉴스 요약 실패";
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
       count: items.length,
-      items,
+      items: items || [],
       summary,
       scope: "korea",
       fallback: true,
