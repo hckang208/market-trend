@@ -44,7 +44,15 @@ export default function IndustryAIKoreaPage() {
   const summaryRef = useRef(null);
   const refsRef    = useRef(null);
 
+  // ✅ 추가: 렌더 단계에서 new Date() 호출 금지 → hydration 안정화
+  const [generatedAtLocal, setGeneratedAtLocal] = useState("");
+
   useEffect(() => { load(days, limit); /* eslint-disable-next-line */ }, [qDays, qLimit]);
+
+  // ✅ 추가: 클라이언트 마운트 이후에만 시간 계산
+  useEffect(() => {
+    setGeneratedAtLocal(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
+  }, []);
 
   async function load(d = days, l = limit) {
     try {
@@ -112,7 +120,7 @@ export default function IndustryAIKoreaPage() {
   function removeActive(w){setKwSelected(prev=>prev.filter(v=>v!==w));}
   function clearAll(){setKwSelected([]);setKwInput("");}
 
-  const generatedAtLocal = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+  // ❌ 삭제: const generatedAtLocal = new Date().toLocaleString(...);
 
   return (
     <>
@@ -262,21 +270,4 @@ export default function IndustryAIKoreaPage() {
         .grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 20px; margin-top: 8px; }
         @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
         .summary { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px 20px; }
-        .section-block + .section-block { margin-top: 16px; padding-top: 4px; border-top: 1px dashed #e2e8f0; }
-        .summary-body { line-height: 1.9; font-size: 15px; color: #0f172a; letter-spacing: 0.1px; }
-        .refs-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #fff; position: sticky; top: 16px; height: fit-content; }
-        .refs-title { font-size: 14px; font-weight: 800; margin: 0 0 8px 0; }
-        .refs-list { list-style: decimal inside; display: grid; gap: 10px; padding: 0; margin: 0; }
-        .refs-item { padding-left: 2px; line-height: 1.65; }
-        .refs-meta { font-size: 12px; color: #6b7280; }
-        .refs-source { font-size: 11px; color: #94a3b8; }
-        .error { color: #b91c1c; background: #fef2f2; border: 1px solid #fee2e2; padding: 10px 12px; border-radius: 10px; margin: 8px 0 0; }
-        .muted { color: #64748b; font-size: 14px; }
-        :global(mark[data-hl="1"]) {
-          background: linear-gradient(to bottom, rgba(250, 204, 21, 0.35), rgba(250, 204, 21, 0.6));
-          padding: 0 2px; border-radius: 4px; box-shadow: inset 0 -0.2em 0 rgba(245, 158, 11, 0.25);
-        }
-      `}</style>
-    </>
-  );
-}
+        .section-block + .section-block { margin-top: 16p
