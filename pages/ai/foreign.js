@@ -150,7 +150,15 @@ export default function IndustryAIForeignPage() {
   const summaryRef = useRef(null);
   const refsRef = useRef(null);
 
+  // ✅ 추가: 렌더 단계에서 new Date() 호출 금지 → hydration 안정화
+  const [generatedAtLocal, setGeneratedAtLocal] = useState("");
+
   useEffect(() => { load(days, limit); /* eslint-disable-next-line */ }, [qDays, qLimit]);
+
+  // ✅ 추가: 클라이언트 마운트 이후에만 시간 계산
+  useEffect(() => {
+    setGeneratedAtLocal(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
+  }, []);
 
   async function load(d = days, l = limit) {
     try {
@@ -236,7 +244,7 @@ export default function IndustryAIForeignPage() {
   function removeActive(word) { setKwSelected((prev) => prev.filter((x) => x !== word)); }
   function clearAll() { setKwSelected([]); setKwInput(""); }
 
-  const generatedAtLocal = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+  // ❌ 삭제: const generatedAtLocal = new Date().toLocaleString(...);
 
   return (
     <>
