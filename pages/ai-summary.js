@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 
 export default function AISummaryPage() {
@@ -7,7 +6,15 @@ export default function AISummaryPage() {
   const [foreign, setForeign] = useState(null);
   const [korea, setKorea] = useState(null);
 
+  // ✅ 추가: 분석 시각을 클라이언트에서만 세팅(SSR/CSR 불일치 방지)
+  const [generatedAtLocal, setGeneratedAtLocal] = useState("—");
+
   useEffect(() => {
+    // ✅ 추가: hydration 완료 후에만 시간 계산
+    setGeneratedAtLocal(
+      new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+    );
+
     (async () => {
       try {
         setLoading(true); setErr("");
@@ -42,7 +49,8 @@ export default function AISummaryPage() {
 
       {err && <div style={{ ...styles.box, borderColor:"#fecaca", background:"#fef2f2", color:"#7f1d1d" }}>에러: {err}</div>}
 
-      <div className="s-pages-ai-summary-js-auto4">분석 시각: {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</div>
+      {/* ✅ 변경: 렌더 중 new Date() 제거 */}
+      <div className="s-pages-ai-summary-js-auto4">분석 시각: {generatedAtLocal}</div>
 
       <div style={styles.layout}>
         <main className="s-pages-ai-summary-js-main">
@@ -60,7 +68,10 @@ export default function AISummaryPage() {
             <h3 style={styles.h3}>참고한 해외뉴스</h3>
             <ul className="s-pages-ai-summary-js-list">
               {(foreign?.items || []).map((n, i) => (
-                <li key={i}><a href={n.link} target="_blank" rel="noreferrer" style={styles.link}>{n.title}</a><div className="s-pages-ai-summary-js-meta">{n.source} • {n.date || ""}</div></li>
+                <li key={i}>
+                  <a href={n.link} target="_blank" rel="noreferrer" style={styles.link}>{n.title}</a>
+                  <div className="s-pages-ai-summary-js-meta">{n.source} • {n.date || ""}</div>
+                </li>
               ))}
             </ul>
           </section>
@@ -68,7 +79,10 @@ export default function AISummaryPage() {
             <h3 style={styles.h3}>참고한 국내뉴스</h3>
             <ul className="s-pages-ai-summary-js-list">
               {(korea?.items || []).map((n, i) => (
-                <li key={i}><a href={n.link} target="_blank" rel="noreferrer" style={styles.link}>{n.title}</a><div className="s-pages-ai-summary-js-meta">{n.source} • {n.date || ""}</div></li>
+                <li key={i}>
+                  <a href={n.link} target="_blank" rel="noreferrer" style={styles.link}>{n.title}</a>
+                  <div className="s-pages-ai-summary-js-meta">{n.source} • {n.date || ""}</div>
+                </li>
               ))}
             </ul>
           </section>
