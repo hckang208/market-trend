@@ -182,6 +182,8 @@
   line-height: 1.8;
   font-size: 15px;
   color: #0f172a;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .list {

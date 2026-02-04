@@ -50,7 +50,7 @@ export default function AnalysisPanel({
       {loading && <div className="text-[13px] text-slate-600">요약을 불러오는 중…</div>}
       {!loading && error && <div className="text-[13px] text-red-600">에러: {error}</div>}
       {!loading && !error && (
-        <div className="whitespace-pre-wrap leading-7 text-[14px] tracking-[0.1px]">
+        <div className="whitespace-pre-wrap break-words leading-7 text-[14px] tracking-[0.1px]">
           {summary || "—"}
         </div>
       )}

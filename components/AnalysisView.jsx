@@ -122,7 +122,14 @@ export default function AnalysisView({
         .card-title { margin: 0 0 10px; font-weight: 700; }
         .list { list-style: disc; padding-left: 18px; margin: 0; }
         .list li { margin: 6px 0; line-height: 1.7; font-size: 14px; }
-        .summary p { margin: 10px 0; line-height: 1.85; font-size: 15px; color: #0f172a; }
+        .summary p {
+          margin: 10px 0;
+          line-height: 1.85;
+          font-size: 15px;
+          color: #0f172a;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
         .muted { color: #64748b; font-size: 14px; }
         .footer-slot { margin-top: 16px; }
       `}</style>

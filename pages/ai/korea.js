@@ -275,7 +275,14 @@ export default function IndustryAIKoreaPage() {
 
         .summary { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px 20px; }
         .section-block + .section-block { margin-top: 16px; padding-top: 4px; border-top: 1px dashed #e2e8f0; }
-        .summary-body { line-height: 1.9; font-size: 15px; color: #0f172a; letter-spacing: 0.1px; }
+        .summary-body {
+          line-height: 1.9;
+          font-size: 15px;
+          color: #0f172a;
+          letter-spacing: 0.1px;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
 
         .refs-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #fff; position: sticky; top: 16px; height: fit-content; }
         .refs-title { font-size: 14px; font-weight: 800; margin: 0 0 8px 0; }
@@ -295,4 +302,3 @@ export default function IndustryAIKoreaPage() {
     </>
   );
 }
-

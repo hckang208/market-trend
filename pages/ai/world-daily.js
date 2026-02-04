@@ -134,7 +134,16 @@ export default function WorldDailyAnalysisPage() {
         .company-title-sub { font-weight:700; color:#334155; }
         .ghost-link { font-size:13px; color:#334155; text-decoration:none; border:1px solid #e5e7eb; padding:6px 10px; border-radius:10px; }
         .grid { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr); gap:20px; }
-        .summary { background:#f8fafc; border:1px solid #e5e7eb; border-radius:14px; padding:18px 20px; line-height:1.8; font-size:15px; }
+        .summary {
+          background: #f8fafc;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          padding: 18px 20px;
+          line-height: 1.8;
+          font-size: 15px;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
         .refs-card { border:1px solid #e5e7eb; border-radius:14px; padding:16px; background:#fff; height:fit-content; }
         .refs-title { font-size:14px; font-weight:800; margin-bottom:8px; }
         .refs-list { list-style:decimal inside; display:grid; gap:10px; padding:0; margin:0; }
