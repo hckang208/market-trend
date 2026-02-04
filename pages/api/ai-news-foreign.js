@@ -10,8 +10,9 @@ function bulletsFromItems(items, max = 8) {
 
 export default async function handler(req, res) {
   // 내부 API 호출용 base URL (Netlify/Vercel 호환)
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers.host;
+  const host = req.headers.host || "localhost";
+  const isLocalhost = host.includes("localhost") || host.startsWith("127.0.0.1");
+  const proto = req.headers["x-forwarded-proto"] || (isLocalhost ? "http" : "https");
   const base = `${proto}://${host}`;
 
   let items = [];
