@@ -138,12 +138,39 @@ export default async function handler(req, res) {
       ...numbered
     ].join("\n");
 
-    let summary = await geminiComplete({
+    const initial = await geminiComplete({
       system,
       user,
       temperature: 0.3,
-      maxOutputTokens: 4096
+      maxOutputTokens: 4096,
+      returnMeta: true
     });
+
+    let summary = initial?.text || "";
+    const finishReason = initial?.finishReason;
+    const needsContinuation = (text) => {
+      const trimmed = String(text || "").trim();
+      if (trimmed.length < 40) return false;
+      if (/[.!?。…]$/.test(trimmed)) return false;
+      return true;
+    };
+
+    if (summary && (finishReason === "MAX_TOKENS" || needsContinuation(summary))) {
+      const continuation = await geminiComplete({
+        system,
+        user: [
+          "이전 응답의 다음 문장부터 이어서 작성하세요. 중복 없이 바로 이어서 작성합니다.",
+          "",
+          "이전 응답:",
+          summary,
+          "",
+          "이어서:"
+        ].join("\n"),
+        temperature: 0.2,
+        maxOutputTokens: 1500
+      });
+      if (continuation) summary = `${summary}\n${continuation}`.trim();
+    }
 
     if (!summary || summary.trim().length < 5) summary = fallbackSummary;
 
