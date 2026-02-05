@@ -142,7 +142,7 @@ export default async function handler(req, res) {
       system,
       user,
       temperature: 0.3,
-      maxOutputTokens: 1200
+      maxOutputTokens: 2000
     });
 
     if (!summary || summary.trim().length < 5) summary = fallbackSummary;
