@@ -460,17 +460,30 @@ function StocksSection() {
         background: "#f8fafc",
         padding: 12,
         borderRadius: 10,
-        marginTop: 10,
-        position: "relative",
-        maxHeight: collapsed ? 240 : "none",
-        overflow: "hidden"
+        marginTop: 10
       }}>
-        {sections.map(renderSection)}
-        {collapsed && <div style={{ position: "absolute", left:0, right:0, bottom:0, height: 48,
-          background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"}} />}
+        <div style={{
+          position: "relative",
+          maxHeight: collapsed ? 240 : "none",
+          overflow: "hidden"
+        }}>
+          {sections.map(renderSection)}
+          {collapsed && (
+            <div style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 48,
+              background: "linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,1) 60%)"
+            }} />
+          )}
+        </div>
         <div className="s-pages-pages-index-js-auto14">
-          <button onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym]||{}), expanded: !s[sym]?.expanded } }))}
-                  style={{ fontSize: 12, textDecoration:"underline", color:"#334155" }}>
+          <button
+            onClick={() => setSumState(s => ({ ...s, [sym]: { ...(s[sym] || {}), expanded: !s[sym]?.expanded } }))}
+            style={{ fontSize: 12, textDecoration: "underline", color: "#334155" }}
+          >
             {collapsed ? "더보기" : "접기"}
           </button>
         </div>
@@ -480,14 +493,14 @@ function StocksSection() {
 // { [symbol]: { open, loading, summary, error } }
 
   async function loadSummary(symbol) {
-    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "" } }));
+    setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: true, error: "", summary: "", expanded: true } }));
     try {
       const r = await fetch(`/api/company-news-summary?symbol=${encodeURIComponent(symbol)}&limit=10&lang=ko`);
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Failed to fetch summary");
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: j.summary || "(요약 없음)", error: "" } }));
+      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: j.summary || "(요약 없음)", error: "", expanded: true } }));
     } catch (e) {
-      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e) } }));
+      setSumState(s => ({ ...s, [symbol]: { ...(s[symbol] || {}), open: true, loading: false, summary: "", error: String(e), expanded: true } }));
     }
   }
 
